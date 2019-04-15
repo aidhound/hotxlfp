@@ -1,0 +1,4 @@
+[run]
+omit = 
+    ./hotxlfp/_compat/*
+    ./hotxlfp/grammarparser/parser_FormulaParser_parsetab.py
