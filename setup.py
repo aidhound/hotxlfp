@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
+from io import open
 from setuptools import setup
 
 setup(
     name='hotxlfp',
-    version='0.0.1',
+    version='0.0.2',
     packages=['hotxlfp',],
     license='MIT',
     test_suite='tests',
     author='Leonel Câmara',
+    author_email='leonelcamara@gmail.com',
     url='https://github.com/aidhound/hotxlfp',
+    download_url='https://github.com/aidhound/hotxlfp/archive/0.0.2.tar.gz',
     keywords=['excel', 'formula', 'parser'],
-    install_requires=open('requirements.txt').readlines(),
-    long_description=open('README.md').read(),
+    install_requires=['ply', 'python-dateutil'],
+    long_description='\n'.join(l for l in open('README.md', encoding="utf-8").readlines() if not l.startswith('[!')),
+    long_description_content_type='text/markdown',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
