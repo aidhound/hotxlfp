@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
+import datetime
 from hotxlfp import Parser
 
 
@@ -13,6 +14,9 @@ class TestOperators(unittest.TestCase):
         ret = p.parse('1 + "lele"')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#VALUE!')
+        ret = p.parse('1 + "2"')
+        self.assertEqual(ret['result'], 3)
+        self.assertEqual(ret['error'], None)
 
     def test_minus(self):
         p = Parser(debug=True)
@@ -49,16 +53,17 @@ class TestOperators(unittest.TestCase):
 
     def test_logic(self):
         p = Parser(debug=True)
-        ret = p.parse('"a" > 2')
-        self.assertEqual(ret['result'], True)
-        self.assertEqual(ret['error'], None)
-        ret = p.parse('"a" < 2')
-        self.assertEqual(ret['result'], False)
-        self.assertEqual(ret['error'], None)
+        # Numbers
         ret = p.parse('3 = 2')
         self.assertEqual(ret['result'], False)
         self.assertEqual(ret['error'], None)
-        ret = p.parse('3 <> 2')
+        ret = p.parse('4 <> 2')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('3 > 2')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2 < 3')
         self.assertEqual(ret['result'], True)
         self.assertEqual(ret['error'], None)
         ret = p.parse('3 >= 2')
@@ -67,3 +72,529 @@ class TestOperators(unittest.TestCase):
         ret = p.parse('3 <= 2')
         self.assertEqual(ret['result'], False)
         self.assertEqual(ret['error'], None)
+        # Strings
+        ret = p.parse('"3" = "2"')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"4" <> "2"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"3" > "2"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"2" < "3"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"3" >= "2"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"3" <= "2"')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        # booleans are bigger than strings
+        ret = p.parse('FALSE>"true"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRUE>"true"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE<"true"')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRUE<"true"')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"true"<TRUE')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"true"<FALSE')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"true">TRUE')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"true">FALSE')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        # strings are bigger than numbers
+        ret = p.parse('"a" > 2')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"a" < 2')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"2">2')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2<"2"')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2>"2"')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        # strings are bigger than dates
+        ret = p.parse('"a">DATE(2019,11,20)')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"1"<DATE(2019,11,20)')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('"1"<DATE(2019,11,20)')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        # Blanks are considered 0 with numbers
+        ret = p.parse('0=B3')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('1>B3')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('-1<B3')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        # Blanks are considered epoch with dates
+        ret = p.parse('DATE(1900, 1, 1)=B3')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(2019,11,27)>B3')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(1800,11,20)<B3')
+        self.assertEqual(ret['result'], False)  # Because it will think you're in year 3700
+        self.assertEqual(ret['error'], None)
+        # Blanks equal Blanks
+        ret = p.parse('B4=B3')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B4>B3')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B4<B3')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3>1')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3<1')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3>""')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3>DATE(2000; 1; 2)')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3>TRUE')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3>FALSE')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3<TRUE')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3<FALSE')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+
+    def test_implicit_conversions_number(self):
+        # Cell references will be blanks in this test
+        # since we don't teach the parser how to get cells
+        p = Parser(debug=True)
+        # Number plus number
+        ret = p.parse('2 + 2')
+        self.assertEqual(ret['result'], 4)
+        self.assertEqual(ret['error'], None)
+        # Number plus stupid string
+        ret = p.parse('2 + "2"')
+        self.assertEqual(ret['result'], 4)
+        self.assertEqual(ret['error'], None)
+        # Number plus date
+        ret = p.parse('2 + DATE(2019,11,20)')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 22))
+        self.assertEqual(ret['error'], None)
+        # Number plus bool
+        ret = p.parse('2 + TRUE')
+        self.assertEqual(ret['result'], 3)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2 + FALSE')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        # Number plus blank
+        ret = p.parse('2 + B3')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        # Number minus date
+        ret = p.parse('2 - DATE(2019,11,20)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#NUM!')
+        # Number minus number
+        ret = p.parse('2 - 2')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Number minus bool
+        ret = p.parse('2 - TRUE')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2 - FALSE')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        # Number minus blank
+        ret = p.parse('2 - B3')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        # Number times date
+        ret = p.parse('2 * DATE(2019,11,20)')
+        self.assertEqual(ret['result'], datetime.datetime(2139, 10, 11))
+        self.assertEqual(ret['error'], None)
+        # Number times number
+        ret = p.parse('2 * 3.5')
+        self.assertEqual(ret['result'], 7)
+        self.assertEqual(ret['error'], None)
+        # Number times bool
+        ret = p.parse('2 * TRUE')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2 * FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Number times blank
+        ret = p.parse('2 * B3')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Number divided by date
+        ret = p.parse('200000000 / DATE(2019,11,20)')
+        self.assertEqual(ret['result'], datetime.datetime(1912, 7, 2))
+        self.assertEqual(ret['error'], None)
+        # Number divided by number
+        ret = p.parse('2 / 4')
+        self.assertEqual(ret['result'], 0.5)
+        self.assertEqual(ret['error'], None)
+        # Number divided by bool
+        ret = p.parse('2 / TRUE')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('2 / FALSE')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        # Number divided by blank
+        ret = p.parse('2 / B3')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_implicit_conversions_date(self):
+        # Cell references will be blanks in this test
+        # since we don't teach the parser how to get cells
+        p = Parser(debug=True)
+        # Date plus date
+        ret = p.parse('DATE(2019,11,20) + DATE(2019,11,20)')
+        self.assertEqual(ret['result'], 87578)
+        self.assertEqual(ret['error'], None)
+        # Date plus stupid string
+        ret = p.parse('DATE(2019,11,20) + "2"')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 22))
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(1900; 11; 1) + "14/10/1900"')
+        # In the resulf of this one you would need to
+        # use parse_date on the result to get excels result of 16/08/1901
+        # for now we're keeping it coherent with adding dates
+        # which gives you the serialized value
+        self.assertEqual(ret['result'], 594)
+        self.assertEqual(ret['error'], None)
+        # Date plus number
+        ret = p.parse('DATE(2019,11,20) + 2')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 22))
+        self.assertEqual(ret['error'], None)
+        # Date plus bool
+        ret = p.parse('DATE(2019,11,20) + TRUE')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 21))
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(2019,11,20) + FALSE')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Date plus blank
+        ret = p.parse('DATE(2019,11,20) + B3')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Date minus date
+        ret = p.parse('DATE(2019,11,20) - DATE(2019,11,20)')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Date minus number
+        ret = p.parse('DATE(2019,11,20) - 2')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 18))
+        self.assertEqual(ret['error'], None)
+        # Date minus bool
+        ret = p.parse('DATE(2019,11,20) - TRUE')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 19))
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(2019,11,20) - FALSE')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Date minus blank
+        ret = p.parse('DATE(2019,11,20) - B3')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Date times date
+        ret = p.parse('DATE(2019,11,20) * DATE(2019,11,20)')
+        self.assertEqual(ret['result'], 1917476521)
+        self.assertEqual(ret['error'], None)
+        # Date times number
+        ret = p.parse('DATE(2019,11,20) * 2')
+        self.assertEqual(ret['result'], datetime.datetime(2139, 10, 11))
+        self.assertEqual(ret['error'], None)
+        # Date times bool
+        ret = p.parse('DATE(2019,11,20) * TRUE')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(2019,11,20) * FALSE')
+        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))
+        self.assertEqual(ret['error'], None)
+        # Date times blank
+        ret = p.parse('DATE(2019,11,20) * B3')
+        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))  # excel actualy return 1900/1/0 but that's no good in python
+        self.assertEqual(ret['error'], None)
+        # Date divided by date
+        ret = p.parse('DATE(2019,11,20) / DATE(2019,11,20)')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        # Date divided by number
+        ret = p.parse('DATE(2019,11,20) / 2')
+        self.assertEqual(ret['result'], datetime.datetime(1959, 12, 10))
+        self.assertEqual(ret['error'], None)
+        # Date divided by bool
+        ret = p.parse('DATE(2019,11,20) / TRUE')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATE(2019,11,20) / FALSE')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        # Date divided by blank
+        ret = p.parse('DATE(2019,11,20) / B3')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_implicit_conversions_bool(self):
+        # Cell references will be blanks in this test
+        # since we don't teach the parser how to get cells
+        p = Parser(debug=True)
+        # Bool plus date
+        ret = p.parse('TRUE + DATE(2019;11;20)')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 21))
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE + DATE(2019;11;20)')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Bool plus number
+        ret = p.parse('TRUE + 1')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE + 1')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        # Bool plus bool
+        ret = p.parse('TRUE + TRUE')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRUE + FALSE')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE + FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool plus Blank
+        ret = p.parse('TRUE + B4')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE + B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool minus date
+        ret = p.parse('TRUE - DATE(2019;11;20)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#NUM!')
+        # Bool minus number
+        ret = p.parse('TRUE - 1')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE - 1')
+        self.assertEqual(ret['result'], -1)
+        self.assertEqual(ret['error'], None)
+        # Bool minus bool
+        ret = p.parse('TRUE - TRUE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRUE - FALSE')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE - FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE - TRUE')
+        self.assertEqual(ret['result'], -1)
+        self.assertEqual(ret['error'], None)
+        # Bool minus Blank
+        ret = p.parse('TRUE - B4')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE - B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool times date
+        ret = p.parse('TRUE * DATE(2019;11;20)')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Bool times number
+        ret = p.parse('TRUE * 2')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE * 2')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool times bool
+        ret = p.parse('TRUE * TRUE')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRUE * FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE * FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE * TRUE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool times Blank
+        ret = p.parse('TRUE * B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE * B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool divided by date
+        ret = p.parse('TRUE / DATE(2019;11;20)')
+        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))
+        self.assertEqual(ret['error'], None)
+        # Bool divided by number
+        ret = p.parse('TRUE / 2')
+        self.assertEqual(ret['result'], 0.5)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FALSE / 2')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool divided by bool
+        ret = p.parse('TRUE / TRUE')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRUE / FALSE')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        ret = p.parse('FALSE / FALSE')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        ret = p.parse('FALSE / TRUE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Bool divided by Blank
+        ret = p.parse('TRUE / B4')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        ret = p.parse('FALSE / B4')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_implicit_conversions_blank(self):
+        # Cell references will be blanks in this test
+        # since we don't teach the parser how to get cells
+        p = Parser(debug=True)
+        # Blank plus date
+        ret = p.parse('B3 + DATE(2019;11;20)')
+        self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
+        self.assertEqual(ret['error'], None)
+        # Blank plus number
+        ret = p.parse('B3 + 1')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        # Blank plus bool
+        ret = p.parse('B3 + TRUE')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3 + FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank plus Blank
+        ret = p.parse('B3 + B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank minus date
+        ret = p.parse('B3 - DATE(2019;11;20)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#NUM!')
+        # Blank minus number
+        ret = p.parse('B3 - 1')
+        self.assertEqual(ret['result'], -1)
+        self.assertEqual(ret['error'], None)
+        # Blank minus bool
+        ret = p.parse('B3 - TRUE')
+        self.assertEqual(ret['result'], -1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3 - FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank minus Blank
+        ret = p.parse('B3 - B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank times date
+        ret = p.parse('B3 * DATE(2019;11;20)')
+        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))  # excel actualy return 1900/1/0 but that's no good in python
+        self.assertEqual(ret['error'], None)
+        # Blank times number
+        ret = p.parse('B3 * 1')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank times bool
+        ret = p.parse('B3 * TRUE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3 * FALSE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank times Blank
+        ret = p.parse('B3 * B4')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank divided by date
+        ret = p.parse('B3 / DATE(2019;11;20)')
+        self.assertEqual(ret['result'], 0)  # excel actualy return 1900/1/0 but that's no good in python
+        self.assertEqual(ret['error'], None)
+        # Blank divided by number
+        ret = p.parse('B3 / 2')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # Blank divided by bool
+        ret = p.parse('B3 / TRUE')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('B3 / FALSE')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        # Blank divided by Blank
+        ret = p.parse('B3 / B4')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_implicit_conversions_errors(self):
+        p = Parser(debug=True)
+        ret = p.parse('1/0 + 1')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        ret = p.parse('1 + 1/0')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+        ret = p.parse('1 + "lele"')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')
+        ret = p.parse('"lele"+1')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')

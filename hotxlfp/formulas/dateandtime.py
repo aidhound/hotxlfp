@@ -21,12 +21,18 @@ def DATE(year, month, day):
     return datetime.datetime(year, month, day)
 
 
+@dispatcher.register_for('DATEVALUE')
+def DATEVALUE(date):
+    return utils.serialize_date(date)
+
+
 @dispatcher.register_for('YEAR')
 def YEAR(serial_number):
     serial_number = utils.parse_date(serial_number)
     if isinstance(serial_number, error.XLError):
         return serial_number
     return serial_number.year
+
 
 @dispatcher.register_for('MONTH')
 def MONTH(serial_number):

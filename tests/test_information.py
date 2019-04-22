@@ -88,6 +88,36 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], False)
         self.assertEqual(ret['error'], None)
 
+    def test_isnumber(self):
+        p = Parser(debug=True)
+        ret = p.parse('ISNUMBER("foo")')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISNUMBER(TRUE)')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISNUMBER(NA())')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISNUMBER(1)')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+
+    def test_islogical(self):
+        p = Parser(debug=True)
+        ret = p.parse('ISLOGICAL("foo")')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISLOGICAL(TRUE)')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISLOGICAL(NA())')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISLOGICAL(1)')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+
     def test_isna(self):
         p = Parser(debug=True)
         ret = p.parse('ISNA(NA())')

@@ -16,6 +16,18 @@ class TestDateAndTime(unittest.TestCase):
         self.assertEqual(ret['result'], datetime.datetime(1995, 10, 12))
         self.assertEqual(ret['error'], None)
 
+    def test_datevalue(self):
+        p = Parser(debug=True)
+        ret = p.parse('DATEVALUE("8/22/2011")')
+        self.assertEqual(ret['result'], 40777)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATEVALUE("22-MAY-2011")')
+        self.assertEqual(ret['result'], 40685)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DATEVALUE("2011/02/23")')
+        self.assertEqual(ret['result'], 40597)
+        self.assertEqual(ret['error'], None)
+
     def test_year(self):
         p = Parser(debug=True)
         ret = p.parse('YEAR("2020-10-12 10:04:11")')

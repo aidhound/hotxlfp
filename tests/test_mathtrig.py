@@ -395,3 +395,28 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('EVEN(1/0)')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
+
+
+    def test_decimal(self):
+        p = Parser(debug=True)
+        ret = p.parse('DECIMAL("FF";16)')
+        self.assertEqual(ret['result'], 255)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DECIMAL(111;2)')
+        self.assertEqual(ret['result'], 7)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DECIMAL("zap";36)')
+        self.assertEqual(ret['result'], 45745)
+        self.assertEqual(ret['error'], None)
+
+    def test_base(self):
+        p = Parser(debug=True)
+        ret = p.parse('BASE(7,2)')
+        self.assertEqual(ret['result'], '111')
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('BASE(100,16)')
+        self.assertEqual(ret['result'], '64')
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('BASE(15,2,10)')
+        self.assertEqual(ret['result'], '0000001111')
+        self.assertEqual(ret['error'], None)

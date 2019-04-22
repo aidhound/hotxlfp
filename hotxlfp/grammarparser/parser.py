@@ -6,7 +6,7 @@ import ply.lex as lex
 from . import lexer
 from ..helper.number import to_number
 from .._compat import PY2, number_types, string_types
-from ..formulas import error
+from ..formulas import error, operators
 import math
 
 
@@ -78,23 +78,10 @@ class FormulaParser(Parser):
                   | expression DIV expression
                   | expression AMP expression
         """
-        if not ((isinstance(p[1], number_types) and isinstance(p[3], number_types)) or
-                (isinstance(p[1], string_types) and isinstance(p[3], string_types))):
-            p[0] = error.VALUE
-            return
-        if p[2] in ('+', '&'):
-            p[0] = p[1] + p[3]
-        elif p[2] == '*':
-            p[0] = p[1] * p[3]
-        elif p[2] == '/':
-            try:
-                p[0] = p[1] / p[3]
-            except ZeroDivisionError:
-                p[0] = error.DIV_ZERO
-        elif p[2] == '-':
-            p[0] = p[1] - p[3]
-        if isinstance(p[0], float) and math.isnan(p[0]):
-            p[0] = error.VALUE
+        if p[2] == '&':
+            p[0] = str(p[1]) + str(p[3])
+        else:
+            p[0] = operators.evaluate_arithmetic(p[2], p[1], p[3])
 
     def p_expression_logical_operator(self, p):
         """
@@ -105,21 +92,7 @@ class FormulaParser(Parser):
                    | expression EQUAL expression
                    | expression NOTEQUAL expression
         """
-        if not (isinstance(p[1], number_types) and
-                isinstance(p[3], number_types)):
-            p[1], p[3] = str(p[1]), str(p[3])
-        if p[2] == '>':
-            p[0] = p[1] > p[3]
-        elif p[2] == '<':
-            p[0] = p[1] < p[3]
-        elif p[2] == '>=':
-            p[0] = p[1] >= p[3]
-        elif p[2] == '<=':
-            p[0] = p[1] <= p[3]
-        elif p[2] == '<>':
-            p[0] = p[1] != p[3]
-        elif p[2] == '=':
-            p[0] = p[1] == p[3]
+        p[0] = operators.evaluate_logic(p[2], p[1], p[3])
 
     def p_expression_uminus(self, p):
         'expression : MINUS expression %prec UMINUS'

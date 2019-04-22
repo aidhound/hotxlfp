@@ -12,6 +12,8 @@ def to_number(number):
                 return float(number)
             except ValueError:
                 pass
+    if isinstance(number, bool):
+        return 1 if number else 0
     return number
 
 def invert_number(number):

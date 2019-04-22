@@ -343,3 +343,44 @@ def EVEN(number):
     tmp = math.ceil(abs(number))
     tmp = tmp if (tmp % 2) == 0 else tmp + 1
     return tmp if number > 0 else -tmp
+
+
+@dispatcher.register_for('DECIMAL')
+def DECIMAL(text, base):
+    text=str(text)
+    base = utils.parse_number(base)
+    if isinstance(base, error.XLError):
+        return base
+    try:
+        dec = int(text, base)
+        return (dec - 1099511627776) if (dec >= 549755813888) else dec
+    except ValueError:
+        return error.VALUE
+
+
+@dispatcher.register_for('BASE')
+def BASE(value, base, places=None):
+    value = utils.parse_number(value)
+    if isinstance(value, error.XLError):
+        return value
+    base = utils.parse_number(base)
+    if isinstance(base, error.XLError):
+        return base
+    if places is not None:
+        places = utils.parse_number(places)
+        if isinstance(places, error.XLError):
+            return places
+        if places < 0:
+            return error.NUM
+    if value == 0:
+        return '0'
+    digits = []
+    while value:
+        digits.append(int(value % base))
+        value //= base
+    result = ''.join(str(n) for n in digits[::-1])
+    if places is not None:
+        if len(result) > places:
+            return error.NUM
+        result = result.rjust(places, '0')
+    return result

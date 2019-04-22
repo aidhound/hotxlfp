@@ -19,6 +19,10 @@ You can install using pip
 
 ## Parse excel formulas 
 
+    p.parse('SUM(1,2,3)') # returns {'result': 6, 'error': None}
+
+It's also fine to use semi-colons as separators (they're used by excel depending on your locale)
+
     p.parse('SUM(1;2;3)') # returns {'result': 6, 'error': None}
 
 ## Custom functions

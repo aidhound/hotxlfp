@@ -58,6 +58,16 @@ def ISTEXT(value):
     return isinstance(value, string_types)
 
 
+@dispatcher.register_for('ISNUMBER')
+def ISNUMBER(value):
+    return (not isinstance(value, bool)) and isinstance(value, number_types)
+
+
+@dispatcher.register_for('ISLOGICAL')
+def ISLOGICAL(value):
+    return isinstance(value, bool)
+
+
 @dispatcher.register_for('ISNA')
 def ISNA(value):
     return value == error.NOT_AVAILABLE

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import division
 import re
 import fnmatch
 import itertools
@@ -11,6 +12,10 @@ import time
 from dateutil.parser import parse as to_date
 
 OPERATOR_DICT = {
+    '+': operator.add,
+    '-': operator.sub,
+    '*': operator.mul,
+    '/': operator.truediv,
     '>': operator.gt,
     '<': operator.lt,
     '<>': operator.ne,
@@ -113,14 +118,29 @@ def parse_date(date):
     date = to_number(date)
     if isinstance(date, number_types):
         d = int(date)
+        if d == 0:
+            return date_1900
         if d < 0:
             return error.NUM
         if d <= 60:
-            return datetime.datetime.fromtimestamp(epoch_seconds(date_1900) + (d - 1) * 86400)
-        return datetime.datetime.fromtimestamp(epoch_seconds(date_1900) + (d - 2) * 86400)
+            return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (d - 1) * 86400))
+        return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (d - 2) * 86400))
     if isinstance(date, string_types):
         try:
             return to_date(date)
         except ValueError:
             pass
     return error.VALUE
+
+
+def serialize_date(date):
+    date = parse_date(date)
+    if not isinstance(date, datetime.datetime):
+        return error.VALUE
+    if date == date_1900:
+        return 0
+    date = epoch_seconds(date) * 1000
+    d1900 = epoch_seconds(date_1900) * 1000
+    if date <= -2203891200000:
+        return (date - d1900) / 86400000 + 1
+    return (date - d1900) / 86400000 + 2
