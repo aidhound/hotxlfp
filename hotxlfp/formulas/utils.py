@@ -11,6 +11,8 @@ import datetime
 import time
 from dateutil.parser import parse as to_date
 
+DEFAULT = lambda: 0
+
 OPERATOR_DICT = {
     '+': operator.add,
     '-': operator.sub,

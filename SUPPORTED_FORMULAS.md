@@ -1,4 +1,4 @@
-# Supported Formulas - 116
+# Supported Formulas - 118
 
 * ABS
 * ACOS
@@ -102,11 +102,13 @@
 * STDEVA
 * STDEVP
 * STDEVPA
+* SUBSTITUTE
 * SUM
 * SUMIF
 * SWITCH
 * TAN
 * TANH
+* TEXTJOIN
 * TRUE
 * UPPER
 * VAR
@@ -118,7 +120,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 347
+# Not Yet Supported Formulas - 345
 
 * ACCRINT
 * ACCRINTM
@@ -413,7 +415,6 @@
 * SQRTPI
 * STANDARDIZE
 * STEYX
-* SUBSTITUTE
 * SUBTOTAL
 * SUMIFS
 * SUMPRODUCT
@@ -434,7 +435,6 @@
 * TBILLYIELD
 * TDIST
 * TEXT
-* TEXTJOIN
 * TIME
 * TIMEVALUE
 * TINV

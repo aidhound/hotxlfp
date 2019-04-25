@@ -3,6 +3,7 @@ from __future__ import division
 from . import dispatcher
 from . import error
 from . import utils
+from .utils import DEFAULT
 
 
 @dispatcher.register_for('HEX2DEC')
@@ -15,24 +16,24 @@ def HEX2DEC(hex):
 
 
 @dispatcher.register_for('DEC2HEX')
-def DEC2HEX(dec, places=None):
+def DEC2HEX(dec, places=DEFAULT):
     dec = utils.parse_number(dec)
     if isinstance(dec, error.XLError):
         return dec
-    if places is not None:
+    if places is not DEFAULT:
         places = utils.parse_number(places)
         if isinstance(places, error.XLError):
             return places
         if places < 0:
             return error.NUM
     if dec < 0:
-        places = None
+        places = DEFAULT
         dec = dec + 1099511627776
     try:
         result = (hex(dec)[2:])
         if result[-1] == 'L':
             result = result[:-1]
-        if places is not None:
+        if places is not DEFAULT:
             if len(result) > places:
                 return error.NUM
             result = result.rjust(places, '0')

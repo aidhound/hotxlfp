@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.6 - WIP
+
+* SUBSTITUTE is now supported
+
 ## 0.0.5
 
 * DECIMAL is now supported

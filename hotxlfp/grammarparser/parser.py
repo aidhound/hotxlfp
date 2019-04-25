@@ -135,6 +135,12 @@ class FormulaParser(Parser):
     def p_expression_expseq(self, p):
         """
         expseq : expression
+               | SEMICOLON SEMICOLON
+               | COMMA SEMICOLON
+               | SEMICOLON COMMA
+               | COMMA COMMA
+               | SEMICOLON expseq
+               | COMMA expseq
                | expseq COMMA expression
                | expseq COMMA COMMA expression
                | expseq SEMICOLON SEMICOLON expression
@@ -142,6 +148,11 @@ class FormulaParser(Parser):
         """
         if len(p) == 2:
             p[0] = [p[1]]
+        elif len(p) == 3:
+            if p[2] in (',', ';'):
+                p[0] = [None, None, None]
+            else:
+                p[0] = [None] + p[2]
         elif p[2] in (',', ';'):
             if p[3] in (',', ';'):  # e.g. an empty function argument
                 p[0] = p[1] + [None, p[4]]

@@ -10,6 +10,7 @@ import operator
 from . import dispatcher
 from . import error
 from . import utils
+from .utils import DEFAULT
 from ..helper.number import to_number
 
 
@@ -347,7 +348,7 @@ def EVEN(number):
 
 @dispatcher.register_for('DECIMAL')
 def DECIMAL(text, base):
-    text=str(text)
+    text = str(text)
     base = utils.parse_number(base)
     if isinstance(base, error.XLError):
         return base
@@ -359,14 +360,14 @@ def DECIMAL(text, base):
 
 
 @dispatcher.register_for('BASE')
-def BASE(value, base, places=None):
+def BASE(value, base, places=DEFAULT):
     value = utils.parse_number(value)
     if isinstance(value, error.XLError):
         return value
     base = utils.parse_number(base)
     if isinstance(base, error.XLError):
         return base
-    if places is not None:
+    if places is not DEFAULT:
         places = utils.parse_number(places)
         if isinstance(places, error.XLError):
             return places
@@ -379,7 +380,7 @@ def BASE(value, base, places=None):
         digits.append(int(value % base))
         value //= base
     result = ''.join(str(n) for n in digits[::-1])
-    if places is not None:
+    if places is not DEFAULT:
         if len(result) > places:
             return error.NUM
         result = result.rjust(places, '0')
