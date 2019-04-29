@@ -219,7 +219,7 @@ def ROUNDDOWN(number, digits):
 
 @dispatcher.register_for('SUM')
 def SUM(*args):
-    return sum(utils.inumbers(args))
+    return sum(utils.inumbers(args, try_parse=True))
 
 
 @dispatcher.register_for('SUMIF')

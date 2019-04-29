@@ -230,6 +230,9 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('SUM(,,,)')
         self.assertEqual(ret['result'], 0)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('SUM(TRUE,,"2")')
+        self.assertEqual(ret['result'], 3)
+        self.assertEqual(ret['error'], None)
 
     def test_sumif(self):
         p = Parser(debug=True)
@@ -398,7 +401,6 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('EVEN(1/0)')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
-
 
     def test_decimal(self):
         p = Parser(debug=True)

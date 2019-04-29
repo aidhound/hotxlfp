@@ -91,6 +91,9 @@ class TestOperators(unittest.TestCase):
         ret = p.parse('"3" <= "2"')
         self.assertEqual(ret['result'], False)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('""=0')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
         # booleans are bigger than strings
         ret = p.parse('FALSE>"true"')
         self.assertEqual(ret['result'], True)
@@ -600,7 +603,13 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], '#VALUE!')
 
     def test_errors(self):
-        p = Parser(debug=True)
+        p = Parser(debug=False)
         ret = p.parse('#REF! + #N/A')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#REF!')
+
+    def test_amp(self):
+        p = Parser(debug=True)
+        ret = p.parse('1&2')
+        self.assertEqual(ret['result'], '12')
+        self.assertEqual(ret['error'], None)

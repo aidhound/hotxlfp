@@ -13,7 +13,7 @@ class Parser(Emitter):
         super(Parser, self).__init__()
         self.variables = {'TRUE': True, 'FALSE': False, 'NULL': None}
         self.functions = {}
-        self.debug = True
+        self.debug = debug
         self.parser = FormulaParser(call_function=self.call_function,
                                     call_variable=self.call_variable,
                                     call_cell_value=self.call_cell_value,
