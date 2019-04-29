@@ -28,6 +28,9 @@ class TestLogic(unittest.TestCase):
         ret = p.parse('IF(FALSE,1,3)')
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('IF(,,)=0')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
 
     def test_iferror(self):
         p = Parser(debug=True)

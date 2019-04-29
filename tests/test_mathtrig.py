@@ -227,6 +227,9 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('SUM(1;2;{4;5};"aa")')
         self.assertEqual(ret['result'], 12)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('SUM(,,,)')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
 
     def test_sumif(self):
         p = Parser(debug=True)

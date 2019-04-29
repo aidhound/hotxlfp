@@ -598,3 +598,9 @@ class TestOperators(unittest.TestCase):
         ret = p.parse('"lele"+1')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#VALUE!')
+
+    def test_errors(self):
+        p = Parser(debug=True)
+        ret = p.parse('#REF! + #N/A')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#REF!')

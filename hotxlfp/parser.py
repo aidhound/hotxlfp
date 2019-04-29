@@ -32,7 +32,7 @@ class Parser(Emitter):
         except Exception as e:
             if self.debug:
                 traceback.print_exc()
-            error = formulaserror.from_message(e)
+            error = str(formulaserror.from_message(e))
 
         if isinstance(result, formulaserror.XLError):
             error = str(result)
@@ -127,5 +127,5 @@ class Parser(Emitter):
         self.emit('callRangeValue', start_cell, end_cell, valsetter)
         return result['value']
 
-    def _throw_error(error_name):
+    def _throw_error(self, error_name):
         raise formulaserror.from_message(error_name)
