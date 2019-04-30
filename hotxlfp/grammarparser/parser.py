@@ -128,42 +128,11 @@ class FormulaParser(Parser):
 
     def p_expression_wargs(self, p):
         """
-        expression : FUNCTION LPAREN expseq RPAREN
+        expression : FUNCTION LPAREN expseqcomma RPAREN
+                   | FUNCTION LPAREN expseqsemicolon RPAREN
+                   | FUNCTION LPAREN expseqbackslash RPAREN
         """
         p[0] = self.call_function(p[1], p[3])
-
-    def p_expression_expseq(self, p):
-        """
-        expseq : expression
-               | SEMICOLON SEMICOLON
-               | COMMA SEMICOLON
-               | SEMICOLON COMMA
-               | COMMA COMMA
-               | SEMICOLON expseq
-               | COMMA expseq
-               | expseq COMMA expression
-               | expseq COMMA COMMA expression
-               | expseq SEMICOLON SEMICOLON expression
-               | expseq SEMICOLON expression
-        """
-        if len(p) == 2:
-            p[0] = [p[1]]
-        elif len(p) == 3:
-            if p[2] in (',', ';'):
-                p[0] = [None, None, None]
-            else:
-                p[0] = [None] + p[2]
-        elif p[2] in (',', ';'):
-            if p[3] in (',', ';'):  # e.g. an empty function argument
-                p[0] = p[1] + [None, p[4]]
-            else:
-                p[0] = p[1] + [p[3]]
-
-    def p_xlerror(self, p):
-        """
-        expression : XLERROR
-        """
-        p[0] = self.throw_error(p[1])
 
     def p_expression_array(self, p):
         """
@@ -173,9 +142,95 @@ class FormulaParser(Parser):
 
     def p_array(self, p):
         """
-        array : LBRACKET expseq RBRACKET
+        array : LBRACKET expseqsemicolon RBRACKET
+              | LBRACKET expseqcomma RBRACKET
+              | LBRACKET expseqbackslash RBRACKET
         """
         p[0] = p[2]
+
+    def p_expseq_semicolon(self, p):
+        """
+        expseqsemicolon : expression
+                        | SEMICOLON SEMICOLON
+                        | SEMICOLON expseqsemicolon
+                        | expseqsemicolon SEMICOLON
+                        | expseqsemicolon SEMICOLON expression
+                        | expseqsemicolon SEMICOLON SEMICOLON expression
+                        | expseqcomma SEMICOLON expseqcomma
+                        | expseqbackslash SEMICOLON expseqbackslash
+        """
+        if len(p) == 2:
+            p[0] = [p[1]]
+        elif len(p) == 3:
+            if p[1] == ';' and p[2] == ';':
+                p[0] = [None, None, None]
+            elif p[1] == ';':
+                p[0] = [None] + p[2]
+            else:
+                p[0] = p[1] + [None]
+        elif p[2] == ';':
+            if p[3] == ';':
+                p[0] = p[1] + [None, p[4]]
+            else:
+                if str(p.slice[1]) in ('expseqcomma', 'expseqbackslash'):
+                    p[0] = [p[1]] + [p[3]]
+                else:
+                    p[0] = p[1] + [p[3]]
+
+    def p_expseq_comma(self, p):
+        """
+        expseqcomma : expression
+                    | COMMA COMMA
+                    | COMMA expseqcomma
+                    | expseqcomma COMMA
+                    | expseqcomma COMMA expression
+                    | expseqcomma COMMA COMMA expression
+        """
+        if len(p) == 2:  # expression
+            p[0] = [p[1]]
+        elif len(p) == 3:
+            if p[1] == ',' and p[2] == ',':
+                p[0] = [None, None, None]
+            elif p[1] == ',':
+                p[0] = [None] + p[2]
+            else:
+                p[0] = p[1] + [None]
+        elif p[2] == ',':
+            # expseqcomma COMMA COMMA expression
+            if p[3] == ',':  # e.g. an empty function argument
+                p[0] = p[1] + [None, p[4]]
+            else:
+                p[0] = p[1] + [p[3]]
+
+    def p_expseq_backslash(self, p):
+        """
+        expseqbackslash : expression
+                        | BACKSLASH BACKSLASH
+                        | BACKSLASH expseqbackslash
+                        | expseqbackslash BACKSLASH
+                        | expseqbackslash BACKSLASH expression
+                        | expseqbackslash BACKSLASH BACKSLASH expression
+        """
+        if len(p) == 2:
+            p[0] = [p[1]]
+        elif len(p) == 3:
+            if p[1] == '\\' and p[2] == '\\':
+                p[0] = [None, None, None]
+            elif p[1] == '\\':
+                p[0] = [None] + p[2]
+            else:
+                p[0] = p[1] + [None]
+        elif p[2] == '\\':
+            if p[3] == '\\':
+                p[0] = p[1] + [None, p[4]]
+            else:
+                p[0] = p[1] + [p[3]]
+
+    def p_xlerror(self, p):
+        """
+        expression : XLERROR
+        """
+        p[0] = self.throw_error(p[1])
 
     def p_expression_paren(self, p):
         """

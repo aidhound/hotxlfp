@@ -2,6 +2,8 @@
 import fnmatch
 from . import dispatcher
 from . import error
+from . import utils
+from .utils import DEFAULT
 from .._compat import string_types
 
 
@@ -63,3 +65,48 @@ def MATCH(lookup_value, lookup_array, match_type=1):
                     index_value = lookup_array[idx]
 
     return index if index else error.NOT_AVAILABLE
+
+
+@dispatcher.register_for('INDEX')
+def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
+
+    if row_num is None:
+        row_num = DEFAULT
+    if column_num is None:
+        column_num = DEFAULT
+
+    if arr is None or (row_num is DEFAULT and column_num is DEFAULT):
+        return error.VALUE
+
+    if not isinstance(arr, list):
+        arr = [[arr]]
+
+    bidimensional = isinstance(arr[0], list)
+
+    if row_num is not DEFAULT:
+        row_num = utils.parse_number(row_num)
+        if isinstance(row_num, error.XLError):
+            return row_num
+
+    if column_num is not DEFAULT:
+        column_num = utils.parse_number(column_num)
+        if isinstance(column_num, error.XLError):
+            return column_num
+
+    try:
+        if row_num is DEFAULT:
+            if bidimensional:
+                return [row[column_num - 1] for row in arr]
+            else:
+                return arr[column_num - 1]
+        if column_num is DEFAULT:
+            return arr[row_num - 1]
+        if row_num == 0 and column_num == 0:
+            return arr
+        if row_num == 0:
+            return [row[column_num - 1] for row in arr]
+        if column_num == 0:
+            return arr[row_num - 1]
+        return arr[row_num - 1][column_num - 1]
+    except (IndexError, TypeError):
+        return error.REF

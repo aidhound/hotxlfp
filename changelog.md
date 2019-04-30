@@ -2,6 +2,9 @@
 
 ## 0.0.6 - WIP
 
+* bidimensional arrays are now supported in some cases
+* INDEX is now supported
+* TEXTJOIN is now supported
 * SUBSTITUTE is now supported
 
 ## 0.0.5

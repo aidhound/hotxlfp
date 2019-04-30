@@ -20,6 +20,7 @@ tokens = (
     'COLON',
     'SEMICOLON',
     'COMMA',
+    'BACKSLASH',
     'MULT',
     'DIV',
     'MINUS',
@@ -90,6 +91,7 @@ def t_LBRACKET(t):
     r'\{'
     return t
 
+
 def t_RBRACKET(t):
     r'\}'
     return t
@@ -122,6 +124,11 @@ def t_SEMICOLON(t):
 
 def t_COMMA(t):
     r'\,'
+    return t
+
+
+def t_BACKSLASH(t):
+    r'\\'
     return t
 
 
@@ -184,6 +191,7 @@ def t_LESS(t):
     r'\<'
     return t
 
+
 def t_QUOTATION(t):
     r'\"'
     return t
@@ -213,8 +221,10 @@ def t_HASH(t):
     r'\#'
     return t
 
+
 def t_error(t):
     raise error.NAME
+
 
 def build():
     return lex.lex()
