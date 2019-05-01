@@ -69,7 +69,6 @@ def MATCH(lookup_value, lookup_array, match_type=1):
 
 @dispatcher.register_for('INDEX')
 def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
-
     if row_num is None:
         row_num = DEFAULT
     if column_num is None:
@@ -92,7 +91,6 @@ def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
         column_num = utils.parse_number(column_num)
         if isinstance(column_num, error.XLError):
             return column_num
-
     try:
         if row_num is DEFAULT:
             if bidimensional:
@@ -107,6 +105,8 @@ def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
             return [row[column_num - 1] for row in arr]
         if column_num == 0:
             return arr[row_num - 1]
+        if not bidimensional and column_num == 1:
+            return arr[row_num -1]
         return arr[row_num - 1][column_num - 1]
     except (IndexError, TypeError):
         return error.REF

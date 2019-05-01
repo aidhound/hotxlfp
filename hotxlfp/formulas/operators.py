@@ -82,6 +82,59 @@ class ExcelComparator(object):
         return self.__lt__(other) or self.__eq__(other)
 
 
+class ExcelArrayOps(object):
+
+    def __init__(self, arr):
+        self.arr = arr
+
+    def adapt_value(self, value):
+        if isinstance(value, list) and len(value) == 1:
+            value = value[0]
+        if not isinstance(value, list):
+            value = [value for i in range(len(self.arr))]
+        return value
+
+    def __add__(self, value):
+        value = self.adapt_value(value)
+        if len(value) != len(self.arr):
+            return error.VALUE
+        return [evaluate_arithmetic('+', a, b) for a, b in zip(self.arr, value)]
+
+    __radd__ = __add__
+
+    def __sub__(self, value):
+        value = self.adapt_value(value)
+        if len(value) != len(self.arr):
+            return error.VALUE
+        return [evaluate_arithmetic('-', a, b) for a, b in zip(self.arr, value)]
+
+    def __rsub__(self, value):
+        value = self.adapt_value(value)
+        if len(value) != len(self.arr):
+            return error.VALUE
+        return [evaluate_arithmetic('-', b, a) for a, b in zip(self.arr, value)]
+
+    def __mul__(self, value):
+        value = self.adapt_value(value)
+        if len(value) != len(self.arr):
+            return error.VALUE
+        return [evaluate_arithmetic('*', a, b) for a, b in zip(self.arr, value)]
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, value):
+        value = self.adapt_value(value)
+        if len(value) != len(self.arr):
+            return error.VALUE
+        return [evaluate_arithmetic('/', a, b) for a, b in zip(self.arr, value)]
+
+    def __rtruediv__(self, value):
+        value = self.adapt_value(value)
+        if len(value) != len(self.arr):
+            return error.VALUE
+        return [evaluate_arithmetic('/', b, a) for a, b in zip(self.arr, value)]
+
+
 def value_and_type(value):
     if isinstance(value, number_types):
         return (value, number_types)
@@ -306,6 +359,11 @@ def evaluate_arithmetic(op, lval, rval):
         return lval
     if isinstance(rval, error.XLError):
         return rval
+    if isinstance(lval, list):
+        return OPERATOR_DICT[op](ExcelArrayOps(lval), rval)
+    if isinstance(rval, list):
+        return OPERATOR_DICT[op](lval, ExcelArrayOps(rval))
+
     lval, ltype = value_and_type(lval)
     rval, rtype = value_and_type(rval)
     conversions = IMPLICIT_DATA_TYPE_CONVERSIONS[op]
