@@ -16,10 +16,7 @@ def AND(*args):
 
 @dispatcher.register_for('IF')
 def IF(test, then, otherwise):
-    result = then if test else otherwise
-    if result is None:
-        return 0
-    return result
+    return then if test else otherwise
 
 
 @dispatcher.register_for('IFERROR')

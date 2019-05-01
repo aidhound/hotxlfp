@@ -54,8 +54,7 @@ class ExcelComparator(object):
         if self.value is None:
             if other is None:
                 return False
-            else:
-                return ExcelComparator(other).__lt__(self.value)
+            return ExcelComparator(other).__lt__(self.value)
         if type(self.value) != type(other):
             other = self.convert_other(other)
         if type(self.value) != type(other):
@@ -71,6 +70,10 @@ class ExcelComparator(object):
         return self.value > other
 
     def __eq__(self, other):
+        if self.value is None:
+            if other is None:
+                return True
+            return ExcelComparator(other).__eq__(self.value)
         if type(self.value) != type(other):
             other = self.convert_other(other)
         return self.value == other
