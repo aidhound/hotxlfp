@@ -30,8 +30,12 @@ def CODE(char):
 
 @dispatcher.register_for('CLEAN')
 def CLEAN(text):
+    if isinstance(text, error.XLError):
+        return text
+    if text is None:
+        text = ''
     if not isinstance(text, string_types):
-        return error.VALUE
+        text = str(text)
     return ''.join(c for c in text if ord(c) > 31)
 
 
@@ -40,24 +44,47 @@ def CONCATENATE(*args):
     return ''.join(utils.iflatten(args))
 
 
+@dispatcher.register_for('LEN')
+def LEN(text):
+    if isinstance(text, error.XLError):
+        return text
+    if text is None:
+        return 0
+    if not isinstance(text, string_types):
+        text = str(text)
+    return len(text)
+
+
 @dispatcher.register_for('LOWER')
 def LOWER(text):
+    if isinstance(text, error.XLError):
+        return text
+    if text is None:
+        text = ''
     if not isinstance(text, string_types):
-        return error.VALUE
+        text = str(text)
     return text.lower()
 
 
 @dispatcher.register_for('UPPER')
 def UPPER(text):
+    if isinstance(text, error.XLError):
+        return text
+    if text is None:
+        text = ''
     if not isinstance(text, string_types):
-        return error.VALUE
+        text = str(text)
     return text.upper()
 
 
 @dispatcher.register_for('PROPER')
 def PROPER(text):
+    if isinstance(text, error.XLError):
+        return text
+    if text is None:
+        text = ''
     if not isinstance(text, string_types):
-        return error.VALUE
+        text = str(text)
     return text.title()
 
 

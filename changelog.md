@@ -6,6 +6,7 @@
 * INDEX is now supported
 * TEXTJOIN is now supported
 * SUBSTITUTE is now supported
+* LEN is now supported
 
 ## 0.0.5
 

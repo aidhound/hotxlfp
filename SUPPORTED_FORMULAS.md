@@ -1,4 +1,4 @@
-# Supported Formulas - 119
+# Supported Formulas - 120
 
 * ABS
 * ACOS
@@ -64,6 +64,7 @@
 * ISNUMBER
 * ISODD
 * ISTEXT
+* LEN
 * LN
 * LOG
 * LOG10
@@ -121,7 +122,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 344
+# Not Yet Supported Formulas - 343
 
 * ACCRINT
 * ACCRINTM
@@ -316,7 +317,6 @@
 * LARGE
 * LCM
 * LEFT
-* LEN
 * LINEST
 * LOGEST
 * LOGINV
