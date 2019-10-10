@@ -11,7 +11,7 @@ setup(
     author='Leonel Câmara',
     author_email='leonelcamara@gmail.com',
     url='https://github.com/aidhound/hotxlfp',
-    download_url='https://github.com/aidhound/hotxlfp/archive/0.0.5.tar.gz',
+    download_url='https://github.com/aidhound/hotxlfp/archive/0.0.6.tar.gz',
     keywords=['excel', 'formula', 'parser'],
     install_requires=['ply', 'python-dateutil'],
     long_description='\n'.join(l for l in open('README.md', encoding="utf-8").readlines() if not l.startswith('[!')),
