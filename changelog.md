@@ -1,6 +1,6 @@
 # hotxlfp changelog
 
-## 0.0.6 - WIP
+## 0.0.6
 
 * bidimensional arrays are now supported in some cases
 * INDEX is now supported

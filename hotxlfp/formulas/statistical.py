@@ -11,9 +11,9 @@ from .._compat import number_types, statistics
 from ..helper.number import to_number
 
 
-@dispatcher.register_for('AVERAGE', 'AVERAGEA')
+@dispatcher.register_for('AVERAGE')
 def AVERAGE(*args):
-    return statistics.mean(utils.inumbers(args))
+    return statistics.mean(utils.inumbers(args, try_parse=True))
 
 
 @dispatcher.register_for('AVEDEV')
