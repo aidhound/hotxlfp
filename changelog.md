@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.8
+
+* Fix bug with accented charactes in criteria
+
 ## 0.0.7
 
 * Fixed a bug with criteria evaluation in formulas such as COUNTIF
