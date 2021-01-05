@@ -90,6 +90,12 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('COUNTIF({1;3};">2")')
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('COUNTIF({"foo";"bar"};"foo")')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('COUNTIF({"foo bar";"baz"};"foo bar")')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
 
     def test_max(self):
         p = Parser(debug=True)

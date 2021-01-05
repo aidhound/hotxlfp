@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.7
+
+* Fixed a bug with criteria evaluation in formulas such as COUNTIF
+
 ## 0.0.6
 
 * bidimensional arrays are now supported in some cases
