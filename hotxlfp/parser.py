@@ -73,12 +73,16 @@ class Parser(Emitter):
         return self.variables[name]
 
     def call_variable(self, name):
-        result = {'value': self.variables.get(name)}  # get around 2.7 not having nonlocal
+        not_found = lambda : 0
+        value = self.variables.get(name, not_found)
+        result = {'value': value}  # get around 2.7 not having nonlocal
 
         def valsetter(new_value):
             if new_value is not None:
                 result['value'] = new_value
         self.emit('callVariable', name, valsetter)
+        if result['value'] is not_found:
+            raise formulaserror.NAME
         return result['value']
 
     def call_cell_value(self, label):

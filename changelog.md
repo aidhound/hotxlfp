@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.9
+
+* Fixed bug with undefined variables not returning a #NAME? error
+
 ## 0.0.8
 
 * Fix bug with accented charactes in criteria
