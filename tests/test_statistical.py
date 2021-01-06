@@ -96,7 +96,7 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('COUNTIF({"foo bar";"baz"};"foo bar")')
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
-        ret = p.parse('COUNTIF("áà ãâä"; "áà ãâä")')
+        ret = p.parse(u'COUNTIF({"áà ãâä";"baz"}; "áà ãâä")')
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
