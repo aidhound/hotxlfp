@@ -21,3 +21,12 @@ class TestError(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+
+    def test_wrong_syntax(self):
+        p = Parser()
+        ret = p.parse('2(6+2)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#ERROR!')
+        ret = p.parse('2:5')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#ERROR!')

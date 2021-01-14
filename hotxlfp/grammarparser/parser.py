@@ -232,6 +232,12 @@ class FormulaParser(Parser):
         """
         p[0] = self.throw_error(p[1])
 
+    def p_error(self, p):
+        """
+        SyntaxError
+        """
+        p[0] = self.throw_error(error.ERROR)
+
     def p_expression_paren(self, p):
         """
         expression : LPAREN expression RPAREN
