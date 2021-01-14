@@ -1,4 +1,4 @@
-# Supported Formulas - 120
+# Supported Formulas - 122
 
 * ABS
 * ACOS
@@ -42,6 +42,8 @@
 * ERROR.TYPE
 * EVEN
 * EXP
+* FACT
+* FACTDOUBLE
 * FALSE
 * FLOOR
 * FLOOR.MATH
@@ -122,7 +124,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 343
+# Not Yet Supported Formulas - 341
 
 * ACCRINT
 * ACCRINTM
@@ -237,8 +239,6 @@
 * F.INV
 * F.INV.RT
 * F.TEST
-* FACT
-* FACTDOUBLE
 * FDIST
 * FILTERXML
 * FIND

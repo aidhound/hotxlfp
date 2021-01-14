@@ -385,3 +385,27 @@ def BASE(value, base, places=DEFAULT):
             return error.NUM
         result = result.rjust(places, '0')
     return result
+
+
+@dispatcher.register_for('FACT')
+def FACT(number):
+    number = utils.parse_number(number)
+    if isinstance(number, error.XLError):
+        return number
+    if number < 0:
+        return error.NUM
+    return math.factorial(int(number))
+
+
+@dispatcher.register_for('FACTDOUBLE')
+def FACTDOUBLE(number):
+    number = utils.parse_number(number)
+    if isinstance(number, error.XLError):
+        return number
+    if number < 0:
+        return error.NUM
+    number = int(number)
+    if number in (0, 1):
+        return 1
+    return reduce(operator.mul, range(number, 1, -2))
+
