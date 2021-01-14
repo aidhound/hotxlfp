@@ -52,6 +52,8 @@ def flatten(l):
 def inumbers(l, try_parse=False, text_is_zero=False):
     """ only the numbers """
     for el in iflatten(l):
+        if isinstance(el, error.XLError):
+            raise el
         if try_parse:
             el = to_number(el)
         if isinstance(el, number_types):
