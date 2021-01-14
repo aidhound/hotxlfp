@@ -5,8 +5,10 @@ https://github.com/sutoiku/formula.js/blob/master/lib/math-trig.js
 """
 from __future__ import division
 import math
+import re
 from functools import reduce
 import operator
+import collections
 from . import dispatcher
 from . import error
 from . import utils
@@ -409,3 +411,72 @@ def FACTDOUBLE(number):
         return 1
     return reduce(operator.mul, range(number, 1, -2))
 
+
+@dispatcher.register_for('ROMAN')
+def ROMAN(number, form=0):
+    number = utils.parse_number(number)
+    form = utils.parse_number(form)
+    if form is True:
+        form = 0
+    elif form is False:
+        form = 4
+    
+    if utils.any_is_error((number, form)):
+        return error.VALUE
+
+    if not (0 < number < 4000 and 0 <= form <= 4):
+        return error.VALUE # number must be between 1 and 3999
+
+    def numerals(compress):
+        numeral_map = ((1000, 'M'), (500, 'D'), (100, 'C'), (50, 'L'), (10, 'X'), (5, 'V'), (1, 'I'))
+        for i, (arabic, roman) in enumerate(numeral_map, 1):
+            yield arabic, roman
+            # Then we make a list where we try to create new mappings
+            # subtracting the subsequent fixed roman numeral values from our current one 
+            # and prepending their roman numerals to ours, up to compress times.
+            # The more mappings we have the more compressed the representation will be.
+            inbetweeners = collections.deque()
+            for smaller_arabic, smaller_roman in numeral_map[i:]:
+                smaller_arabic = arabic - smaller_arabic
+                if (smaller_arabic, smaller_roman) not in numeral_map:
+                    inbetweeners.appendleft((smaller_arabic, smaller_roman + roman))
+                    if len(inbetweeners) == compress:
+                        break
+            for el in inbetweeners:
+                yield el
+    
+    result = ''
+    for arabic_digit, roman_numeral in numerals(form + 1):
+        if not number:
+            break
+        count = int(number / arabic_digit)
+        result += roman_numeral * count
+        number -= arabic_digit * count
+    return result
+
+
+@dispatcher.register_for('ARABIC')
+def ARABIC(text):
+    text = str(text).upper()
+    roman_numeral_regex = '^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$'
+
+    if re.search(roman_numeral_regex, text) is None:
+        return error.VALUE
+
+    numeral_map = {
+        'M': 1000,
+        'CM': 900,
+        'D': 500,
+        'CD': 400,
+        'C': 100,
+        'XC': 90,
+        'L': 50,
+        'XL': 40,
+        'X': 10,
+        'IX': 9,
+        'V': 5,
+        'IV': 4,
+        'I': 1
+    }
+    result = 0
+    return sum(numeral_map[match.group()] for match in re.finditer('[MDLV]|C[MD]?|X[CL]?|I[XV]?', text))

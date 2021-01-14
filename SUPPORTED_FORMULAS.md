@@ -1,4 +1,4 @@
-# Supported Formulas - 123
+# Supported Formulas - 125
 
 * ABS
 * ACOS
@@ -6,6 +6,7 @@
 * ACOT
 * ACOTH
 * AND
+* ARABIC
 * ASIN
 * ASINH
 * ATAN
@@ -93,6 +94,7 @@
 * PV
 * QUOTIENT
 * RADIANS
+* ROMAN
 * ROUND
 * ROUNDDOWN
 * ROUNDUP
@@ -125,7 +127,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 340
+# Not Yet Supported Formulas - 338
 
 * ACCRINT
 * ACCRINTM
@@ -133,7 +135,6 @@
 * AGGREGATE
 * AMORDEGRC
 * AMORLINC
-* ARABIC
 * AREAS
 * AVERAGEIFS
 * BAHTTEXT
@@ -395,7 +396,6 @@
 * REPLACE
 * REPT
 * RIGHT
-* ROMAN
 * ROW
 * ROWS
 * RRI
