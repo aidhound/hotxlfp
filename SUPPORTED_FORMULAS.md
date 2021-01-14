@@ -1,4 +1,4 @@
-# Supported Formulas - 122
+# Supported Formulas - 123
 
 * ABS
 * ACOS
@@ -113,6 +113,7 @@
 * TAN
 * TANH
 * TEXTJOIN
+* TODAY
 * TRUE
 * UPPER
 * VAR
@@ -124,7 +125,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 341
+# Not Yet Supported Formulas - 340
 
 * ACCRINT
 * ACCRINTM
@@ -438,7 +439,6 @@
 * TIME
 * TIMEVALUE
 * TINV
-* TODAY
 * TRANSPOSE
 * TREND
 * TRIM

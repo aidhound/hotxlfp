@@ -72,3 +72,9 @@ def SECOND(serial_number):
     if isinstance(serial_number, error.XLError):
         return serial_number
     return serial_number.second
+
+
+@dispatcher.register_for('TODAY')
+def TODAY():
+    today = datetime.date.today()
+    return datetime.datetime(today.year, today.month, today.day)
