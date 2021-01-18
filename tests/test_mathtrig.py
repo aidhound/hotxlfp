@@ -509,3 +509,31 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('ARABIC(ROMAN(499, 4))')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#VALUE!')
+
+    def test_rand(self):
+        p = Parser()
+        ret = p.parse('RAND(2)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#ERROR!')
+        for i in range(1000):
+            ret = p.parse('RAND()')
+            self.assertGreaterEqual(ret['result'], 0)
+            self.assertLessEqual(ret['result'], 1)
+            self.assertEqual(ret['error'], None)
+
+    def test_randbetween(self):
+        p = Parser()
+        ret = p.parse('RANDBETWEEN(2)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#ERROR!')
+        ret = p.parse('RANDBETWEEN("a", 2)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')
+        ret = p.parse('RANDBETWEEN(2, "a")')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')
+        for i in range(1000):
+            ret = p.parse('RANDBETWEEN(10; 100)')
+            self.assertGreaterEqual(ret['result'], 10)
+            self.assertLessEqual(ret['result'], 100)
+            self.assertEqual(ret['error'], None)

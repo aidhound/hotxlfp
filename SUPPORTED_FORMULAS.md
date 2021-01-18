@@ -1,4 +1,4 @@
-# Supported Formulas - 125
+# Supported Formulas - 127
 
 * ABS
 * ACOS
@@ -94,6 +94,8 @@
 * PV
 * QUOTIENT
 * RADIANS
+* RAND
+* RANDBETWEEN
 * ROMAN
 * ROUND
 * ROUNDDOWN
@@ -127,7 +129,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 338
+# Not Yet Supported Formulas - 336
 
 * ACCRINT
 * ACCRINTM
@@ -386,8 +388,6 @@
 * QUARTILE
 * QUARTILE.EXC
 * QUARTILE.INC
-* RAND
-* RANDBETWEEN
 * RANK
 * RANK.AVG
 * RANK.EQ

@@ -5,6 +5,7 @@ https://github.com/sutoiku/formula.js/blob/master/lib/math-trig.js
 """
 from __future__ import division
 import math
+import random
 import re
 from functools import reduce
 import operator
@@ -480,3 +481,19 @@ def ARABIC(text):
     }
     result = 0
     return sum(numeral_map[match.group()] for match in re.finditer('[MDLV]|C[MD]?|X[CL]?|I[XV]?', text))
+
+
+@dispatcher.register_for('RAND')
+def RAND():
+    return random.random()
+
+
+@dispatcher.register_for('RANDBETWEEN')
+def RANDBETWEEN(bottom, top):
+    bottom = utils.parse_number(bottom)
+    top = utils.parse_number(top)
+    
+    if utils.any_is_error((bottom, top)):
+        return error.VALUE
+
+    return random.randint(int(bottom), int(top))
