@@ -107,3 +107,15 @@ class TestDateAndTime(unittest.TestCase):
         ret = p.parse('SECOND(TODAY())')
         self.assertEqual(ret['result'], 0)
         self.assertEqual(ret['error'], None)
+
+    def test_days(self):
+        p = Parser(debug=True)
+        ret = p.parse('DAYS("3/15/11","2/1/11")')
+        self.assertEqual(ret['result'], 42)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('DAYS("foo","2/1/11")')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')
+        ret = p.parse('DAYS(TODAY(),TODAY()-1)')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)

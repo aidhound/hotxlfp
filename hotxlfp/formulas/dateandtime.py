@@ -78,3 +78,12 @@ def SECOND(serial_number):
 def TODAY():
     today = datetime.date.today()
     return datetime.datetime(today.year, today.month, today.day)
+
+
+@dispatcher.register_for('DAYS')
+def DAYS(end_date, start_date):
+    end_date = utils.parse_date(end_date)
+    start_date = utils.parse_date(start_date)
+    if utils.any_is_error((end_date, start_date)):
+        return error.VALUE
+    return utils.serialize_date(end_date) - utils.serialize_date(start_date)
