@@ -1,4 +1,4 @@
-# Supported Formulas - 127
+# Supported Formulas - 128
 
 * ABS
 * ACOS
@@ -36,6 +36,7 @@
 * DATE
 * DATEVALUE
 * DAY
+* DAYS
 * DEC2HEX
 * DECIMAL
 * DEGREES
@@ -129,7 +130,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 336
+# Not Yet Supported Formulas - 334
 
 * ACCRINT
 * ACCRINTM
@@ -203,7 +204,6 @@
 * CUMIPMT
 * CUMPRINC
 * DAVERAGE
-* DAYS
 * DAYS360
 * DB
 * DCOUNT
@@ -237,7 +237,6 @@
 * EXACT
 * EXPON.DIST
 * EXPONDIST
-* Excel Operators
 * F.DIST
 * F.DIST.RT
 * F.INV
