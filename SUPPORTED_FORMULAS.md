@@ -1,4 +1,4 @@
-# Supported Formulas - 128
+# Supported Formulas - 129
 
 * ABS
 * ACOS
@@ -65,6 +65,7 @@
 * ISEVEN
 * ISLOGICAL
 * ISNA
+* ISNONTEXT
 * ISNUMBER
 * ISODD
 * ISTEXT
@@ -130,7 +131,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 334
+# Not Yet Supported Formulas - 333
 
 * ACCRINT
 * ACCRINTM
@@ -311,7 +312,6 @@
 * IPMT
 * IRR
 * ISFORMULA
-* ISNONTEXT
 * ISO.CEILING
 * ISOWEEKNUM
 * ISPMT

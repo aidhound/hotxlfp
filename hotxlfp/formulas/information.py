@@ -76,3 +76,8 @@ def ISNA(value):
 @dispatcher.register_for('NA')
 def NA():
     return error.NOT_AVAILABLE
+
+
+@dispatcher.register_for('ISNONTEXT')
+def ISNONTEXT(value):
+    return not isinstance(value, string_types)

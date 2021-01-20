@@ -126,3 +126,15 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('ISNA(1/0)')
         self.assertEqual(ret['result'], False)
         self.assertEqual(ret['error'], None)
+
+    def test_isnontext(self):
+        p = Parser(debug=True)
+        ret = p.parse('ISNONTEXT("foo")')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISNONTEXT(NA())')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ISNONTEXT(1)')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
