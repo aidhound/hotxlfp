@@ -6,7 +6,9 @@ https://github.com/sutoiku/formula.js/blob/master/lib/information.js
 
 from . import dispatcher
 from . import error
+from . import utils
 from .._compat import number_types, string_types
+import datetime
 
 
 @dispatcher.register_for('ERROR.TYPE')
@@ -71,6 +73,17 @@ def ISLOGICAL(value):
 @dispatcher.register_for('ISNA')
 def ISNA(value):
     return value == error.NOT_AVAILABLE
+
+
+@dispatcher.register_for('N')
+def N(value):
+    if isinstance(value, (error.XLError, number_types)):
+        return value
+    if isinstance(value, datetime.datetime):
+        return utils.serialize_date(value)
+    if value is True:
+        return 1
+    return 0
 
 
 @dispatcher.register_for('NA')

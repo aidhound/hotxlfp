@@ -1,4 +1,4 @@
-# Supported Formulas - 129
+# Supported Formulas - 130
 
 * ABS
 * ACOS
@@ -85,6 +85,7 @@
 * MODE
 * MODE.SNGL
 * MONTH
+* N
 * NA
 * NOT
 * ODD
@@ -131,7 +132,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 333
+# Not Yet Supported Formulas - 332
 
 * ACCRINT
 * ACCRINTM
@@ -339,7 +340,6 @@
 * MROUND
 * MULTINOMIAL
 * MUNIT
-* N
 * NEGBINOM.DIST
 * NEGBINOMDIST
 * NETWORKDAYS

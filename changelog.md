@@ -1,5 +1,7 @@
 # hotxlfp changelog
 
+* Support for RAND, RANDBETWEEN, DAYS, ISNONTEXT, N
+
 ## 0.0.10
 
 * Support for FACT, FACTDOUBLE, ARABIC, ROMAN and TODAY
