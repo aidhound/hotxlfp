@@ -1,4 +1,4 @@
-# Supported Formulas - 130
+# Supported Formulas - 131
 
 * ABS
 * ACOS
@@ -29,6 +29,7 @@
 * CONCATENATE
 * COS
 * COSH
+* COT
 * COUNT
 * COUNTA
 * COUNTBLANK
@@ -132,7 +133,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 332
+# Not Yet Supported Formulas - 331
 
 * ACCRINT
 * ACCRINTM
@@ -181,7 +182,6 @@
 * CONFIDENCE.T
 * CONVERT
 * CORREL
-* COT
 * COTH
 * COUNTIFS
 * COUPDAYBS

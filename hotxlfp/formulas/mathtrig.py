@@ -105,6 +105,14 @@ def COSH(number):
     return math.cosh(number)
 
 
+@dispatcher.register_for('COT')
+def COT(number):
+    number = utils.parse_number(number)
+    if isinstance(number, error.XLError):
+        return number
+    return math.cos(number)/math.sin(number)
+
+
 @dispatcher.register_for('TAN')
 def TAN(number):
     number = utils.parse_number(number)

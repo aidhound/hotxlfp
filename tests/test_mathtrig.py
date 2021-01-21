@@ -114,6 +114,18 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_cot(self):
+        p = Parser(debug=True)
+        ret = p.parse('COT(30)')
+        self.assertAlmostEqual(ret['result'], -0.156, places=3)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('COT(45)')
+        self.assertAlmostEqual(ret['result'], 0.617, places=3)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('COT(1/0)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
+
     def test_tan(self):
         p = Parser(debug=True)
         ret = p.parse('TAN(45*PI()/180)')

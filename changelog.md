@@ -1,6 +1,8 @@
 # hotxlfp changelog
 
-* Support for RAND, RANDBETWEEN, DAYS, ISNONTEXT, N
+## 0.0.11
+
+* Support for RAND, RANDBETWEEN, DAYS, ISNONTEXT and COT
 
 ## 0.0.10
 
