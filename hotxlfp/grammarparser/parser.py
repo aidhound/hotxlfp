@@ -27,7 +27,8 @@ class Parser(object):
         ('left', 'UMINUS')
     )
 
-    def __init__(self, debug=False, call_function=None, call_variable=None, call_cell_value=None, call_range_value=None, throw_error=None):
+    def __init__(self, debug=False, call_function=None, call_variable=None,
+                 call_cell_value=None, call_range_value=None, throw_error=None):
         self.debug = debug
         self.call_function = call_function
         self.call_variable = call_variable
@@ -36,8 +37,8 @@ class Parser(object):
         self.throw_error = throw_error
         self.names = {}
         try:
-            modname = os.path.split(os.path.splitext(__file__)[0])[
-                1] + "_" + self.__class__.__name__
+            modname = os.path.split(os.path.splitext(__file__)[0])[1] + \
+                "_" + self.__class__.__name__
         except:
             modname = "parser" + "_" + self.__class__.__name__
         self.debugfile = modname + ".dbg"
@@ -56,7 +57,7 @@ class Parser(object):
     def run(self):
         while 1:
             try:
-                s = raw_input('=')
+                s = input('=')
             except EOFError:
                 break
             if not s:
@@ -79,9 +80,10 @@ class FormulaParser(Parser):
                   | expression AMP expression
         """
         if p[2] == '&':
-            p[0] = str(p[1]) + str(p[3])
+            p[0] = lambda args, p1=p[1], p3=p[3]: str(p1(args)) + str(p3(args))
         else:
-            p[0] = operators.evaluate_arithmetic(p[2], p[1], p[3])
+            p[0] = lambda args, p1=p[1], p2=p[2], p3=p[3]: \
+                operators.evaluate_arithmetic(p2, p1(args), p3(args))
 
     def p_expression_logical_operator(self, p):
         """
@@ -89,11 +91,14 @@ class FormulaParser(Parser):
                    | expression LESS expression
                    | expression GREATEREQ expression
                    | expression LESSEQ expression
-                   | expression EQUAL expression
-                   | expression NOTEQUAL expression
+               | expression EQUAL expression
+               | expression NOTEQUAL expression
         """
-        p[0] = operators.evaluate_logic(p[2], p[1], p[3])
+        p[0] = lambda args, p1=p[1], p2=p[2], p3=p[3]: \
+            operators.evaluate_logic(p2, p1(args), p3(args))
 
+
+    # TODO: This function is not migrated yet
     def p_expression_uminus(self, p):
         'expression : MINUS expression %prec UMINUS'
         p[0] = -p[2]
@@ -106,25 +111,25 @@ class FormulaParser(Parser):
                    | NUMBER PERCENT
         """
         if len(p) == 2:
-            p[0] = to_number(p[1])
+            p[0] = lambda args, p1=p[1]: to_number(p1)
         elif p[2] == '.':
-            p[0] = to_number(p[1] + '.' + p[3])
+            p[0] = lambda args, p1=p[1], p3=p[3]: to_number(p1 + '.' + p3)
         elif p[2] == '^':
-            p[0] = to_number(p[1])**to_number(p[3])
+            p[0] = lambda args, p1=p[1], p3=p[3]: to_number(p1)**to_number(p3)
         elif p[2] == '%':
-            p[0] = to_number(p[1]) * 0.01
+            p[0] = lambda args, p1=p[1]: to_number(p1) * 0.01
 
     def p_expression_string(self, p):
         """
         expression : STRING
         """
-        p[0] = p[1][1:-1]
+        p[0] = lambda args: p[1][1:-1]
 
     def p_expression_function(self, p):
         """
         expression : FUNCTION LPAREN RPAREN
         """
-        p[0] = self.call_function(p[1])
+        p[0] = lambda args, p1=p[1]: self.call_function(p1)
 
     def p_expression_wargs(self, p):
         """
@@ -132,14 +137,18 @@ class FormulaParser(Parser):
                    | FUNCTION LPAREN expseqsemicolon RPAREN
                    | FUNCTION LPAREN expseqbackslash RPAREN
         """
-        p[0] = self.call_function(p[1], p[3])
+        p[0] = lambda args, p1=p[1], p3=p[3]: self.call_function(p1, p3(args))
 
+
+    # TODO: This function is not migrated yet
     def p_expression_array(self, p):
         """
         expression : array
         """
         p[0] = p[1]
 
+
+    # TODO: This function is not migrated yet
     def p_array(self, p):
         """
         array : LBRACKET expseqsemicolon RBRACKET
@@ -160,22 +169,22 @@ class FormulaParser(Parser):
                         | expseqbackslash SEMICOLON expseqbackslash
         """
         if len(p) == 2:
-            p[0] = [p[1]]
+            p[0] = lambda args, p1=p[1]: [p1(args)]
         elif len(p) == 3:
             if p[1] == ';' and p[2] == ';':
-                p[0] = [None, None, None]
+                p[0] = lambda args: [None, None, None]
             elif p[1] == ';':
-                p[0] = [None] + p[2]
+                p[0] = lambda args, p2=p[2]: [None] + p2(args)
             else:
-                p[0] = p[1] + [None]
+                p[0] = lambda args, p1=p[1]: p1(args) + [None]
         elif p[2] == ';':
             if p[3] == ';':
-                p[0] = p[1] + [None, p[4]]
+                p[0] = lambda args, p1=p[1], p4=p[4]: p1(args) + [None, p4(args)]
             else:
                 if str(p.slice[1]) in ('expseqcomma', 'expseqbackslash'):
-                    p[0] = [p[1]] + [p[3]]
+                    p[0] = lambda args, p1=p[1], p3=p[3]: [p1(args)] + [p3(args)]
                 else:
-                    p[0] = p[1] + [p[3]]
+                    p[0] = lambda args, p1=p[1], p3=p[3]: p1(args) + [p3(args)]
 
     def p_expseq_comma(self, p):
         """
@@ -187,21 +196,23 @@ class FormulaParser(Parser):
                     | expseqcomma COMMA COMMA expression
         """
         if len(p) == 2:  # expression
-            p[0] = [p[1]]
+            p[0] = lambda args, p1=p[1]: [p1(args)]
         elif len(p) == 3:
             if p[1] == ',' and p[2] == ',':
-                p[0] = [None, None, None]
+                p[0] = lambda args: [None, None, None]
             elif p[1] == ',':
-                p[0] = [None] + p[2]
+                p[0] = lambda args, p2=p[2]: [None] + p2(args)
             else:
-                p[0] = p[1] + [None]
+                p[0] = lambda args, p1=p[1]: p1(args) + [None]
         elif p[2] == ',':
             # expseqcomma COMMA COMMA expression
             if p[3] == ',':  # e.g. an empty function argument
-                p[0] = p[1] + [None, p[4]]
+                p[0] = lambda args, p1=p[1], p4=p[4]: p1(args) + [None, p4(args)]
             else:
-                p[0] = p[1] + [p[3]]
+                p[0] = lambda args, p1=p[1], p3=p[3]: p1(args) + [p3(args)]
 
+
+    # TODO: This function is not migrated yet
     def p_expseq_backslash(self, p):
         """
         expseqbackslash : expression
@@ -248,7 +259,7 @@ class FormulaParser(Parser):
         """
         expression : variable_sequence
         """
-        p[0] = self.call_variable(p[1][0])
+        p[0] = lambda vars, name=p[1][0]: self.call_variable(name, vars)
 
     def p_variable(self, p):
         """
@@ -263,12 +274,16 @@ class FormulaParser(Parser):
         p[0] = p[1] if isinstance(p[1], list) else [p[1]]
         p[0].append(p[3])
 
+
+    # TODO: This function is not migrated yet
     def p_expression_cell(self, p):
         """
         expression :  cell
         """
         p[0] = p[1]
 
+
+    # TODO: This function is not migrated yet
     def p_cell(self, p):
         """
         cell : ABSOLUTE_CELL

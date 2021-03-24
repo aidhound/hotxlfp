@@ -46,8 +46,6 @@ class ExcelComparator(object):
                     return True
                 if isinstance(other, number_types):
                     return False
-            if isinstance(self.value, number_types):
-                return True
         return self.value < other
 
     def __gt__(self, other):
@@ -55,8 +53,10 @@ class ExcelComparator(object):
             if other is None:
                 return False
             return ExcelComparator(other).__lt__(self.value)
+
         if type(self.value) != type(other):
             other = self.convert_other(other)
+
         if type(self.value) != type(other):
             if isinstance(self.value, bool):
                 return True  # bool is the biggest in XL
@@ -65,8 +65,6 @@ class ExcelComparator(object):
                     return False
                 if isinstance(other, number_types):
                     return True
-            if isinstance(self.value, number_types):
-                return False
         return self.value > other
 
     def __eq__(self, other):
