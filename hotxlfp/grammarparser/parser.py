@@ -8,6 +8,7 @@ from ..helper.number import to_number
 from .._compat import PY2, number_types, string_types
 from ..formulas import error, operators
 import math
+import os
 
 
 class Parser(object):
@@ -299,7 +300,4 @@ class FormulaParser(Parser):
              | MIXED_CELL COLON RELATIVE_CELL
              | MIXED_CELL COLON MIXED_CELL
         """
-        if len(p) == 2:
-            p[0] = self.call_cell_value(p[1])
-        else:
-            p[0] = self.call_range_value(p[1], p[3])
+        p[0] = lambda args, p1=p[1]: self.call_variable(p1, args)

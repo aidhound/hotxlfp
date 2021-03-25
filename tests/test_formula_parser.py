@@ -81,9 +81,9 @@ class TestFormulaParser(unittest.TestCase):
 
     def test_variable_name(self):
         p = Parser(debug=True)
-        func = p.parse('A1')['result']
-        result = func({'A1': 4})
-        self.assertEqual(result, 4)
+        func = p.parse('a1')['result']
+        result = func({'a1': 5})
+        self.assertEqual(result, 5)
 
 
 if __name__ == '__main__':
