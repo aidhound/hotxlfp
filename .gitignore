@@ -98,3 +98,7 @@ dmypy.json
 *.out
 *.tab
 *parsetab.py
+
+.idea/
+pyvenv.cfg
+bin/

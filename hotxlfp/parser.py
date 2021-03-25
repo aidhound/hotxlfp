@@ -72,9 +72,9 @@ class Parser(Emitter):
     def get_variable(self, name):
         return self.variables[name]
 
-    def call_variable(self, name):
+    def call_variable(self, name, variables):
         not_found = lambda : 0
-        value = self.variables.get(name, not_found)
+        value = variables.get(name, not_found)
         result = {'value': value}  # get around 2.7 not having nonlocal
 
         def valsetter(new_value):
