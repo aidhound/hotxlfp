@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+import numpy as np
 
 PY2 = sys.version_info[0] == 2
 
@@ -10,6 +11,6 @@ if PY2:
     string_types = (str, unicode)
 else:
     import statistics
-    number_types = (int, float, complex)
+    number_types = (int, float, complex, np.ndarray)
     integer_types = (int,)
     string_types = (str,)

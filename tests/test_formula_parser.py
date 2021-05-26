@@ -1,9 +1,10 @@
 import unittest
 
+import numpy as np
 from hotxlfp import Parser
 
 
-class TestFormulaParser(unittest.TestCase):
+class TestFormulaParer(unittest.TestCase):
     def test_plus(self):
         p = Parser(debug=True)
         func = p.parse('A + B + C')['result']
@@ -84,6 +85,40 @@ class TestFormulaParser(unittest.TestCase):
         func = p.parse('a1')['result']
         result = func({'a1': 5})
         self.assertEqual(result, 5)
+
+    def test_array_add(self):
+        p = Parser(debug=True)
+        func = p.parse('a1 + 2')['result']
+        result = func({'a1': np.array([4])})
+        self.assertEqual(result, [6])
+
+        func = p.parse('a1 + a1')['result']
+        result = func({'a1': np.array([4, 5])})
+        assert (result == [8, 10]).all()
+
+    def test_array_if(self):
+        p = Parser(debug=True)
+        func = p.parse('IF(a1 + a1 < 4, 1, 2)')['result']
+        result = func({'a1': np.array([1, 4])})
+        assert (result == [1, 2]).all()
+
+        p = Parser(debug=True)
+        func = p.parse('IF(3 < 4, a1, 2)')['result']
+        result = func({'a1': np.array([1, 2])})
+        assert (result == [1, 2]).all()
+
+    def test_array_if_exp(self):
+        p = Parser(debug=True)
+        func = p.parse('IF(((((a1+2)/3)*EXP(5)))<0.11, ' +
+                       '(a1/2.2222),((( a1+9999)/33)*EXP(3)))')['result']
+        input_vals = [1, 123, -432]
+        answer = [
+            6086.52634,
+            6160.781962,
+            -194.401944,
+        ]
+        result = func({'a1': np.array(input_vals)})
+        assert(np.abs(result - np.array(answer)) < 0.00001).all()
 
 
 if __name__ == '__main__':

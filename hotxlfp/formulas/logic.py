@@ -6,6 +6,7 @@ https://github.com/sutoiku/formula.js/blob/master/lib/logical.js
 from . import dispatcher
 from . import error
 from . import utils
+import numpy as np
 
 
 @dispatcher.register_for('AND')
@@ -16,7 +17,7 @@ def AND(*args):
 
 @dispatcher.register_for('IF')
 def IF(test, then, otherwise):
-    return then if test else otherwise
+    return np.where(test, then, otherwise)
 
 
 @dispatcher.register_for('IFERROR')
