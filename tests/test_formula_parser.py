@@ -4,7 +4,7 @@ import numpy as np
 from hotxlfp import Parser
 
 
-class TestFormulaParer(unittest.TestCase):
+class TestFormulaParser(unittest.TestCase):
     def test_plus(self):
         p = Parser(debug=True)
         func = p.parse('A + B + C')['result']
