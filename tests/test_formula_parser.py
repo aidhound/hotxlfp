@@ -1,6 +1,6 @@
 import unittest
 
-import numpy as np
+import torch
 from hotxlfp import Parser
 
 
@@ -89,23 +89,23 @@ class TestFormulaParser(unittest.TestCase):
     def test_array_add(self):
         p = Parser(debug=True)
         func = p.parse('a1 + 2')['result']
-        result = func({'a1': np.array([4])})
-        self.assertEqual(result, [6])
+        result = func({'a1': torch.tensor([4])})
+        self.assertEqual(result, torch.tensor([6]))
 
         func = p.parse('a1 + a1')['result']
-        result = func({'a1': np.array([4, 5])})
-        assert (result == [8, 10]).all()
+        result = func({'a1': torch.tensor([4, 5])})
+        assert (result == torch.tensor([8, 10])).all()
 
     def test_array_if(self):
         p = Parser(debug=True)
         func = p.parse('IF(a1 + a1 < 4, 1, 2)')['result']
-        result = func({'a1': np.array([1, 4])})
-        assert (result == [1, 2]).all()
+        result = torch.tensor(func({'a1': torch.tensor([1, 4])}))
+        assert (result == torch.tensor([1, 2])).all().item()
 
         p = Parser(debug=True)
         func = p.parse('IF(3 < 4, a1, 2)')['result']
-        result = func({'a1': np.array([1, 2])})
-        assert (result == [1, 2]).all()
+        result = torch.tensor(func({'a1': torch.tensor([1, 2])}))
+        assert (result == torch.tensor([1, 2])).all()
 
     def test_array_if_exp(self):
         p = Parser(debug=True)
@@ -117,8 +117,8 @@ class TestFormulaParser(unittest.TestCase):
             6160.781962,
             -194.401944,
         ]
-        result = func({'a1': np.array(input_vals)})
-        assert(np.abs(result - np.array(answer)) < 0.00001).all()
+        result = torch.tensor(func({'a1': torch.tensor(input_vals)}))
+        assert(torch.abs(result - torch.tensor(answer)) < 0.001).all()
 
 
 if __name__ == '__main__':
