@@ -118,7 +118,7 @@ class TestFormulaParser(unittest.TestCase):
             -194.401944,
         ]
         result = torch.tensor(func({'a1': torch.tensor(input_vals)}))
-        assert(torch.abs(result - torch.tensor(answer)) < 0.001).all()
+        assert(torch.abs(result - torch.tensor(answer)) < 0.00001).all()
 
 
 if __name__ == '__main__':
