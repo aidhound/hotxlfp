@@ -6,7 +6,7 @@ https://github.com/sutoiku/formula.js/blob/master/lib/logical.js
 from . import dispatcher
 from . import error
 from . import utils
-import numpy as np
+import torch
 
 
 @dispatcher.register_for('AND')
@@ -17,7 +17,7 @@ def AND(*args):
 
 @dispatcher.register_for('IF')
 def IF(test, then, otherwise):
-    return np.where(test, then, otherwise)
+    return torch.where(torch.tensor(test), torch.tensor(then), torch.tensor(otherwise))
 
 
 @dispatcher.register_for('IFERROR')

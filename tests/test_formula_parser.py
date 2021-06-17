@@ -120,6 +120,16 @@ class TestFormulaParser(unittest.TestCase):
         result = torch.tensor(func({'a1': torch.tensor(input_vals)}))
         assert(torch.abs(result - torch.tensor(answer)) < 0.00001).all()
 
+    def test_operation_on_if(self):
+        p = Parser(debug=True)
+        func = p.parse('IF(A<0.001234,A + 1, A + 2) - A')['result']
+        input_vals = [1, 123, -432]
+        answer = [
+            2, 2, 1
+        ]
+        result = torch.tensor(func({'A': torch.tensor(input_vals)}))
+        assert(torch.abs(result - torch.tensor(answer)) < 0.00001).all()
+
 
 if __name__ == '__main__':
     unittest.main()
