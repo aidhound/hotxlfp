@@ -17,7 +17,11 @@ def AND(*args):
 
 @dispatcher.register_for('IF')
 def IF(test, then, otherwise):
-    return torch.where(torch.tensor(test), torch.tensor(then), torch.tensor(otherwise))
+    return torch.where(
+        torch.tensor(test, dtype=torch.bool),
+        torch.tensor(then, dtype=torch.double),
+        torch.tensor(otherwise, dtype=torch.double)
+    )
 
 
 @dispatcher.register_for('IFERROR')
