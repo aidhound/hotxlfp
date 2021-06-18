@@ -130,6 +130,16 @@ class TestFormulaParser(unittest.TestCase):
         result = torch.tensor(func({'A': torch.tensor(input_vals)}))
         assert(torch.abs(result - torch.tensor(answer)) < 0.00001).all()
 
+    def test_datatype(self):
+        p = Parser(debug=True)
+        func = p.parse('IF(T<50, A1, A2)')['result']
+        result = torch.tensor(func({
+            'T': torch.tensor([10, 100]),
+            'A1': torch.tensor([20, 20], dtype=torch.double),
+            'A2': torch.tensor([30, 30], dtype=torch.int64),
+        }))
+        assert(torch.abs(result - torch.tensor([20, 30])) < 0.00001).all()
+
 
 if __name__ == '__main__':
     unittest.main()
