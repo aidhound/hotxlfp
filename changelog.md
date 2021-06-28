@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.12
+
+* Fix a bug where formulas using criteria like COUNTIF would not match correctly if the criteria had characters like ',' or ')'
+
 ## 0.0.11
 
 * Support for RAND, RANDBETWEEN, DAYS, ISNONTEXT and COT
