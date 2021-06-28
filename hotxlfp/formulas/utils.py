@@ -26,7 +26,7 @@ OPERATOR_DICT = {
     '<=': operator.le,
 }
 
-REGEX_CRITERIA = re.compile(r'(?P<op>[\<\>\=]*)(?P<val>[\w\d\s\.\*\?]+)', re.UNICODE)
+REGEX_CRITERIA = re.compile(r'(?P<op>[\<\>\=]*)(?P<val>.+)', re.UNICODE)
 
 
 def iflatten(iterable):
