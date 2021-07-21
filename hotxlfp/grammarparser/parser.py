@@ -101,12 +101,15 @@ class FormulaParser(Parser):
     def p_expression_number(self, p):
         """
         expression : NUMBER
+                   | DECIMAL NUMBER
                    | NUMBER DECIMAL NUMBER
                    | NUMBER CARET NUMBER
                    | NUMBER PERCENT
         """
         if len(p) == 2:
             p[0] = to_number(p[1])
+        elif p[1] == '.':
+            p[0] = to_number('0.' + p[2])
         elif p[2] == '.':
             p[0] = to_number(p[1] + '.' + p[3])
         elif p[2] == '^':

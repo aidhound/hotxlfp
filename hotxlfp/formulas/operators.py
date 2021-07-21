@@ -37,7 +37,7 @@ class ExcelComparator(object):
                 return ExcelComparator(other).__gt__(self.value)
         if type(self.value) != type(other):
             other = self.convert_other(other)
-        if type(self.value) != type(other):
+        if type(self.value) != type(other) and not (isinstance(self.value, number_types) and isinstance(other, number_types)):
             # if the type is still different
             if isinstance(self.value, bool):
                 return False  # bool is the biggest in XL
@@ -57,7 +57,7 @@ class ExcelComparator(object):
             return ExcelComparator(other).__lt__(self.value)
         if type(self.value) != type(other):
             other = self.convert_other(other)
-        if type(self.value) != type(other):
+        if type(self.value) != type(other) and not (isinstance(self.value, number_types) and isinstance(other, number_types)):
             if isinstance(self.value, bool):
                 return True  # bool is the biggest in XL
             if isinstance(self.value, string_types):
