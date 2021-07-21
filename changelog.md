@@ -1,5 +1,10 @@
 # hotxlfp changelog
 
+## 0.0.13
+
+* Fixed comparison between floats and integers giving inverted results
+* Fixed decimals without a leading zero resulting in an error.
+
 ## 0.0.12
 
 * Fix a bug where formulas using criteria like COUNTIF would not match correctly if the criteria had characters like ',' or ')'
