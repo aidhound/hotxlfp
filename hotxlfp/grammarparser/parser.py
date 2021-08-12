@@ -44,14 +44,14 @@ class Parser(object):
         self.tabmodule = modname + "_" + "parsetab"
 
         # Build the lexer and parser
-        lex.lex(module=lexer, debug=self.debug)
-        yacc.yacc(module=self,
+        self.lex = lex.lex(module=lexer, debug=self.debug)
+        self.yacc = yacc.yacc(module=self,
                   debug=self.debug,
                   debugfile=self.debugfile,
                   tabmodule=self.tabmodule)
 
     def parse(self, input):
-        return yacc.parse(input)
+        return self.yacc.parse(input)
 
     def run(self):
         while 1:
