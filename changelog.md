@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.14
+
+* Fixed using a parser within a parser.
+
 ## 0.0.13
 
 * Fixed comparison between floats and integers giving inverted results
