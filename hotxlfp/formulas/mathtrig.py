@@ -142,10 +142,12 @@ def ATAN2(x_num, y_num):
     x_num = utils.parse_number(x_num)
     if isinstance(x_num, error.XLError):
         return x_num
-    y_num = utils.parse_number(x_num)
+    y_num = utils.parse_number(y_num)
     if isinstance(y_num, error.XLError):
         return y_num
-    return math.atan2(x_num, y_num)
+    if y_num == 0:
+        return error.DIV_ZERO
+    return math.atan2(y_num, x_num)
 
 
 @dispatcher.register_for('ATANH')

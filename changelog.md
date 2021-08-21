@@ -3,6 +3,7 @@
 ## 0.0.15
 
 * Fixed bugs in FLOOR function.
+* Fixed bugs in ATAN2
 
 ## 0.0.14
 

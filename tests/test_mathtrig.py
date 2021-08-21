@@ -63,7 +63,7 @@ class TestMathTrig(unittest.TestCase):
     def test_sin(self):
         p = Parser(debug=True)
         ret = p.parse('SIN(PI()/2)')
-        self.assertTrue(['result'], 1)
+        self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
         ret = p.parse('SIN(1/0)')
         self.assertEqual(ret['result'], None)
@@ -72,7 +72,7 @@ class TestMathTrig(unittest.TestCase):
     def test_sinh(self):
         p = Parser(debug=True)
         ret = p.parse('2.868*SINH(0.0342*1.03)')
-        self.assertTrue(['result'], 0.1010491)
+        self.assertAlmostEqual(ret['result'], 0.1010491, places=7)
         self.assertEqual(ret['error'], None)
         ret = p.parse('SINH(1/0)')
         self.assertEqual(ret['result'], None)
@@ -81,7 +81,7 @@ class TestMathTrig(unittest.TestCase):
     def test_asin(self):
         p = Parser(debug=True)
         ret = p.parse('ASIN(-0.5)')
-        self.assertTrue(['result'], -0.523598776)
+        self.assertAlmostEqual(ret['result'], -0.523598776, places=9)
         self.assertEqual(ret['error'], None)
         ret = p.parse('ASIN(1/0)')
         self.assertEqual(ret['result'], None)
@@ -90,7 +90,7 @@ class TestMathTrig(unittest.TestCase):
     def test_asinh(self):
         p = Parser(debug=True)
         ret = p.parse('ASINH(-2.5)')
-        self.assertTrue(['result'], -1.647231146)
+        self.assertAlmostEqual(ret['result'], -1.647231146, places=9)
         self.assertEqual(ret['error'], None)
         ret = p.parse('ASINH(1/0)')
         self.assertEqual(ret['result'], None)
@@ -99,7 +99,7 @@ class TestMathTrig(unittest.TestCase):
     def test_cos(self):
         p = Parser(debug=True)
         ret = p.parse('COS(0)')
-        self.assertTrue(['result'], 1)
+        self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
         ret = p.parse('COS(1/0)')
         self.assertEqual(ret['result'], None)
@@ -108,7 +108,7 @@ class TestMathTrig(unittest.TestCase):
     def test_cosh(self):
         p = Parser(debug=True)
         ret = p.parse('COSH(4)')
-        self.assertTrue(['result'], 27.308233)
+        self.assertAlmostEqual(ret['result'], 27.308233, places=6)
         self.assertEqual(ret['error'], None)
         ret = p.parse('COSH(1/0)')
         self.assertEqual(ret['result'], None)
@@ -129,7 +129,7 @@ class TestMathTrig(unittest.TestCase):
     def test_tan(self):
         p = Parser(debug=True)
         ret = p.parse('TAN(45*PI()/180)')
-        self.assertTrue(['result'], 1)
+        self.assertAlmostEqual(ret['result'], 1, places=9)
         self.assertEqual(ret['error'], None)
         ret = p.parse('TAN(1/0)')
         self.assertEqual(ret['result'], None)
@@ -138,7 +138,7 @@ class TestMathTrig(unittest.TestCase):
     def test_tanh(self):
         p = Parser(debug=True)
         ret = p.parse('TANH(0.5)')
-        self.assertTrue(['result'], 0.462117)
+        self.assertAlmostEqual(ret['result'], 0.462117, places=6)
         self.assertEqual(ret['error'], None)
         ret = p.parse('TANH(1/0)')
         self.assertEqual(ret['result'], None)
@@ -147,7 +147,7 @@ class TestMathTrig(unittest.TestCase):
     def test_atan(self):
         p = Parser(debug=True)
         ret = p.parse('ATAN(1)*180/PI()')
-        self.assertTrue(['result'], 1)
+        self.assertEqual(ret['result'], 45)
         self.assertEqual(ret['error'], None)
         ret = p.parse('ATAN(1/0)')
         self.assertEqual(ret['result'], None)
@@ -156,13 +156,19 @@ class TestMathTrig(unittest.TestCase):
     def test_atan2(self):
         p = Parser(debug=True)
         ret = p.parse('ATAN2(1, 1)')
-        self.assertTrue(['result'], 0.785398163)
+        self.assertAlmostEqual(ret['result'], 0.785398163, places=9)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('ATAN2(1, 0.8)')
+        self.assertAlmostEqual(ret['result'], 0.674740942, places=9)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('ATAN2(0, 0)')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
 
     def test_atanh(self):
         p = Parser(debug=True)
         ret = p.parse('ATANH(0.76159416)')
-        self.assertTrue(['result'], 1.00000001)
+        self.assertAlmostEqual(ret['result'], 1.00000001, places=9)
         self.assertEqual(ret['error'], None)
         ret = p.parse('ATANH(1/0)')
         self.assertEqual(ret['result'], None)
@@ -171,7 +177,7 @@ class TestMathTrig(unittest.TestCase):
     def test_sqrt(self):
         p = Parser(debug=True)
         ret = p.parse('SQRT(16)')
-        self.assertTrue(['result'], 4)
+        self.assertEqual(ret['result'], 4)
         self.assertEqual(ret['error'], None)
         ret = p.parse('SQRT(1/0)')
         self.assertEqual(ret['result'], None)
