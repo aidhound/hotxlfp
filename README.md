@@ -1,6 +1,6 @@
 # hotxlfp
 
-[![Build Status](https://travis-ci.org/aidhound/hotxlfp.svg?branch=master)](https://travis-ci.org/aidhound/hotxlfp) [![codecov](https://codecov.io/gh/aidhound/hotxlfp/branch/master/graph/badge.svg)](https://codecov.io/gh/aidhound/hotxlfp)
+[![Build Status](https://api.travis-ci.com/aidhound/hotxlfp.svg?branch=master)](https://app.travis-ci.com/github/aidhound/hotxlfp) [![codecov](https://codecov.io/gh/aidhound/hotxlfp/branch/master/graph/badge.svg)](https://codecov.io/gh/aidhound/hotxlfp)
 
 hotxlfp intends to be a python version of the javascript [handsontable excel formula parser](https://github.com/handsontable/formula-parser) differences are acceptable to make it more pythonic or the function implementations more correct.
 
