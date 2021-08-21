@@ -290,6 +290,13 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('FLOOR(0.234,0.01)')
         self.assertEqual(ret['result'], 0.23)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('FLOOR(-5.6; 1)')
+        self.assertEqual(ret['result'], -6)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('FLOOR(-5.6; -1)')
+        self.assertEqual(ret['result'], -5)
+        self.assertEqual(ret['error'], None)
+
 
     def test_quotient(self):
         p = Parser(debug=True)

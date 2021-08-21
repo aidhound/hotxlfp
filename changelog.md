@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 0.0.15
+
+* Fixed bugs in FLOOR function.
+
 ## 0.0.14
 
 * Fixed using a parser within a parser.

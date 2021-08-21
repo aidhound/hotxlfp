@@ -272,11 +272,14 @@ def FLOOR(number, significance=1):
     if number > 0 and not significance > 0:
         return error.NUM
 
-    significance = abs(significance)
+    abs_significance = abs(significance)
     if number >= 0:
-        return math.floor(number / significance) * significance
+        return math.floor(number / abs_significance) * abs_significance
     else:
-        return -1 * math.floor(abs(number) / significance) * significance
+        func = math.floor
+        if significance > 0:
+            func = math.ceil
+        return -1 * func(abs(number) / abs_significance) * abs_significance
 
 
 @dispatcher.register_for('POWER')
