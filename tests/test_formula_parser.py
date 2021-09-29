@@ -140,6 +140,16 @@ class TestFormulaParser(unittest.TestCase):
         }))
         assert(torch.abs(result - torch.tensor([20, 30])) < 0.00001).all()
 
+    def test_average(self):
+        p = Parser(debug=True)
+        func = p.parse("((100 - a1) / 100) * AVERAGE(a2)")["result"]
+        result = func({"a1": torch.tensor([4]), "a2": torch.tensor([5])})
+        assert (torch.abs(result - torch.tensor([4.8])) < 0.00001).all()
+
+        p = Parser(debug=True)
+        func = p.parse("AVERAGE(a1, a2, a2)")["result"]
+        result = func({"a1": torch.tensor([2, 4, 8]), "a2": torch.tensor([3, 4, 5])})
+        assert (torch.abs(result - torch.tensor([2.66666666, 4, 6])) < 0.000001).all()
 
 if __name__ == '__main__':
     unittest.main()
