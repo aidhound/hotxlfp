@@ -9,11 +9,12 @@ from . import error
 from . import utils
 from .._compat import number_types, statistics
 from ..helper.number import to_number
+import torch
 
 
 @dispatcher.register_for('AVERAGE')
 def AVERAGE(*args):
-    return statistics.mean(utils.inumbers(args, try_parse=True))
+    return torch.mean(torch.tensor(torch.stack(args, dim=0), dtype=torch.double), dim=0)
 
 
 @dispatcher.register_for('AVEDEV')
