@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import datetime
+import torch
 from . import error
 from ..helper.number import to_number
 from .utils import OPERATOR_DICT, serialize_date, parse_date, date_1900
@@ -77,10 +78,10 @@ class ExcelComparator(object):
         return self.value == other
 
     def __ge__(self, other):
-        return self.__gt__(other) or self.__eq__(other)
+        return torch.logical_or(self.__gt__(other), self.__eq__(other))
 
     def __le__(self, other):
-        return self.__lt__(other) or self.__eq__(other)
+        return torch.logical_or(self.__lt__(other), self.__eq__(other))
 
 
 class ExcelArrayOps(object):
