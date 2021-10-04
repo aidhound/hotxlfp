@@ -71,7 +71,8 @@ def COUNTIF(args, criteria):
 
 @dispatcher.register_for('MAX')
 def MAX(*args):
-    return max(utils.inumbers(args))
+    tensors = [torch.tensor(val, dtype=torch.double) for val in args]
+    return torch.max(torch.tensor(torch.stack(tensors, dim=0), dtype=torch.double), dim=0).values
 
 
 @dispatcher.register_for('MAXA')
@@ -86,7 +87,8 @@ def MEDIAN(*args):
 
 @dispatcher.register_for('MIN')
 def MIN(*args):
-    return min(utils.inumbers(args))
+    tensors = [torch.tensor(val, dtype=torch.double) for val in args]
+    return torch.min(torch.tensor(torch.stack(tensors, dim=0), dtype=torch.double), dim=0).values
 
 
 @dispatcher.register_for('MINA')
