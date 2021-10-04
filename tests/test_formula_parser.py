@@ -27,7 +27,7 @@ class TestFormulaParser(unittest.TestCase):
         self.assertEqual(result, 20)
 
         p = Parser(debug=True)
-        func = p.parse('MAX(A;; B; 100) + MIN(A, B, C)')['result']
+        func = p.parse('MAX(A; B; 100) + MIN(A, B, C)')['result']
         result = func({'A': 4.234, 'B': 223, 'C': 6})
         self.assertEqual(result, 223 + 4.234)
 
@@ -41,22 +41,6 @@ class TestFormulaParser(unittest.TestCase):
         func = p.parse('SQRT(100)')['result']
         result = func({})
         self.assertEqual(result, 10)
-
-    def test_string(self):
-        p = Parser(debug=True)
-        func = p.parse('CONCAT(A, B) & C')['result']
-        result = func({'A': 'testing', 'B': 'abc', 'C': 5})
-        self.assertEqual(result, 'testingabc5')
-
-        p = Parser(debug=True)
-        func = p.parse('CONCAT(A, B) & MAX(D, 50) & C')['result']
-        result = func({'A': 'testing', 'B': 'abc', 'C': 5, 'D': 100})
-        self.assertEqual(result, 'testingabc1005')
-
-        p = Parser(debug=True)
-        func = p.parse('A & B')['result']
-        result = func({'A': 'testing', 'B': 'abc'})
-        self.assertEqual(result, 'testingabc')
 
     def test_if(self):
         p = Parser(debug=True)
@@ -168,6 +152,17 @@ class TestFormulaParser(unittest.TestCase):
         func = p.parse("AVERAGE(a1, a2, a2)")["result"]
         result = func({"a1": torch.tensor([2, 4, 8]), "a2": torch.tensor([3, 4, 5])})
         assert (torch.abs(result - torch.tensor([2.66666666, 4, 6])) < 0.000001).all()
+
+    def test_min_max_array(self):
+        p = Parser(debug=True)
+        func = p.parse("MIN(a1, a2)")["result"]
+        result = func({"a1": torch.tensor([5, 5, 5]), "a2": torch.tensor([1, 10, 5])})
+        assert (torch.abs(result - torch.tensor([1, 5, 5])) < 0.00001).all()
+
+        p = Parser(debug=True)
+        func = p.parse("MAX(a1, a2)")["result"]
+        result = func({"a1": torch.tensor([5, 5, 5]), "a2": torch.tensor([1, 10, 5])})
+        assert (torch.abs(result - torch.tensor([5, 10, 5])) < 0.00001).all()
 
 if __name__ == '__main__':
     unittest.main()

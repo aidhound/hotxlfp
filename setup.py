@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='hotxlfp',
-    version='0.0.11-unc9',
+    version='0.0.11-unc10',
     packages=['hotxlfp', 'hotxlfp._compat', 'hotxlfp._compat.py3', 'hotxlfp.helper', 'hotxlfp.formulas', 'hotxlfp.grammarparser'],
     license='MIT',
     test_suite='tests',
