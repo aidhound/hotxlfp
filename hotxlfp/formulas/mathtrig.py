@@ -10,6 +10,7 @@ import re
 from functools import reduce
 import operator
 import collections
+import torch
 from . import dispatcher
 from . import error
 from . import utils
@@ -177,16 +178,19 @@ def LN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.log(number)
+    return torch.log(number)
 
 
 @dispatcher.register_for('LOG')
-def LOG(number, base=10):
+def LOG(number, base=None):
     number = utils.parse_number(number)
-    base = utils.parse_number(base)
+    base = utils.parse_number(base) if base is not None else None
     if utils.any_is_error((number, base)):
         return error.VALUE
-    return math.log(number, base)
+    if base is not None:
+        return torch.log(number) / torch.log(torch.tensor(base))
+    else:
+        return torch.log(number)
 
 
 @dispatcher.register_for('LOG10')
@@ -500,7 +504,7 @@ def RAND():
 def RANDBETWEEN(bottom, top):
     bottom = utils.parse_number(bottom)
     top = utils.parse_number(top)
-    
+
     if utils.any_is_error((bottom, top)):
         return error.VALUE
 
