@@ -123,7 +123,7 @@ class TestFormulaParser(unittest.TestCase):
             'A2': torch.tensor([30, 30], dtype=torch.int64),
         }))
         assert(torch.abs(result - torch.tensor([20, 30])) < 0.00001).all()
-        
+
     def test_array_or(self):
         p = Parser(debug=True)
         func = p.parse('IF(T <= 50, A1, A2)')['result']
@@ -164,5 +164,24 @@ class TestFormulaParser(unittest.TestCase):
         result = func({"a1": torch.tensor([5, 5, 5]), "a2": torch.tensor([1, 10, 5])})
         assert (torch.abs(result - torch.tensor([5, 10, 5])) < 0.00001).all()
 
-if __name__ == '__main__':
+    def test_log(self):
+        p = Parser(debug=True)
+        func = p.parse("LOG(a1)")["result"]
+        result = func({"a1": torch.exp(torch.tensor([5, 23.234]))})
+        assert (torch.abs(result - torch.tensor([5, 23.234])) < 0.00001).all()
+
+        func = p.parse("LN(a1)")["result"]
+        result = func({"a1": torch.exp(torch.tensor([5, 23.234]))})
+        assert (torch.abs(result - torch.tensor([5, 23.234])) < 0.00001).all()
+
+        func = p.parse("LOG(a1, 10)")["result"]
+        result = func({"a1": 10 ** (torch.tensor([5, 23.234]))})
+        assert (torch.abs(result - torch.tensor([5, 23.234])) < 0.00001).all()
+
+        func = p.parse("LOG10(a1)")["result"]
+        result = func({"a1": 10 ** (torch.tensor([5, 23.234]))})
+        assert (torch.abs(result - torch.tensor([5, 23.234])) < 0.00001).all()
+
+
+if __name__ == "__main__":
     unittest.main()
