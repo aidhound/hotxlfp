@@ -352,6 +352,53 @@ IMPLICIT_DATA_TYPE_CONVERSIONS = {
                 'right': lambda x: 0
             }
         }
+    },
+    '^': {
+        number_types: {
+            datetime.datetime: {
+                'left': None,
+                'right': serialize_date,
+                'result': parse_date
+            },
+            number_types: {
+                'left': None,
+                'right': None
+            },
+            NoneType: {
+                'left': None,
+                'right': lambda x: 0
+            }
+
+        },
+        datetime.datetime: {
+            datetime.datetime: {
+                'left': serialize_date,
+                'right': serialize_date
+            },
+            number_types: {
+                'left': serialize_date,
+                'right': None,
+                'result': parse_date
+            },
+            NoneType: {
+                'left': serialize_date,
+                'right': lambda x: 0
+            }
+        },
+        NoneType: {
+            datetime.datetime: {
+                'left': lambda x: 0,
+                'right': serialize_date
+            },
+            number_types: {
+                'left': lambda x: 0,
+                'right': None
+            },
+            NoneType: {
+                'left': lambda x: 0,
+                'right': lambda x: 0
+            }
+        }
     }
 }
 
