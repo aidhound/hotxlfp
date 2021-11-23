@@ -100,7 +100,6 @@ class FormulaParser(Parser):
             operators.evaluate_logic(p2, p1(args), p3(args))
 
 
-    # TODO: This function is not migrated yet
     def p_expression_uminus(self, p):
         'expression : MINUS expression %prec UMINUS'
         p2 = p[2]
