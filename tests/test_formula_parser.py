@@ -4,6 +4,18 @@ import torch
 from hotxlfp import Parser
 
 
+def _test_equation(
+    equation,
+    variables,
+    answer,
+):
+    variable_tensors = {name: torch.tensor(value) for name, value in variables.items()}
+    p = Parser(debug=True)
+    func = p.parse(equation)["result"]
+    result = func(variable_tensors)
+    assert (torch.abs(result - torch.tensor(answer)) < 0.000001).all()
+
+
 class TestFormulaParser(unittest.TestCase):
     def test_plus(self):
         p = Parser(debug=True)
@@ -181,6 +193,18 @@ class TestFormulaParser(unittest.TestCase):
         func = p.parse("LOG10(a1)")["result"]
         result = func({"a1": 10 ** (torch.tensor([5, 23.234]))})
         assert (torch.abs(result - torch.tensor([5, 23.234])) < 0.00001).all()
+
+
+    def test_exponent(self):
+        _test_equation(equation="a1 ^ a1", variables={"a1": [1, 2]}, answer=[1, 4])
+        _test_equation(equation="3 ^ a1", variables={"a1": [1, 2]}, answer=[3, 9])
+        _test_equation(equation="a1 ^ 3", variables={"a1": [1, 2]}, answer=[1, 8])
+        _test_equation(equation="3 ^ 3", variables={"a1": [1, 2]}, answer=[27, 27])
+
+    def test_negative(self):
+        _test_equation(equation="-a1", variables={"a1": [5]}, answer=[-5])
+        _test_equation(equation="-5", variables={"a1": [5]}, answer=[-5])
+        _test_equation(equation="-(-5)", variables={"a1": [5]}, answer=[5])
 
 
 if __name__ == "__main__":

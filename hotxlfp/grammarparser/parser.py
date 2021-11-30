@@ -79,6 +79,7 @@ class FormulaParser(Parser):
                   | expression MULT expression
                   | expression DIV expression
                   | expression AMP expression
+                  | expression CARET expression
         """
         if p[2] == '&':
             p[0] = lambda args, p1=p[1], p3=p[3]: str(p1(args)) + str(p3(args))
@@ -99,16 +100,15 @@ class FormulaParser(Parser):
             operators.evaluate_logic(p2, p1(args), p3(args))
 
 
-    # TODO: This function is not migrated yet
     def p_expression_uminus(self, p):
         'expression : MINUS expression %prec UMINUS'
-        p[0] = -p[2]
+        p2 = p[2]
+        p[0] = lambda args: -p2(args)
 
     def p_expression_number(self, p):
         """
         expression : NUMBER
                    | NUMBER DECIMAL NUMBER
-                   | NUMBER CARET NUMBER
                    | NUMBER PERCENT
         """
         if len(p) == 2:

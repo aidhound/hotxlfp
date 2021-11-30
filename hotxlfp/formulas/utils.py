@@ -8,22 +8,24 @@ from ..helper.number import to_number
 import operator
 from . import error
 import datetime
+import torch
 import time
 from dateutil.parser import parse as to_date
 
 DEFAULT = lambda: 0
 
 OPERATOR_DICT = {
-    '+': operator.add,
-    '-': operator.sub,
-    '*': operator.mul,
-    '/': operator.truediv,
-    '>': operator.gt,
-    '<': operator.lt,
-    '<>': operator.ne,
-    '=': operator.eq,
-    '>=': operator.ge,
-    '<=': operator.le,
+    "+": operator.add,
+    "-": operator.sub,
+    "*": operator.mul,
+    "/": operator.truediv,
+    ">": operator.gt,
+    "<": operator.lt,
+    "<>": operator.ne,
+    "=": operator.eq,
+    ">=": operator.ge,
+    "<=": operator.le,
+    "^": lambda a, b: torch.pow(torch.tensor(a), torch.tensor(b)),
 }
 
 REGEX_CRITERIA = re.compile(r'(?P<op>[\<\>\=]*)(?P<val>[\w\d\s\.\*\?]+)', re.UNICODE)
