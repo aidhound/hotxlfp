@@ -199,6 +199,9 @@ class TestFormulaParser(unittest.TestCase):
 
     def test_trailing_decimal(self):
         _test_equation(equation="1.", variables={"a1": [1]}, answer=[1])
+        _test_equation(equation="1. + 1", variables={"a1": [1]}, answer=[2])
+        _test_equation(equation="SQRT(1.)", variables={"a1": [1]}, answer=[1])
+        _test_equation(equation="1 + 1.", variables={"a1": [1]}, answer=[2])
         _test_equation(equation="1.2", variables={"a1": [1]}, answer=[1.2])
 
 
