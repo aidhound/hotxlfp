@@ -178,7 +178,7 @@ def LN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return torch.log(number)
+    return torch.log(torch.tensor(number))
 
 
 @dispatcher.register_for('LOG')
@@ -188,9 +188,9 @@ def LOG(number, base=None):
     if utils.any_is_error((number, base)):
         return error.VALUE
     if base is not None:
-        return torch.log(number) / torch.log(torch.tensor(base))
+        return torch.log(torch.tensor(number)) / torch.log(torch.tensor(base))
     else:
-        return torch.log(number)
+        return torch.log(torch.tensor(number))
 
 
 @dispatcher.register_for('LOG10')

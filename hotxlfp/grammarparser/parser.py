@@ -108,13 +108,17 @@ class FormulaParser(Parser):
     def p_expression_number(self, p):
         """
         expression : NUMBER
+                   | NUMBER DECIMAL
                    | NUMBER DECIMAL NUMBER
                    | NUMBER PERCENT
         """
         if len(p) == 2:
             p[0] = lambda args, p1=p[1]: to_number(p1)
         elif p[2] == '.':
-            p[0] = lambda args, p1=p[1], p3=p[3]: to_number(p1 + '.' + p3)
+            if len(p) == 4:
+                p[0] = lambda args, p1=p[1], p3=p[3]: to_number(p1 + '.' + p3)
+            else:
+                p[0] = lambda args, p1=p[1]: to_number(p1)
         elif p[2] == '^':
             p[0] = lambda args, p1=p[1], p3=p[3]: to_number(p1)**to_number(p3)
         elif p[2] == '%':

@@ -194,6 +194,16 @@ class TestFormulaParser(unittest.TestCase):
         result = func({"a1": 10 ** (torch.tensor([5, 23.234]))})
         assert (torch.abs(result - torch.tensor([5, 23.234])) < 0.00001).all()
 
+        _test_equation(equation="LOG(a1 / a2)", variables={"a1": [1, 2], "a2": [2, 3]}, answer=[torch.log(torch.tensor(1 / 2)), torch.log(torch.tensor(2 / 3))])
+        _test_equation(equation="LOG(123)", variables={"a1": [1]}, answer=[torch.log(torch.tensor(123))])
+
+    def test_trailing_decimal(self):
+        _test_equation(equation="1.", variables={"a1": [1]}, answer=[1])
+        _test_equation(equation="1. + 1", variables={"a1": [1]}, answer=[2])
+        _test_equation(equation="SQRT(1.)", variables={"a1": [1]}, answer=[1])
+        _test_equation(equation="1 + 1.", variables={"a1": [1]}, answer=[2])
+        _test_equation(equation="1.2", variables={"a1": [1]}, answer=[1.2])
+
 
     def test_exponent(self):
         _test_equation(equation="a1 ^ a1", variables={"a1": [1, 2]}, answer=[1, 4])
