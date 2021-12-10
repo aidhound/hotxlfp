@@ -216,6 +216,12 @@ class TestFormulaParser(unittest.TestCase):
         _test_equation(equation="-5", variables={"a1": [5]}, answer=[-5])
         _test_equation(equation="-(-5)", variables={"a1": [5]}, answer=[5])
 
+    def test_function_space(self):
+        _test_equation(equation="LOG(1)", variables={"a1": [1]}, answer=[0])
+        _test_equation(equation="LOG (1)", variables={"a1": [1]}, answer=[0])
+        _test_equation(equation="LOG  (1)", variables={"a1": [1]}, answer=[0])
+        _test_equation(equation="   LOG  (  1 ) ", variables={"a1": [1]}, answer=[0])
+
 
 if __name__ == "__main__":
     unittest.main()

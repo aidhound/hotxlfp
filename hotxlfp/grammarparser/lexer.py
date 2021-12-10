@@ -3,7 +3,6 @@ import ply.lex as lex
 from ..formulas import error
 
 tokens = (
-    'WHITESPACE',
     'STRING',
     'FUNCTION',
     'XLERROR',
@@ -15,7 +14,6 @@ tokens = (
     'LBRACKET',
     'RBRACKET',
     'AMP',
-    'SINGLESPACE',
     'DECIMAL',
     'COLON',
     'SEMICOLON',
@@ -33,12 +31,8 @@ tokens = (
     'GREATEREQ',
     'LESSEQ',
     'NOTEQUAL',
-    'QUOTATION',
-    'APOSTROPHE',
-    'EXCLAMATION',
     'EQUAL',
     'PERCENT',
-    'HASH'
 )
 
 
@@ -53,7 +47,7 @@ def t_STRING(t):
 
 
 def t_FUNCTION(t):
-    r'([A-Za-z]{1,}[A-Za-z_0-9\.]+(?=[(]))|([A-Za-z\.]+(?=[(]))'
+    r'([A-Za-z]{1,}[A-Za-z_0-9\.]+(?=[(]))|([A-Za-z\.]+(?=\s+[(]))'
     return t
 
 
