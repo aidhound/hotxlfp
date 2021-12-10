@@ -47,7 +47,7 @@ def t_STRING(t):
 
 
 def t_FUNCTION(t):
-    r'([A-Za-z]{1,}[A-Za-z_0-9\.]+(?=[(]))|([A-Za-z\.]+(?=\s+[(]))'
+    r'([A-Za-z]{1,}[A-Za-z_0-9\.]+(?=\s*[(]))|([A-Za-z\.]+(?=\s*[(]))'
     return t
 
 
