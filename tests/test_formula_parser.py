@@ -216,6 +216,28 @@ class TestFormulaParser(unittest.TestCase):
         _test_equation(equation="-5", variables={"a1": [5]}, answer=[-5])
         _test_equation(equation="-(-5)", variables={"a1": [5]}, answer=[5])
 
+    def test_function_space(self):
+        _test_equation(equation="LOG(1)", variables={"a1": [1]}, answer=[0])
+        _test_equation(equation="LOG (1)", variables={"a1": [1]}, answer=[0])
+        _test_equation(equation="LOG  (1)", variables={"a1": [1]}, answer=[0])
+        _test_equation(equation="   LOG  (  1 ) ", variables={"a1": [1]}, answer=[0])
+
+    def test_implicit_multiplication(self):
+        _test_equation(equation="1 + (a1) + 1", variables={"a1": [2]}, answer=[4])
+        _test_equation(equation="(a1)", variables={"a1": [2]}, answer=[2])
+        _test_equation(equation="a1 (a2) ", variables={"a1": [2, 2.5], "a2": [3, 3]}, answer=[6, 7.5])
+        _test_equation(equation="a1( a2 ) ", variables={"a1": [2, 2.5], "a2": [3, 3]}, answer=[6, 7.5])
+        _test_equation(equation="a1(a2 ) ", variables={"a1": [2, 2.5], "a2": [3, 3]}, answer=[6, 7.5])
+        _test_equation(equation="a1(a2) ", variables={"a1": [2, 2.5], "a2": [3, 3]}, answer=[6, 7.5])
+        _test_equation(equation="5(a1)(a2)(a2) ", variables={"a1": [2], "a2": [3]}, answer=[90])
+        _test_equation(equation="(5(a1 + 5))((a2)(a2) + 5) ", variables={"a1": [2], "a2": [3]}, answer=[490])
+        _test_equation(equation="(5(SQRT(a1 + 2)))(SQRT(a2)(a2) + 5) ", variables={"a1": [2], "a2": [4]}, answer=[130])
+        _test_equation(equation="  ( 5 (  SQRT   (a1 + 2)))( SQRT(a2)   (a2) + 5) ", variables={"a1": [2], "a2": [4]}, answer=[130])
+        _test_equation(equation="a1(a2)", variables={"a1": [1], "a2": [2]}, answer=[2])
+        _test_equation(equation="SQRT(4(4))", variables={"a1": [1]}, answer=[4])
+        _test_equation(equation="4(SQRT(4(4)))", variables={"a1": [1]}, answer=[16])
+        _test_equation(equation="SQRT(4(SQRT(4(4))))", variables={"a1": [1]}, answer=[4])
+
 
 if __name__ == "__main__":
     unittest.main()

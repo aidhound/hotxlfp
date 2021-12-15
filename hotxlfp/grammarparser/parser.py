@@ -87,6 +87,16 @@ class FormulaParser(Parser):
             p[0] = lambda args, p1=p[1], p2=p[2], p3=p[3]: \
                 operators.evaluate_arithmetic(p2, p1(args), p3(args))
 
+    def p_expression_implicit_multiplication(self, p):
+        """
+        expression : expression expression_paren
+                    | expression_paren expression
+                    | expression_paren expression_paren
+        """
+        p1 = p[1]
+        p2 = p[2]
+        p[0] = lambda args: p1(args) * p2(args)
+
     def p_expression_logical_operator(self, p):
         """
         expression : expression GREATER expression
@@ -256,9 +266,15 @@ class FormulaParser(Parser):
 
     def p_expression_paren(self, p):
         """
-        expression : LPAREN expression RPAREN
+        expression_paren : LPAREN expression RPAREN
         """
         p[0] = p[2]
+
+    def p_expression_paren_alias(self, p):
+        """
+        expression : expression_paren
+        """
+        p[0] = p[1]
 
     def p_expression_varseq(self, p):
         """
