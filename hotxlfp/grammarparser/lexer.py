@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import ply.lex as lex
-from ..formulas import error
+from ..formulas import error, dispatcher
+import re
 
 tokens = (
     'STRING',
@@ -46,8 +47,13 @@ def t_STRING(t):
     return t
 
 
+available_functions = dispatcher._registry_.keys()
+function_options = '|'.join(f'({re.escape(function)})' for function in available_functions)
+lookahead = '(?=\s*[(])'
+function_regex = f"({function_options}){lookahead}"
+
+@lex.TOKEN(function_regex)
 def t_FUNCTION(t):
-    r'([A-Za-z]{1,}[A-Za-z_0-9\.]+(?=\s*[(]))|([A-Za-z\.]+(?=\s*[(]))'
     return t
 
 
