@@ -1,2 +1,5 @@
 ply
 python-dateutil
+numpy
+pytest
+torch
