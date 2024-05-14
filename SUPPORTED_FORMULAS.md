@@ -1,4 +1,4 @@
-# Supported Formulas - 131
+# Supported Formulas - 134
 
 * ABS
 * ACOS
@@ -59,6 +59,8 @@
 * IFERROR
 * IFNA
 * IFS
+* IMAGINARY
+* IMREAL
 * INDEX
 * ISBLANK
 * ISERR
@@ -118,6 +120,7 @@
 * SUM
 * SUMIF
 * SWITCH
+* T
 * TAN
 * TANH
 * TEXTJOIN
@@ -133,7 +136,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 351
+# Not Yet Supported Formulas - 348
 
 * ACCRINT
 * ACCRINTM
@@ -288,7 +291,6 @@
 * HYPGEOM.DIST
 * HYPGEOMDIST
 * IMABS
-* IMAGINARY
 * IMARGUMENT
 * IMCONJUGATE
 * IMCOS
@@ -303,7 +305,6 @@
 * IMLOG2
 * IMPOWER
 * IMPRODUCT
-* IMREAL
 * IMSEC
 * IMSECH
 * IMSIN
@@ -439,7 +440,6 @@
 * SUMX2PY2
 * SUMXMY2
 * SYD
-* T
 * T.DIST
 * T.DIST.2T
 * T.DIST.RT

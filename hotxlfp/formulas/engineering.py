@@ -58,3 +58,18 @@ def DELTA(number1, number2):
     if utils.any_is_error((number1, number2)):
         return error.VALUE
     return 1 if number1 == number2 else 0
+
+
+@dispatcher.register_for('IMAGINARY')
+def IMAGINARY(compl):
+    compl = utils.parse_complex(compl)
+    if isinstance(compl, error.XLError):
+        return compl
+    return int(compl.imag)
+
+@dispatcher.register_for('IMREAL')
+def IMREAL(compl):
+    compl = utils.parse_complex(compl)
+    if isinstance(compl, error.XLError):
+        return compl
+    return int(compl.real)

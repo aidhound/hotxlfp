@@ -94,3 +94,10 @@ def NA():
 @dispatcher.register_for('ISNONTEXT')
 def ISNONTEXT(value):
     return not isinstance(value, string_types)
+
+
+@dispatcher.register_for('T')
+def T(value):
+    if isinstance(value, (error.XLError, string_types)):
+        return value
+    return ''
