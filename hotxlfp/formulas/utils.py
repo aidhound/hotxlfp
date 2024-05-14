@@ -74,6 +74,15 @@ def parse_number(string):
         return num
     return error.VALUE
 
+def parse_complex(string):
+    if isinstance(string, complex):
+        return string
+    if isinstance(string, error.XLError):
+        return string
+    try:
+        return complex(string.replace('i', 'j').replace(' ', ''))
+    except ValueError:
+        return error.value
 
 def iparse_number_array_aux(arr):
     for el in arr:

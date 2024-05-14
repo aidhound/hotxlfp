@@ -60,22 +60,12 @@ def DELTA(number1, number2):
     return 1 if number1 == number2 else 0
 
 
-@dispatcher.register_for('IMAGINARY', 'IMREAL')
-def IMAG_REAL(complex_str, part):
-    if complex_str == 'i' or complex_str == 'j':
-        return (0, 1)[part == 'imaginary']
-    if complex_str.isdigit():
-        return (int(complex_str), 0)[part == 'imaginary']    
-    if '+' not in complex_str and '-' not in complex_str:
-        imag_part = int(complex_str.split('i')[0].split('j')[0].strip())
-        return (0, imag_part)[part == 'imaginary']
-    if complex_str.startswith('-'):
-        parts = complex_str[1:].split('+') if '+' in complex_str else complex_str[1:].split('-')
-        real_part = -int(parts[0].strip())
-    else:
-        parts = complex_str.split('+') if '+' in complex_str else complex_str.split('-')
-        real_part = int(parts[0].strip())    
-    imag_part = int(parts[1].strip(' ij')) if len(parts) > 1 else 0
-    if part == 'imaginary' and '-' in complex_str and '+' not in complex_str:
-        imag_part *= -1
-    return (real_part, imag_part)[part == 'imaginary']
+@dispatcher.register_for('IMAGINARY')
+def IMAGINARY(compl):
+    compl = utils.parse_complex(compl)
+    return int(compl.imag)
+
+@dispatcher.register_for('IMREAL')
+def IMREAL(compl):
+    compl = utils.parse_complex(compl)
+    return int(compl.real)
