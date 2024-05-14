@@ -64,12 +64,12 @@ def DELTA(number1, number2):
 def IMAGINARY(compl):
     compl = utils.parse_complex(compl)
     if isinstance(compl, error.XLError):
-        return error.VALUE
+        return compl
     return int(compl.imag)
 
 @dispatcher.register_for('IMREAL')
 def IMREAL(compl):
     compl = utils.parse_complex(compl)
     if isinstance(compl, error.XLError):
-        return error.VALUE
+        return compl
     return int(compl.real)

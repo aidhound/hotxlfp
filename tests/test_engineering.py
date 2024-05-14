@@ -81,6 +81,10 @@ class TestEngineering(unittest.TestCase):
         ret = p.parse('IMAGINARY("-5-2i")')
         self.assertEqual(ret['result'], -2)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('IMAGINARY(B1)')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+
     
     def test_imreal(self):
         p = Parser(debug=True)
