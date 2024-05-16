@@ -1,4 +1,4 @@
-# Supported Formulas - 134
+# Supported Formulas - 135
 
 * ABS
 * ACOS
@@ -91,6 +91,7 @@
 * N
 * NA
 * NOT
+* NOW
 * ODD
 * OR
 * PI
@@ -136,7 +137,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 348
+# Not Yet Supported Formulas - 347
 
 * ACCRINT
 * ACCRINTM
@@ -364,7 +365,6 @@
 * NORMINV
 * NORMSDIST
 * NORMSINV
-* NOW
 * NPER
 * NPV
 * NUMBERVALUE

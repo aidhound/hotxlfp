@@ -285,7 +285,7 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Number divided by date
         ret = p.parse('200000000 / DATE(2019,11,20)')
-        self.assertEqual(ret['result'], datetime.datetime(1912, 7, 2))
+        self.assertEqual(ret['result'], datetime.datetime(1912, 7, 2, 8, 34, 13, 337596))
         self.assertEqual(ret['error'], None)
         # Number divided by number
         ret = p.parse('2 / 4')
@@ -381,7 +381,7 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Date divided by number
         ret = p.parse('DATE(2019,11,20) / 2')
-        self.assertEqual(ret['result'], datetime.datetime(1959, 12, 10))
+        self.assertEqual(ret['result'], datetime.datetime(1959, 12, 10, 12, 0))
         self.assertEqual(ret['error'], None)
         # Date divided by bool
         ret = p.parse('DATE(2019,11,20) / TRUE')

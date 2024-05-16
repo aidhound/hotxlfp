@@ -87,3 +87,8 @@ def DAYS(end_date, start_date):
     if utils.any_is_error((end_date, start_date)):
         return error.VALUE
     return utils.serialize_date(end_date) - utils.serialize_date(start_date)
+
+
+@dispatcher.register_for('NOW')
+def NOW():
+    return datetime.datetime.now()
