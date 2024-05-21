@@ -1,4 +1,4 @@
-# Supported Formulas - 135
+# Supported Formulas - 136
 
 * ABS
 * ACOS
@@ -35,6 +35,7 @@
 * COUNTBLANK
 * COUNTIF
 * DATE
+* DATEDIF
 * DATEVALUE
 * DAY
 * DAYS
@@ -137,7 +138,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 347
+# Not Yet Supported Formulas - 346
 
 * ACCRINT
 * ACCRINTM
@@ -212,7 +213,6 @@
 * CUBEVALUE
 * CUMIPMT
 * CUMPRINC
-* DATEDIF
 * DAVERAGE
 * DAYS360
 * DB
