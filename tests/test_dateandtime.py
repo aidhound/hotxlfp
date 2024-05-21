@@ -140,3 +140,18 @@ class TestDateAndTime(unittest.TestCase):
         ret = p.parse('MINUTE(NOW())')
         self.assertEqual(ret['result'], now.minute)
         self.assertEqual(ret['error'], None)
+
+    def test_datedif(self):
+        p = Parser(debug=True)
+        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "Y")')
+        self.assertEqual(ret['result'], 0)
+        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "m")')
+        self.assertEqual(ret['result'], 11)
+        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "d")')
+        self.assertEqual(ret['result'], 365)
+        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "md")')
+        self.assertEqual(ret['result'], 29)
+        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "ym")')
+        self.assertEqual(ret['result'], 11)
+        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "yd")')
+        self.assertEqual(ret['result'], 365)
