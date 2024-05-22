@@ -1,4 +1,4 @@
-# Supported Formulas - 136
+# Supported Formulas - 137
 
 * ABS
 * ACOS
@@ -43,6 +43,7 @@
 * DECIMAL
 * DEGREES
 * DELTA
+* EDATE
 * ERROR.TYPE
 * EVEN
 * EXP
@@ -138,7 +139,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 346
+# Not Yet Supported Formulas - 345
 
 * ACCRINT
 * ACCRINTM
@@ -237,7 +238,6 @@
 * DURATION
 * DVAR
 * DVARP
-* EDATE
 * EFFECT
 * ENCODEURL
 * EOMONTH

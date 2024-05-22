@@ -136,3 +136,38 @@ def DATEDIF(start_date, end_date, unit):
                 start_date_end_year = DATE(YEAR(end_date) - 1, MONTH(start_date), DAY(start_date))
             return int(DAYS(end_date, start_date_end_year))
     return error.NUM
+
+
+@dispatcher.register_for('EDATE')
+def EDATE(start_date, month):
+    if start_date == None:
+        default_date = True
+        start_date = DATE(1900, 1, 1)
+    else:
+        default_date = False
+        start_date = utils.parse_date(start_date)
+    if month == None:
+        return start_date
+    month= int(month)
+    year = start_date.year + (month // 12)
+    month = start_date.month + (month % 12)
+    if month > 12:
+        month -= 12
+        year += 1
+    elif month < 1:
+        month += 12
+        year -= 1
+    if default_date:
+        month -= 1
+        if month == 2:
+            day = 29 if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0) else 28
+        elif month in {4, 6, 9, 11}:
+            day = 30
+        else:
+            day = 31
+    else:
+        day = start_date.day
+        day = min(day, [31, 29 if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    if year > 9999 or year < 1900:
+        return error.NUM
+    return DATE(year, month, day)
