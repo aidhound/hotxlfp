@@ -100,6 +100,8 @@ def DATEDIF(start_date, end_date, unit):
     end_date = utils.parse_date(end_date)
     if utils.any_is_error((start_date, end_date)):
         return error.NUM
+    if type(unit) != str:
+        return error.NAME
     unit = unit.lower()
     if start_date == end_date:
         return 0
