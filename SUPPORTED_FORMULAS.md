@@ -1,4 +1,4 @@
-# Supported Formulas - 137
+# Supported Formulas - 138
 
 * ABS
 * ACOS
@@ -64,6 +64,7 @@
 * IMAGINARY
 * IMREAL
 * INDEX
+* INT
 * ISBLANK
 * ISERR
 * ISERROR
@@ -139,7 +140,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 345
+# Not Yet Supported Formulas - 344
 
 * ACCRINT
 * ACCRINTM
@@ -316,7 +317,6 @@
 * IMTAN
 * INDIRECT
 * INFO
-* INT
 * INTERCEPT
 * INTRATE
 * IPMT

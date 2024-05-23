@@ -510,3 +510,13 @@ def RANDBETWEEN(bottom, top):
         return error.VALUE
 
     return random.randint(int(bottom), int(top))
+
+
+@dispatcher.register_for('INT')
+def INT(number):
+    if not isinstance(number, (int, float)):
+        return error.VALUE
+    if number >= 0:
+        return int(number)
+    elif number < 0:
+        return int(number)-1
