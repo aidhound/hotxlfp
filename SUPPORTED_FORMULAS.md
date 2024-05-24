@@ -1,4 +1,4 @@
-# Supported Formulas - 138
+# Supported Formulas - 139
 
 * ABS
 * ACOS
@@ -123,6 +123,7 @@
 * SUBSTITUTE
 * SUM
 * SUMIF
+* SUMIFS
 * SWITCH
 * T
 * TAN
@@ -140,7 +141,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 344
+# Not Yet Supported Formulas - 343
 
 * ACCRINT
 * ACCRINTM
@@ -433,7 +434,6 @@
 * STANDARDIZE
 * STEYX
 * SUBTOTAL
-* SUMIFS
 * SUMPRODUCT
 * SUMSQ
 * SUMX2MY2

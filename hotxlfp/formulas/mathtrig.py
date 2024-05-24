@@ -520,3 +520,15 @@ def INT(number):
         return int(number)
     elif number < 0:
         return int(number)-1
+
+
+@dispatcher.register_for('SUMIFS')
+def SUMIFS(sum_args, *criteria):
+    if len(criteria) % 2 != 0:
+        return error.ERROR
+    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+    b = 0
+    for i, a in enumerate(sum_args):
+        if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
+            b += a
+    return b

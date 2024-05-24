@@ -580,3 +580,18 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('INT(-72.34)')
         self.assertEqual(ret['result'], -73)
         self.assertEqual(ret['error'], None)
+
+    def test_sumifs(self):
+        p = Parser(debug=True)
+        ret = p.parse('SUMIFS({1;4;5;100}, {1;4;5;100},"<>200")')
+        self.assertEqual(ret['result'], 110)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('SUMIFS({1;4;5}, {3;5;9},"<7")')
+        self.assertEqual(ret['result'], 5)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('SUMIFS({1;4;5}, ">1","<5")')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#ERROR!')
+        ret = p.parse('SUMIFS({1;4;5;100}, {1;4;5;100},"<>200", {1;4;300;100},"<100", {2;-3;5;2},">1")')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
