@@ -1,4 +1,4 @@
-# Supported Formulas - 139
+# Supported Formulas - 140
 
 * ABS
 * ACOS
@@ -16,6 +16,7 @@
 * AVERAGE
 * AVERAGEA
 * AVERAGEIF
+* AVERAGEIFS
 * BASE
 * CEILING
 * CEILING.MATH
@@ -141,7 +142,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 343
+# Not Yet Supported Formulas - 342
 
 * ACCRINT
 * ACCRINTM
@@ -152,7 +153,6 @@
 * AREAS
 * ARRAYTOTEXT
 * ASC
-* AVERAGEIFS
 * BAHTTEXT
 * BESSELI
 * BESSELJ

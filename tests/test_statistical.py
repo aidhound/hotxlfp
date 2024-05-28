@@ -159,3 +159,15 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('MODE({5.6;4;4;3;2;4})')
         self.assertEqual(ret['result'], 4)
         self.assertEqual(ret['error'], None)
+
+    def test_averagifs(self):
+        p = Parser(debug=True)
+        ret = p.parse('AVERAGEIFS({1;2;3;4};{1;2;3;4};">2")')
+        self.assertEqual(ret['result'], 3.5)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('AVERAGEIFS({1;2;3;4};{4;3;2;1};">2")')
+        self.assertEqual(ret['result'], 1.5)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('AVERAGEIFS({1;2;3;4};{4;3;2;1};">2";{1;2;3;4};"<> 3")')
+        self.assertEqual(ret['result'], 1.5)
+        self.assertEqual(ret['error'], None)

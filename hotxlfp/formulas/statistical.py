@@ -141,3 +141,18 @@ def HARMEAN(*args):
 @dispatcher.register_for('GEOMEAN')
 def GEOMEAN(*args):
     return statistics.geometric_mean(utils.inumbers(args))
+
+@dispatcher.register_for('AVERAGEIFS')
+def AVERAGEIFS(average_range, *criteria):
+    if len(criteria) % 2 != 0:
+        return error.ERROR
+    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+    sum_value = 0
+    count_value = 0
+    for i, a in enumerate(average_range):
+        if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds):
+            sum_value += a
+            count_value += 1
+    if count_value == 0:
+        return error.DIV0
+    return sum_value / count_value
