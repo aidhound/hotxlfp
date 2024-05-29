@@ -580,6 +580,9 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('INT(-72.34)')
         self.assertEqual(ret['result'], -73)
         self.assertEqual(ret['error'], None)
+        ret = p.parse('INT(-72)')
+        self.assertEqual(ret['result'], -72)
+        self.assertEqual(ret['error'], None)
 
     def test_sumifs(self):
         p = Parser(debug=True)

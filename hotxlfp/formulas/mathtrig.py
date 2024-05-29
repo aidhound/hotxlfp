@@ -518,8 +518,10 @@ def INT(number):
         return error.VALUE
     if number >= 0:
         return int(number)
-    elif number < 0:
+    elif int(number) > number:
         return int(number)-1
+    else:
+        return int(number)
 
 
 @dispatcher.register_for('SUMIFS')

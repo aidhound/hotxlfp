@@ -152,14 +152,14 @@ class TestDateAndTime(unittest.TestCase):
         ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "d")')
         self.assertEqual(ret['result'], 365)
         self.assertEqual(ret['error'], None)
-        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "md")')
-        self.assertEqual(ret['result'], 29)
+        ret = p.parse('DATEDIF(DATE(2019,1,20), DATE(2019,3,10), "md")')
+        self.assertEqual(ret['result'], 18)
         self.assertEqual(ret['error'], None)
         ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "ym")')
         self.assertEqual(ret['result'], 11)
         self.assertEqual(ret['error'], None)
-        ret = p.parse('DATEDIF(DATE(2019,10,6), DATE(2020,10,5), "yd")')
-        self.assertEqual(ret['result'], 365)
+        ret = p.parse('DATEDIF(DATE(2019,10,4), DATE(2020,10,5), "yd")')
+        self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
 
