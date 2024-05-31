@@ -1,4 +1,4 @@
-# Supported Formulas - 140
+# Supported Formulas - 141
 
 * ABS
 * ACOS
@@ -84,6 +84,7 @@
 * MATCH
 * MAX
 * MAXA
+* MAXIFS
 * MEDIAN
 * MIN
 * MINA
@@ -142,7 +143,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 342
+# Not Yet Supported Formulas - 341
 
 * ACCRINT
 * ACCRINTM
@@ -341,7 +342,6 @@
 * LOGNORM.INV
 * LOGNORMDIST
 * LOOKUP
-* MAXIFS
 * MDETERM
 * MDURATION
 * MID, MIDBs

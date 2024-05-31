@@ -171,3 +171,15 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('AVERAGEIFS({1;2;3;4};{4;3;2;1};">2";{1;2;3;4};"<> 3")')
         self.assertEqual(ret['result'], 1.5)
         self.assertEqual(ret['error'], None)
+
+    def test_maxifs(self):
+        p = Parser(debug=True)
+        ret = p.parse('MAXIFS({1;2;3;4};{1;2;3;4};">2")')
+        self.assertEqual(ret['result'], 4)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('MAXIFS({1;2;3;4};{4;3;2;1};">2")')
+        self.assertEqual(ret['result'], 2)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('MAXIFS({1;2;3;4};{4;3;2;1};">3";{1;2;3;4};"<>3")')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
