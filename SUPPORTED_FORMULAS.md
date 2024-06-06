@@ -1,4 +1,4 @@
-# Supported Formulas - 141
+# Supported Formulas - 142
 
 * ABS
 * ACOS
@@ -115,6 +115,7 @@
 * SECOND
 * SIN
 * SINH
+* SLOPE
 * SQRT
 * STDEV
 * STDEV.P
@@ -143,7 +144,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 341
+# Not Yet Supported Formulas - 340
 
 * ACCRINT
 * ACCRINTM
@@ -426,7 +427,6 @@
 * SKEW
 * SKEW.P
 * SLN
-* SLOPE
 * SMALL
 * SORT
 * SORTBY

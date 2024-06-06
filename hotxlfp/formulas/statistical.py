@@ -170,3 +170,32 @@ def MAXIFS(sum_args, *criteria):
             if a > b: 
                 b = a
     return b
+
+
+@dispatcher.register_for('SLOPE')
+def SLOPE(*yx):
+    if len(yx) % 2 != 0:
+        return error.DIV_ZERO
+
+    midpoint = len(yx) // 2
+    ys = yx[:midpoint]
+    xs = yx[midpoint:]
+
+    if len(ys) != len(xs) or len(ys) == 0 or len(xs) == 0:
+        return error.DIV_ZERO
+
+    ys = list(ys)
+    xs = list(xs)
+
+    n = len(ys)
+    sum_x = sum(xs)
+    sum_y = sum(ys)
+    sum_x_sq = sum(x ** 2 for x in xs)
+    sum_xy = sum(x * y for x, y in zip(xs, ys))
+
+    denominator = (n * sum_x_sq) - (sum_x ** 2)
+    if denominator == 0:
+        return error.DIV_ZERO
+
+    slope = ((n * sum_xy) - (sum_x * sum_y)) / denominator
+    return slope
