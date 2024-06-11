@@ -534,3 +534,14 @@ def SUMIFS(sum_args, *criteria):
         if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
             b += a
     return b
+
+
+@dispatcher.register_for('SIGN')
+def SIGN(number):
+    if not isinstance(number, (int, float)):
+        return error.VALUE
+    if number == 0:
+        return 0
+    if number > 0:
+        return 1
+    return -1

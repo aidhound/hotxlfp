@@ -598,3 +598,18 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('SUMIFS({1;4;5;100}, {1;4;5;100},"<>200", {1;4;300;100},"<100", {2;-3;5;2},">1")')
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
+
+    def test_sign(self):
+        p = Parser(debug=True)
+        ret = p.parse('SIGN(2)')
+        self.assertEqual(ret['result'], 1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('SIGN(-2)')
+        self.assertEqual(ret['result'], -1)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('SIGN(0)')
+        self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('SIGN("a")')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')

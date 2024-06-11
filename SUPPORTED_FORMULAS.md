@@ -1,4 +1,4 @@
-# Supported Formulas - 142
+# Supported Formulas - 143
 
 * ABS
 * ACOS
@@ -113,6 +113,7 @@
 * ROUNDDOWN
 * ROUNDUP
 * SECOND
+* SIGN
 * SIN
 * SINH
 * SLOPE
@@ -144,7 +145,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 340
+# Not Yet Supported Formulas - 339
 
 * ACCRINT
 * ACCRINTM
@@ -423,7 +424,6 @@
 * SERIESSUM
 * SHEET
 * SHEETS
-* SIGN
 * SKEW
 * SKEW.P
 * SLN
