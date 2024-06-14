@@ -52,11 +52,11 @@ def SWITCH(target_value, *args):
     if len(args) <= 1:
         return error.NOT_AVAILABLE
     argc = len(args)
-    default_clause = None if (argc % 2 == 0) else args[-1]
+    default_clause = utils.DEFAULT if (argc % 2 == 0) else args[-1]
     for i in range(0, argc, 2):
         if target_value == args[i]:
             return args[i + 1]
-    if default_clause:
+    if default_clause is not utils.DEFAULT:
         return default_clause
     return error.NOT_AVAILABLE
 
