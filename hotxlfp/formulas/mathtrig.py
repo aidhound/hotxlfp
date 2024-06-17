@@ -510,3 +510,38 @@ def RANDBETWEEN(bottom, top):
         return error.VALUE
 
     return random.randint(int(bottom), int(top))
+
+
+@dispatcher.register_for('INT')
+def INT(number):
+    if not isinstance(number, (int, float)):
+        return error.VALUE
+    if number >= 0:
+        return int(number)
+    elif int(number) > number:
+        return int(number)-1
+    else:
+        return int(number)
+
+
+@dispatcher.register_for('SUMIFS')
+def SUMIFS(sum_args, *criteria):
+    if len(criteria) % 2 != 0:
+        return error.ERROR
+    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+    b = 0
+    for i, a in enumerate(sum_args):
+        if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
+            b += a
+    return b
+
+
+@dispatcher.register_for('SIGN')
+def SIGN(number):
+    if not isinstance(number, (int, float)):
+        return error.VALUE
+    if number == 0:
+        return 0
+    if number > 0:
+        return 1
+    return -1

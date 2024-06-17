@@ -132,14 +132,13 @@ def parse_date(date):
         return date
     date = to_number(date)
     if isinstance(date, number_types):
-        d = int(date)
-        if d == 0:
-            return date_1900
-        if d < 0:
+        if date < 0:
             return error.NUM
-        if d <= 60:
-            return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (d - 1) * 86400))
-        return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (d - 2) * 86400))
+        if date < 1:
+            return date_1900
+        if date <= 60:
+            return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 1) * 86400))
+        return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 2) * 86400))
     if isinstance(date, string_types):
         try:
             return to_date(date)

@@ -141,3 +141,61 @@ def HARMEAN(*args):
 @dispatcher.register_for('GEOMEAN')
 def GEOMEAN(*args):
     return statistics.geometric_mean(utils.inumbers(args))
+
+
+@dispatcher.register_for('AVERAGEIFS')
+def AVERAGEIFS(average_range, *criteria):
+    if len(criteria) % 2 != 0:
+        return error.ERROR
+    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+    sum_value = 0
+    count_value = 0
+    for i, a in enumerate(average_range):
+        if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds):
+            sum_value += a
+            count_value += 1
+    if count_value == 0:
+        return error.DIV0
+    return sum_value / count_value
+
+
+@dispatcher.register_for('MAXIFS')
+def MAXIFS(sum_args, *criteria):
+    if len(criteria) % 2 != 0:
+        return error.ERROR
+    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+    b = 0
+    for i, a in enumerate(sum_args):
+        if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
+            if a > b: 
+                b = a
+    return b
+
+
+@dispatcher.register_for('SLOPE')
+def SLOPE(*yx):
+    if len(yx) % 2 != 0:
+        return error.DIV_ZERO
+
+    midpoint = len(yx) // 2
+    ys = yx[:midpoint]
+    xs = yx[midpoint:]
+
+    if len(ys) != len(xs) or len(ys) == 0 or len(xs) == 0:
+        return error.DIV_ZERO
+
+    ys = list(ys)
+    xs = list(xs)
+
+    n = len(ys)
+    sum_x = sum(xs)
+    sum_y = sum(ys)
+    sum_x_sq = sum(x ** 2 for x in xs)
+    sum_xy = sum(x * y for x, y in zip(xs, ys))
+
+    denominator = (n * sum_x_sq) - (sum_x ** 2)
+    if denominator == 0:
+        return error.DIV_ZERO
+
+    slope = ((n * sum_xy) - (sum_x * sum_y)) / denominator
+    return slope
