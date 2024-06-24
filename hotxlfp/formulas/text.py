@@ -121,7 +121,6 @@ def TEXTJOIN(delimiter, ignore_empty, *args):
         gen = (words if words is not None else '' for words in utils.iflatten(args))
     return delimiter.join(gen)
 
-import pandas as pd
 import datetime
 import re
 from fractions import Fraction
@@ -130,7 +129,7 @@ def TEXT(value, format_text):
     if not isinstance(format_text, string_types):
         return error.NAME
     if isinstance(value, (datetime.datetime, datetime.date)):
-        value = pd.to_datetime(value)
+        value = datetime.datetime(year=value.year, month=value.month, day=value.day)
 
         if 'h' in format_text or 'hh' in format_text:
             format_text = re.sub(r'\bmm\b', '%M', format_text)
