@@ -1,5 +1,22 @@
 # hotxlfp changelog
 
+## 0.0.16
+
+* Fixed SWITCH formula returning N/A when the default value was "falsy" (like 0)
+
+This release also brings a bunch of new supported formulas (Thanks Rodrigo Patrão)
+
+* Support for SIGN function
+* Support for SLOPE function
+* Support for MAXIFS function
+* Support for AVERAGEIFS
+* Support for SUMIFS function
+* Support for INT function
+* Support for EDATE fuction
+* Support for DATEDIF
+* Support for NOW function
+* Support for T, IMAGINARY and IMREAL
+
 ## 0.0.15
 
 * Fixed bugs in FLOOR function.
