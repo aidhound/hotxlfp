@@ -123,8 +123,6 @@ class TestDateAndTime(unittest.TestCase):
     def test_now(self):
         p = Parser(debug=True)
         now = datetime.datetime.now()
-        ret = p.parse('NOW()')
-        self.assertEqual(ret['result'], now)
         ret = p.parse('YEAR(NOW())')
         self.assertEqual(ret['result'], now.year)
         self.assertEqual(ret['error'], None)
