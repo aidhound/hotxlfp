@@ -120,3 +120,24 @@ def TEXTJOIN(delimiter, ignore_empty, *args):
     else:
         gen = (words if words is not None else '' for words in utils.iflatten(args))
     return delimiter.join(gen)
+
+
+@dispatcher.register_for('LEFT')
+def LEFT(text, num_chars=1):
+    if num_chars < 0 or not isinstance(text, string_types):
+        return error.VALUE
+    return text[:num_chars]
+
+
+@dispatcher.register_for('RIGHT')
+def RIGHT(text, num_chars=1):
+    if num_chars < 0 or not isinstance(text, string_types):
+        return error.VALUE
+    return text[-num_chars:]
+
+
+@dispatcher.register_for('MID')
+def MID(text, start_num, num_chars=1):
+    if start_num < 1 or num_chars < 0 or not isinstance(text, string_types):
+        return error.VALUE
+    return text[start_num - 1:][:num_chars]

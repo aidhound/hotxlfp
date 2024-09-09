@@ -1,4 +1,4 @@
-# Supported Formulas - 143
+# Supported Formulas - 146
 
 * ABS
 * ACOS
@@ -76,6 +76,7 @@
 * ISNUMBER
 * ISODD
 * ISTEXT
+* LEFT
 * LEN
 * LN
 * LOG
@@ -86,6 +87,7 @@
 * MAXA
 * MAXIFS
 * MEDIAN
+* MID
 * MIN
 * MINA
 * MINUTE
@@ -108,6 +110,7 @@
 * RADIANS
 * RAND
 * RANDBETWEEN
+* RIGHT
 * ROMAN
 * ROUND
 * ROUNDDOWN
@@ -334,8 +337,8 @@
 * KURT
 * LARGE
 * LCM
-* LEFT, LEFTBs
-* LEN, LENBs
+* LEFTBs
+* LENBs
 * LET
 * LINEST
 * LOGEST
@@ -346,7 +349,7 @@
 * LOOKUP
 * MDETERM
 * MDURATION
-* MID, MIDBs
+* MIDBs
 * MINIFS
 * MINVERSE
 * MIRR
@@ -411,7 +414,7 @@
 * REGISTER.ID
 * REPLACE, REPLACEBs
 * REPT
-* RIGHT, RIGHTBs
+* RIGHTBs
 * ROW
 * ROWS
 * RRI
