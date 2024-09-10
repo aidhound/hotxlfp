@@ -141,3 +141,89 @@ def MID(text, start_num, num_chars=1):
     if start_num < 1 or num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
     return text[start_num - 1:][:num_chars]
+
+import datetime
+import re
+from fractions import Fraction
+@dispatcher.register_for('TEXT')
+def TEXT(value, format_text):
+    if not isinstance(format_text, string_types):
+        return error.NAME
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        value = datetime.datetime(year=value.year, month=value.month, day=value.day)
+
+        if 'h' in format_text or 'hh' in format_text:
+            format_text = re.sub(r'\bmm\b', '%M', format_text)
+            format_text = re.sub(r'\bm\b', str(value.minute), format_text)
+        else:
+            format_text = re.sub(r'\bmm\b', f"{value.month:02}", format_text)
+            format_text = re.sub(r'\bm\b', str(value.month), format_text)
+        
+        format_mapping = {
+            "yyyy": "%Y", "yyy": "%Y", "yy": "%y",
+            "mmmmm": value.strftime('%B')[0], "mmmm": "%B", "mmm": "%b",
+            "dddd": "%A","ddd": "%a","dd": f"{value.day:02}", "d": str(value.day),
+            "hh": "%H", "h": str(value.hour or 12), "ss": "%S", "s": str(value.second or 12),
+            "am/pm": "%p", "a/p": value.strftime("%p")[0].lower()
+        }
+
+        for k, v in format_mapping.items():
+            format_text = re.sub(rf"\b{k}\b", v, format_text)
+
+        return value.strftime(format_text)
+    
+    if isinstance(value, (int, float)):
+        prefix = re.match(r'^[^\d#0,]*', format_text).group()
+        suffix = re.search(r'[^\d#0,%]*$', format_text).group()
+        
+        numeric_format = format_text[len(prefix):-len(suffix) if suffix else None]
+
+        is_percentage = '%' in numeric_format
+        if is_percentage:
+            value *= 100
+            numeric_format = numeric_format.replace('%', '')
+
+        numeric_format = numeric_format.replace(',', '')
+
+        if '.' in numeric_format:
+            num_decimal_places = len(numeric_format.split('.')[1].replace('#', '0'))
+            formatted_value = f"{value:.{num_decimal_places}f}"
+        else:
+            if value - int(value) >= 0.5:
+                formatted_value = str(math.ceil(value))
+            else:
+                formatted_value = str(math.floor(value))
+
+        if ',' in format_text:
+            parts = formatted_value.split('.')
+            parts[0] = '{:,}'.format(int(parts[0]))
+            formatted_value = '.'.join(parts)
+
+
+        if 'E' in numeric_format:
+            coefficient_format, exponent_format = numeric_format.split('E')
+
+            if '.' in coefficient_format:
+                num_decimal_places = len(coefficient_format.split('.')[1].replace('#', '0'))
+                formatted_value = f"{value:.{num_decimal_places}e}"
+            else:
+                formatted_value = f"{value:.0e}"
+
+            if '+' in exponent_format:
+                formatted_value = formatted_value.replace('e+', 'E+')
+            else:
+                formatted_value = formatted_value.replace('e', 'E')
+
+            return formatted_value
+
+        if '???/???' in format_text and '#' not in format_text:
+            frac_value = Fraction(value).limit_denominator()
+            return f"{frac_value.numerator}/{frac_value.denominator}"
+        elif '# ???/???' in format_text:
+            frac_value = (Fraction(value).limit_denominator()) - int(value)
+            return f"{int(value)} {frac_value.numerator}/{frac_value.denominator}"
+        
+        return f"{prefix}{formatted_value}{suffix}" + ('%' if is_percentage else '')
+    else:
+        return format_text
+
