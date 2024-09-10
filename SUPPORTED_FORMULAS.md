@@ -1,4 +1,4 @@
-# Supported Formulas - 146
+# Supported Formulas - 150
 
 * ABS
 * ACOS
@@ -77,7 +77,9 @@
 * ISODD
 * ISTEXT
 * LEFT
+* LEFTB
 * LEN
+* LENB
 * LN
 * LOG
 * LOG10
@@ -88,6 +90,7 @@
 * MAXIFS
 * MEDIAN
 * MID
+* MIDB
 * MIN
 * MINA
 * MINUTE
@@ -111,6 +114,7 @@
 * RAND
 * RANDBETWEEN
 * RIGHT
+* RIGHTB
 * ROMAN
 * ROUND
 * ROUNDDOWN
@@ -148,7 +152,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 339
+# Not Yet Supported Formulas - 338
 
 * ACCRINT
 * ACCRINTM
@@ -265,7 +269,8 @@
 * FDIST
 * FILTER
 * FILTERXML
-* FIND, FINDBs
+* FIND
+* FINDB
 * FINV
 * FISHER
 * FISHERINV
@@ -337,8 +342,6 @@
 * KURT
 * LARGE
 * LCM
-* LEFTBs
-* LENBs
 * LET
 * LINEST
 * LOGEST
@@ -349,7 +352,6 @@
 * LOOKUP
 * MDETERM
 * MDURATION
-* MIDBs
 * MINIFS
 * MINVERSE
 * MIRR
@@ -412,15 +414,16 @@
 * RATE
 * RECEIVED
 * REGISTER.ID
-* REPLACE, REPLACEBs
+* REPLACE
+* REPLACEB
 * REPT
-* RIGHTBs
 * ROW
 * ROWS
 * RRI
 * RSQ
 * RTD
-* SEARCH, SEARCHBs
+* SEARCH
+* SEARCHB
 * SEC
 * SECH
 * SEQUENCE
