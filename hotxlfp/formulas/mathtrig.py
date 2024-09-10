@@ -15,6 +15,7 @@ from . import error
 from . import utils
 from .utils import DEFAULT
 from ..helper.number import to_number
+from .._compat import string_types
 
 
 @dispatcher.register_for('ABS')
@@ -529,6 +530,13 @@ def SUMIFS(sum_args, *criteria):
     if len(criteria) % 2 != 0:
         return error.ERROR
     range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+    # Validate criteria ranges
+    sum_args_len = len(sum_args)
+    for criteria_range,pred in range_and_preds:
+        if isinstance(criteria_range, string_types):
+            return error.ERROR
+        if len(criteria_range) != sum_args_len:
+            return error.VALUE
     b = 0
     for i, a in enumerate(sum_args):
         if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
