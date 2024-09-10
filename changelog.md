@@ -1,5 +1,12 @@
 # hotxlfp changelog
 
+## 1.0.0
+
+*DROPPED PYTHON 2 SUPPORT* hence the bump to 1.0.0 which reflects the breaking change and the project growing maturity.
+
+* Support for LEFT, RIGHT, MID (Thanks João Grazina)
+* Partial support for TEXT (Thanks Rodrigo Patrão)
+
 ## 0.0.16
 
 * Fixed SWITCH formula returning N/A when the default value was "falsy" (like 0)

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import division
 import datetime
 from . import error
 from ..helper.number import to_number

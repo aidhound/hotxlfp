@@ -3,7 +3,6 @@
 inspired by:
 https://github.com/sutoiku/formula.js/blob/master/lib/math-trig.js
 """
-from __future__ import division
 import math
 import random
 import re

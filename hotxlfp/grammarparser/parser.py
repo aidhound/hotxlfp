@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import division
-from __future__ import print_function
 import ply.yacc as yacc
 import ply.lex as lex
 from . import lexer
 from ..helper.number import to_number
-from .._compat import PY2, number_types, string_types
+from .._compat import number_types, string_types
 from ..formulas import error, operators
 import math
 

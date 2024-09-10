@@ -3,11 +3,11 @@
 inspired by:
 https://github.com/sutoiku/formula.js/blob/master/lib/statistical.js
 """
-from __future__ import division
+import statistics
 from . import dispatcher
 from . import error
 from . import utils
-from .._compat import number_types, statistics
+from .._compat import number_types
 from ..helper.number import to_number
 
 
