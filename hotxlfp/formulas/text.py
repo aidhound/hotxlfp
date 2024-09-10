@@ -44,7 +44,7 @@ def CONCATENATE(*args):
     return ''.join(utils.iflatten(args))
 
 
-@dispatcher.register_for('LEN')
+@dispatcher.register_for('LEN', 'LENB')
 def LEN(text):
     if isinstance(text, error.XLError):
         return text
@@ -120,6 +120,27 @@ def TEXTJOIN(delimiter, ignore_empty, *args):
     else:
         gen = (words if words is not None else '' for words in utils.iflatten(args))
     return delimiter.join(gen)
+
+
+@dispatcher.register_for('LEFT', 'LEFTB')
+def LEFT(text, num_chars=1):
+    if num_chars < 0 or not isinstance(text, string_types):
+        return error.VALUE
+    return text[:num_chars]
+
+
+@dispatcher.register_for('RIGHT', 'RIGHTB')
+def RIGHT(text, num_chars=1):
+    if num_chars < 0 or not isinstance(text, string_types):
+        return error.VALUE
+    return text[-num_chars:]
+
+
+@dispatcher.register_for('MID', 'MIDB')
+def MID(text, start_num, num_chars=1):
+    if start_num < 1 or num_chars < 0 or not isinstance(text, string_types):
+        return error.VALUE
+    return text[start_num - 1:][:num_chars]
 
 import datetime
 import re
@@ -205,3 +226,4 @@ def TEXT(value, format_text):
         return f"{prefix}{formatted_value}{suffix}" + ('%' if is_percentage else '')
     else:
         return format_text
+

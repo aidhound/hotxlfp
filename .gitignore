@@ -98,3 +98,6 @@ dmypy.json
 *.out
 *.tab
 *parsetab.py
+
+# pyCharm
+.idea/
