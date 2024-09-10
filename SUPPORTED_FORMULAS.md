@@ -1,4 +1,4 @@
-# Supported Formulas - 150
+# Supported Formulas - 151
 
 * ABS
 * ACOS
@@ -153,7 +153,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 338
+# Not Yet Supported Formulas - 337
 
 * ACCRINT
 * ACCRINTM

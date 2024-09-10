@@ -7,6 +7,9 @@ from __future__ import division
 import math
 from functools import reduce
 import operator
+import datetime
+import re
+from fractions import Fraction
 from . import dispatcher
 from . import error
 from . import utils
@@ -142,9 +145,7 @@ def MID(text, start_num, num_chars=1):
         return error.VALUE
     return text[start_num - 1:][:num_chars]
 
-import datetime
-import re
-from fractions import Fraction
+
 @dispatcher.register_for('TEXT')
 def TEXT(value, format_text):
     if not isinstance(format_text, string_types):
