@@ -171,3 +171,21 @@ def EDATE(start_date, month):
     if year > 9999 or year < 1900:
         return error.NUM
     return datetime.datetime(year, month, day)
+
+
+@dispatcher.register_for('WEEKDAY')
+def WEEKDAY(date, return_type=1):
+    date = utils.parse_date(date)
+    weekday = date.weekday()
+    if return_type == 3:
+        # Day of the week, with numbers 0 (Monday) through 6 (Sunday) (3)
+        return weekday
+    if return_type == 2:
+        # Day of the week, with numbers 1 (Monday) through 7 (Sunday) (4)
+        return weekday + 1
+    if return_type == 1:
+        # # Day of the week, with numbers 1 (Sunday) through 7 (Saturday)
+        if weekday == 6:
+            return 1
+        return weekday + 2
+    return error.NUM

@@ -1,4 +1,4 @@
-# Supported Formulas - 151
+# Supported Formulas - 152
 
 * ABS
 * ACOS
@@ -149,11 +149,12 @@
 * VAR.S
 * VARA
 * VARP
+* WEEKDAY
 * XOR
 * YEAR
 
 
-# Not Yet Supported Formulas - 337
+# Not Yet Supported Formulas - 336
 
 * ACCRINT
 * ACCRINTM
@@ -476,7 +477,6 @@
 * VDB
 * VLOOKUP
 * WEBSERVICE
-* WEEKDAY
 * WEEKNUM
 * WEIBULL
 * WEIBULL.DIST

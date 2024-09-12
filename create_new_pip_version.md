@@ -24,6 +24,8 @@ Press draft a new release
 
 # Upload to pypi
 
+delete stuff inside dist/*
+
 python setup.py sdist bdist_wheel
 
 twine upload dist/*
