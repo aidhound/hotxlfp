@@ -22,9 +22,25 @@ def DATE(year, month, day):
     return datetime.datetime(year, month, day)
 
 
+@dispatcher.register_for('TIME')
+def TIME(hour, minute, second):
+    year = utils.parse_number(hour)
+    minute = utils.parse_number(minute)
+    second = utils.parse_number(second)
+    if utils.any_is_error((year, minute, second)):
+        return error.VALUE
+    return datetime.datetime(1900, 1, 1, hour, minute, second)
+
+
 @dispatcher.register_for('DATEVALUE')
 def DATEVALUE(date):
     return utils.serialize_date(date)
+
+
+@dispatcher.register_for('TIMEVALUE')
+def TIMEVALUE(time):
+    # -1 is because excel has epoch starting on day 0 of 1900 and datetime starts at 1
+    return utils.serialize_date(datetime.datetime.combine(utils.date_1900, utils.parse_date(time).time())) - 1
 
 
 @dispatcher.register_for('YEAR')
