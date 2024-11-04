@@ -381,3 +381,18 @@ class TestText(unittest.TestCase):
         ret = p.parse('TEXT(5.25, "# ???/???")')
         self.assertEqual(ret['result'], "5 1/4")
         self.assertEqual(ret['error'], None)
+
+    def test_trim(self):
+        p = Parser(debug=True)
+        ret = p.parse('TRIM(" test ")')
+        self.assertEqual(ret['result'], 'test')
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRIM(" test   3 spaces later")')
+        self.assertEqual(ret['result'], 'test 3 spaces later')
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRIM("     ")')
+        self.assertEqual(ret['result'], '')
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TRIM(3.14)')
+        self.assertEqual(ret['result'], 3.14)
+        self.assertEqual(ret['error'], None)
