@@ -1,4 +1,4 @@
-# Supported Formulas - 154
+# Supported Formulas - 155
 
 * ABS
 * ACOS
@@ -144,6 +144,7 @@
 * TIME
 * TIMEVALUE
 * TODAY
+* TRIM
 * TRUE
 * UPPER
 * VAR
@@ -156,7 +157,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 334
+# Not Yet Supported Formulas - 333
 
 * ACCRINT
 * ACCRINTM
@@ -463,7 +464,6 @@
 * TINV
 * TRANSPOSE
 * TREND
-* TRIM
 * TRIMMEAN
 * TRUNC
 * TTEST

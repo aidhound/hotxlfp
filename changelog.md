@@ -1,5 +1,11 @@
 # hotxlfp changelog
 
+## 1.0.1
+
+* Support for TIME, TIMEVALUE (Thanks João Grazina)
+* Support for WEEKDAY
+* Support for TRIM
+
 ## 1.0.0
 
 *DROPPED PYTHON 2 SUPPORT* hence the bump to 1.0.0 which reflects the breaking change and the project growing maturity.

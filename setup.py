@@ -4,14 +4,13 @@ from setuptools import setup
 
 setup(
     name='hotxlfp',
-    version='1.0.0',
+    version='1.0.1',
     packages=['hotxlfp', 'hotxlfp._compat', 'hotxlfp.helper', 'hotxlfp.formulas', 'hotxlfp.grammarparser'],
     license='MIT',
-    test_suite='tests',
     author='Leonel Câmara',
     author_email='leonelcamara@gmail.com',
     url='https://github.com/aidhound/hotxlfp',
-    download_url='https://github.com/aidhound/hotxlfp/archive/1.0.0.tar.gz',
+    download_url='https://github.com/aidhound/hotxlfp/archive/1.0.1.tar.gz',
     keywords=['excel', 'formula', 'parser'],
     install_requires=['ply', 'python-dateutil'],
     long_description='\n'.join(l for l in open('README.md', encoding="utf-8").readlines() if not l.startswith('[!')),
