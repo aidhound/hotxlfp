@@ -1,4 +1,4 @@
-# Supported Formulas - 152
+# Supported Formulas - 154
 
 * ABS
 * ACOS
@@ -141,6 +141,8 @@
 * TANH
 * TEXT
 * TEXTJOIN
+* TIME
+* TIMEVALUE
 * TODAY
 * TRUE
 * UPPER
@@ -154,7 +156,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 336
+# Not Yet Supported Formulas - 334
 
 * ACCRINT
 * ACCRINTM
@@ -458,8 +460,6 @@
 * TBILLPRICE
 * TBILLYIELD
 * TDIST
-* TIME
-* TIMEVALUE
 * TINV
 * TRANSPOSE
 * TREND

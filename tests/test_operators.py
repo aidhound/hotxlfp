@@ -51,6 +51,35 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_time_logic(self):
+        p = Parser(debug=True)
+        # Numbers
+        ret = p.parse('TIME(22,0,0) = TIME(23,0,0)')
+        self.assertEqual(ret['result'], False)  # 0
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TIME(22,0,0) <> TIME(23,0,0)')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TIME(22,0,0) > TIME(23,0,0)')
+        self.assertEqual(ret['result'], False)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TIME(22,0,0) < TIME(23,0,0)')
+        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('HOUR(TIME(22,15,30))')
+        self.assertEqual(ret['result'], 22)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('MINUTE(TIME(22,15,30))')
+        self.assertEqual(ret['result'], 15)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('SECOND(TIME(22,15,30))')
+        self.assertEqual(ret['result'], 30)
+        self.assertEqual(ret['error'], None)
+        ret = p.parse('TIMEVALUE("12:00")')
+        self.assertEqual(ret['result'], 0.5)
+        self.assertEqual(ret['error'], None)
+
+
     def test_logic(self):
         p = Parser(debug=True)
         # Numbers
