@@ -1,4 +1,4 @@
-# Supported Formulas - 155
+# Supported Formulas - 156
 
 * ABS
 * ACOS
@@ -76,6 +76,7 @@
 * ISNUMBER
 * ISODD
 * ISTEXT
+* LARGE
 * LEFT
 * LEFTB
 * LEN
@@ -157,7 +158,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 333
+# Not Yet Supported Formulas - 332
 
 * ACCRINT
 * ACCRINTM
@@ -345,7 +346,6 @@
 * ISREF
 * JIS
 * KURT
-* LARGE
 * LCM
 * LET
 * LINEST

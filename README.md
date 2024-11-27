@@ -58,7 +58,7 @@ To install dependencies automatically using pip run:
   
 ## Testing   
 
-    python setup.py test
+    python -m unittest
 
 ## Coverage
 
