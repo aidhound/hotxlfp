@@ -12,6 +12,7 @@ from fractions import Fraction
 from . import dispatcher
 from . import error
 from . import utils
+from .error import XLError
 from .utils import DEFAULT
 from ..helper.number import to_number
 from .._compat import string_types
@@ -43,7 +44,15 @@ def CLEAN(text):
 
 @dispatcher.register_for('CONCAT', 'CONCATENATE')
 def CONCATENATE(*args):
-    return ''.join(utils.iflatten(args))
+    def test_arg(arg):
+        if isinstance(arg, error.XLError):
+            raise arg
+        return arg
+
+    try:
+        return ''.join((str(a) if not isinstance(test_arg(a), string_types) else a for a in utils.iflatten(args)))
+    except XLError as xle:
+        return xle
 
 
 @dispatcher.register_for('LEN', 'LENB')
