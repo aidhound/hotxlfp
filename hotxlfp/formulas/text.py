@@ -13,7 +13,7 @@ from . import dispatcher
 from . import error
 from . import utils
 from .error import XLError
-from .utils import DEFAULT, ArgumentError
+from .utils import DEFAULT
 from ..helper.number import to_number
 from .._compat import string_types
 

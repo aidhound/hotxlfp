@@ -2,7 +2,6 @@
 import unittest
 import math
 from hotxlfp import Parser
-from hotxlfp.formulas.error import XLError
 
 
 class TestText(unittest.TestCase):
