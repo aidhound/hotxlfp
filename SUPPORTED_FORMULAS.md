@@ -1,4 +1,4 @@
-# Supported Formulas - 154
+# Supported Formulas - 156
 
 * ABS
 * ACOS
@@ -76,6 +76,7 @@
 * ISNUMBER
 * ISODD
 * ISTEXT
+* LARGE
 * LEFT
 * LEFTB
 * LEN
@@ -144,6 +145,7 @@
 * TIME
 * TIMEVALUE
 * TODAY
+* TRIM
 * TRUE
 * UPPER
 * VAR
@@ -156,7 +158,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 334
+# Not Yet Supported Formulas - 332
 
 * ACCRINT
 * ACCRINTM
@@ -344,7 +346,6 @@
 * ISREF
 * JIS
 * KURT
-* LARGE
 * LCM
 * LET
 * LINEST
@@ -463,7 +464,6 @@
 * TINV
 * TRANSPOSE
 * TREND
-* TRIM
 * TRIMMEAN
 * TRUNC
 * TTEST

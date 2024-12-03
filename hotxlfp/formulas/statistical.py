@@ -199,3 +199,16 @@ def SLOPE(*yx):
 
     slope = ((n * sum_xy) - (sum_x * sum_y)) / denominator
     return slope
+
+
+@dispatcher.register_for('LARGE')
+def LARGE(arr, n):
+    """ 
+    The nth largest value in an array.
+    """
+    n = utils.parse_number(n)
+    if isinstance(n, error.XLError):
+        return n
+    if n < 1 or n > len(arr):
+        return error.NUM
+    return sorted(utils.inumbers(arr, try_parse=True, text_is_zero=True))[-n]

@@ -2,7 +2,7 @@ Send new version to pip
 
 # Make sure tests pass
 
-python setup.py test
+python -m unittest discover
 
 # Update supported formulas
 
