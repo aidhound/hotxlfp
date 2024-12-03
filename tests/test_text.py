@@ -2,6 +2,7 @@
 import unittest
 import math
 from hotxlfp import Parser
+from hotxlfp.formulas.error import XLError
 
 
 class TestText(unittest.TestCase):
@@ -47,6 +48,9 @@ class TestText(unittest.TestCase):
         ret = p.parse('CONCAT("The"," ","sun"," ","will"," ","come"," ","up"," ","tomorrow.")')
         self.assertEqual(ret['result'], 'The sun will come up tomorrow.')
         self.assertEqual(ret['error'], None)
+        ret = p.parse('CONCAT(1/0, 14,"sun")')
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#DIV/0!')
 
     def test_len(self):
         p = Parser(debug=True)
