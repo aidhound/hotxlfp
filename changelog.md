@@ -1,5 +1,10 @@
 # hotxlfp changelog
 
+## 1.0.2
+
+* Support for LARGE
+* Fixes CONCATENATE was not working with numbers
+
 ## 1.0.1
 
 * Support for TIME, TIMEVALUE (Thanks João Grazina)
