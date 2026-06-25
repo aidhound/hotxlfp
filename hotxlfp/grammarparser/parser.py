@@ -33,6 +33,8 @@ class Parser(object):
         self.call_range_value = call_range_value
         self.throw_error = throw_error
         self.names = {}
+        self.input = None
+        self.last_error = None
         try:
             modname = os.path.split(os.path.splitext(__file__)[0])[
                 1] + "_" + self.__class__.__name__
@@ -49,7 +51,11 @@ class Parser(object):
                   tabmodule=self.tabmodule)
 
     def parse(self, input):
-        return self.yacc.parse(input)
+        self.input = input
+        self.last_error = None
+        self.lex.error_pos = None
+        self.lex.error_value = None
+        return self.yacc.parse(input, lexer=self.lex)
 
     def run(self):
         while 1:
@@ -76,10 +82,7 @@ class FormulaParser(Parser):
                   | expression DIV expression
                   | expression AMP expression
         """
-        if p[2] == '&':
-            p[0] = str(p[1]) + str(p[3])
-        else:
-            p[0] = operators.evaluate_arithmetic(p[2], p[1], p[3])
+        p[0] = ['binop', p[2], p[1], p[3]]
 
     def p_expression_logical_operator(self, p):
         """
@@ -90,11 +93,11 @@ class FormulaParser(Parser):
                    | expression EQUAL expression
                    | expression NOTEQUAL expression
         """
-        p[0] = operators.evaluate_logic(p[2], p[1], p[3])
+        p[0] = ['binop', p[2], p[1], p[3]]
 
     def p_expression_uminus(self, p):
         'expression : MINUS expression %prec UMINUS'
-        p[0] = -p[2]
+        p[0] = ['unary', '-', p[2]]
 
     def p_expression_number(self, p):
         """
@@ -105,27 +108,27 @@ class FormulaParser(Parser):
                    | NUMBER PERCENT
         """
         if len(p) == 2:
-            p[0] = to_number(p[1])
+            p[0] = ['num', to_number(p[1])]
         elif p[1] == '.':
-            p[0] = to_number('0.' + p[2])
+            p[0] = ['num', to_number('0.' + p[2])]
         elif p[2] == '.':
-            p[0] = to_number(p[1] + '.' + p[3])
+            p[0] = ['num', to_number(p[1] + '.' + p[3])]
         elif p[2] == '^':
-            p[0] = to_number(p[1])**to_number(p[3])
+            p[0] = ['binop', '^', ['num', to_number(p[1])], ['num', to_number(p[3])]]
         elif p[2] == '%':
-            p[0] = to_number(p[1]) * 0.01
+            p[0] = ['unary', '%', ['num', to_number(p[1])]]
 
     def p_expression_string(self, p):
         """
         expression : STRING
         """
-        p[0] = p[1][1:-1]
+        p[0] = ['str', p[1][1:-1]]
 
     def p_expression_function(self, p):
         """
         expression : FUNCTION LPAREN RPAREN
         """
-        p[0] = self.call_function(p[1])
+        p[0] = ['call', p[1], []]
 
     def p_expression_wargs(self, p):
         """
@@ -133,7 +136,7 @@ class FormulaParser(Parser):
                    | FUNCTION LPAREN expseqsemicolon RPAREN
                    | FUNCTION LPAREN expseqbackslash RPAREN
         """
-        p[0] = self.call_function(p[1], p[3])
+        p[0] = ['call', p[1], p[3]]
 
     def p_expression_array(self, p):
         """
@@ -147,7 +150,7 @@ class FormulaParser(Parser):
               | LBRACKET expseqcomma RBRACKET
               | LBRACKET expseqbackslash RBRACKET
         """
-        p[0] = p[2]
+        p[0] = ['array', p[2]]
 
     def p_expseq_semicolon(self, p):
         """
@@ -164,14 +167,14 @@ class FormulaParser(Parser):
             p[0] = [p[1]]
         elif len(p) == 3:
             if p[1] == ';' and p[2] == ';':
-                p[0] = [None, None, None]
+                p[0] = [['empty'], ['empty'], ['empty']]
             elif p[1] == ';':
-                p[0] = [None] + p[2]
+                p[0] = [['empty']] + p[2]
             else:
-                p[0] = p[1] + [None]
+                p[0] = p[1] + [['empty']]
         elif p[2] == ';':
             if p[3] == ';':
-                p[0] = p[1] + [None, p[4]]
+                p[0] = p[1] + [['empty'], p[4]]
             else:
                 if str(p.slice[1]) in ('expseqcomma', 'expseqbackslash'):
                     p[0] = [p[1]] + [p[3]]
@@ -191,15 +194,15 @@ class FormulaParser(Parser):
             p[0] = [p[1]]
         elif len(p) == 3:
             if p[1] == ',' and p[2] == ',':
-                p[0] = [None, None, None]
+                p[0] = [['empty'], ['empty'], ['empty']]
             elif p[1] == ',':
-                p[0] = [None] + p[2]
+                p[0] = [['empty']] + p[2]
             else:
-                p[0] = p[1] + [None]
+                p[0] = p[1] + [['empty']]
         elif p[2] == ',':
             # expseqcomma COMMA COMMA expression
             if p[3] == ',':  # e.g. an empty function argument
-                p[0] = p[1] + [None, p[4]]
+                p[0] = p[1] + [['empty'], p[4]]
             else:
                 p[0] = p[1] + [p[3]]
 
@@ -216,14 +219,14 @@ class FormulaParser(Parser):
             p[0] = [p[1]]
         elif len(p) == 3:
             if p[1] == '\\' and p[2] == '\\':
-                p[0] = [None, None, None]
+                p[0] = [['empty'], ['empty'], ['empty']]
             elif p[1] == '\\':
-                p[0] = [None] + p[2]
+                p[0] = [['empty']] + p[2]
             else:
-                p[0] = p[1] + [None]
+                p[0] = p[1] + [['empty']]
         elif p[2] == '\\':
             if p[3] == '\\':
-                p[0] = p[1] + [None, p[4]]
+                p[0] = p[1] + [['empty'], p[4]]
             else:
                 p[0] = p[1] + [p[3]]
 
@@ -231,13 +234,30 @@ class FormulaParser(Parser):
         """
         expression : XLERROR
         """
-        p[0] = self.throw_error(p[1])
+        p[0] = ['err', p[1]]
 
     def p_error(self, p):
         """
         SyntaxError
         """
-        p[0] = self.throw_error(error.ERROR)
+        if p is None:
+            position = len(self.input) if self.input is not None else None
+            self.last_error = {
+                'position': position,
+                'length': 0,
+                'token': None,
+                'type': None,
+                'message': 'Unexpected end of input'
+            }
+        else:
+            self.last_error = {
+                'position': p.lexpos,
+                'length': len(str(p.value)),
+                'token': str(p.value),
+                'type': p.type,
+                'message': "Unexpected token '%s'" % (p.value,)
+            }
+        raise error.ERROR
 
     def p_expression_paren(self, p):
         """
@@ -249,7 +269,7 @@ class FormulaParser(Parser):
         """
         expression : variable_sequence
         """
-        p[0] = self.call_variable(p[1][0])
+        p[0] = ['var', p[1][0]]
 
     def p_variable(self, p):
         """
@@ -286,6 +306,6 @@ class FormulaParser(Parser):
              | MIXED_CELL COLON MIXED_CELL
         """
         if len(p) == 2:
-            p[0] = self.call_cell_value(p[1])
+            p[0] = ['cell', p[1]]
         else:
-            p[0] = self.call_range_value(p[1], p[3])
+            p[0] = ['range', p[1], p[3]]

@@ -223,6 +223,11 @@ def t_HASH(t):
 
 
 def t_error(t):
+    try:
+        t.lexer.error_pos = t.lexpos
+        t.lexer.error_value = t.value[0] if t.value else None
+    except Exception:
+        pass
     raise error.NAME
 
 

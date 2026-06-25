@@ -1,5 +1,11 @@
 # hotxlfp changelog
 
+## 1.1.0
+
+* Added `Parser.parse_to_ast` and `Parser.evaluate_ast` to parse a formula into a JSON-serializable AST and evaluate it later (same result as `parse`). `parse` is unchanged.
+* Added `Parser.validate` returning structured errors (`syntax`, `unknown_function`, `arity`) with character positions, without evaluating the formula.
+* The date functions (`DATE`, `DAYS`, `EDATE`, `YEAR`, `MONTH`, `DAY`, ...) now accept plain `datetime.date` objects, not just `datetime.datetime`, serial numbers or strings.
+
 ## 1.0.2
 
 * Support for LARGE
