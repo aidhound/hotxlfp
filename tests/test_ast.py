@@ -22,7 +22,7 @@ CORPUS = [
     # numbers
     '0', '42', '1.5', '.5', '50%', '10%+5', '2^3', '2^10',
     # strings
-    '"hello"', '""', '"a,b)"', '"with \\" quote"',
+    '"hello"', '""', '"a,b)"', '"with \\" quote"', '',
     # arithmetic operators
     '1+2', '5-3', '4*2', '8/4', '1+2*3', '(1+2)*3', '2&3', '"a"&"b"&"c"',
     # logic operators
@@ -145,6 +145,24 @@ class TestASTEquivalence(unittest.TestCase):
             self.assertEqual(ret['result'], result, 'result drift for %r' % f)
             self.assertEqual(ret['error'], error, 'error drift for %r' % f)
 
+    def test_empty_string_equivalence(self):
+        """ parse('') has a shortcut return; parse_to_ast/evaluate_ast must mirror it. """
+        p = make_parser()
+        self.assertEqual(p.parse(''), {'result': '', 'error': None})
+        ast_result = p.parse_to_ast('')
+        self.assertEqual(ast_result, {'ast': ['str', ''], 'error': None})
+        self.assertEqual(p.evaluate_ast(ast_result['ast']), p.parse(''))
+
+    def test_eager_error_literal_evaluation_matches(self):
+        """ Arguments are evaluated eagerly (as in parse()) even in the
+        untaken branch of IF -- evaluate_ast must reproduce that exactly. """
+        p = make_parser()
+        f = 'IF(FALSE,#REF!,1)'
+        direct = p.parse(f)
+        self.assertEqual(direct['error'], '#REF!')
+        via_ast = p.evaluate_ast(p.parse_to_ast(f)['ast'])
+        self.assertEqual(via_ast, direct)
+
 
 class TestASTShape(unittest.TestCase):
 
@@ -234,6 +252,15 @@ class TestValidate(unittest.TestCase):
         functions = [e['function'] for e in errors if e['kind'] == 'unknown_function']
         self.assertEqual(functions, ['BOGUS'])
 
+    def test_unknown_function_inside_array_literal(self):
+        errors = self.p.validate('SUM({BOGUS(1),2})')
+        functions = [e['function'] for e in errors if e['kind'] == 'unknown_function']
+        self.assertEqual(functions, ['BOGUS'])
+
+    def test_empty_string_is_valid(self):
+        # parse('') succeeds (empty result), so it must not be reported as invalid.
+        self.assertEqual(self.p.validate(''), [])
+
     def test_arity_too_few(self):
         # DAYS requires two arguments.
         errors = self.p.validate('DAYS(1)')
@@ -242,6 +269,14 @@ class TestValidate(unittest.TestCase):
 
     def test_arity_ok(self):
         self.assertEqual(self.p.validate('DAYS(1, 2)'), [])
+
+    def test_arity_predicts_error_evaluation(self):
+        # RAND takes no arguments; calling it with one is a real bug that
+        # evaluates to #ERROR! -- validate() should catch it upfront.
+        errors = self.p.validate('RAND(2)')
+        kinds = [e['kind'] for e in errors]
+        self.assertIn('arity', kinds)
+        self.assertEqual(self.p.parse('RAND(2)')['error'], '#ERROR!')
 
     def test_validate_does_not_raise_on_garbage(self):
         for f in ['', ')(', '*/', '1++', '{', '@@@', 'SUM(', ',,,']:

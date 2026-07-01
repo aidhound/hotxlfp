@@ -38,6 +38,9 @@ class Parser(Emitter):
         lexing error ``ast`` is ``None`` and ``error`` holds the Excel error
         string (the same string ``parse`` would return for that input).
         """
+        if expression == '':
+            # Mirrors parse()'s empty-input shortcut so evaluate_ast(ast) == parse('').
+            return {'ast': ['str', ''], 'error': None}
         ast = None
         error = None
         try:
@@ -113,7 +116,10 @@ class Parser(Emitter):
         """ Evaluate a sequence (function arguments or array contents).
 
         Items are AST nodes (tagged lists whose first element is a string) or,
-        for bidimensional arrays, nested lists of nodes.
+        for bidimensional arrays, nested lists of nodes. Every node tag is a
+        non-empty string (see the tags handled by _eval_node), while a nested
+        row is a plain list whose first element is itself a list (a node) --
+        that difference is what isinstance(item[0], str) distinguishes.
         """
         result = []
         for item in seq:
@@ -131,6 +137,9 @@ class Parser(Emitter):
         ``position``, ``length``, ``token``, ``function`` and ``message``.
         Never raises and never evaluates the formula.
         """
+        if expression == '':
+            # parse('') succeeds (empty result), so it is a valid formula.
+            return []
         errors = []
         try:
             ast = self.parser.parse(expression)
@@ -168,6 +177,8 @@ class Parser(Emitter):
             return
         tag = node[0]
         if not isinstance(tag, str):
+            # node is actually a plain sequence (e.g. an array row), not a
+            # tagged AST node -- see _eval_seq for the same distinction.
             for item in node:
                 self._validate_node(item, errors)
             return
