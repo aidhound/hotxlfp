@@ -424,6 +424,27 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_implicit_conversions_raw_date(self):
+        # A plain datetime.date (not just datetime.datetime, e.g. what a
+        # consumer might store in a variable/cell) must behave exactly like
+        # the equivalent DATE(...) result in arithmetic and comparisons.
+        p = Parser(debug=True)
+        p.set_variable('startdate', datetime.date(2019, 11, 20))
+        p.set_variable('enddate', datetime.date(2019, 11, 22))
+        self.assertEqual(p.parse('startdate + 2'), p.parse('DATE(2019,11,20) + 2'))
+        self.assertEqual(p.parse('enddate - startdate'), p.parse('DATE(2019,11,22) - DATE(2019,11,20)'))
+        self.assertEqual(p.parse('startdate * 2'), p.parse('DATE(2019,11,20) * 2'))
+        self.assertEqual(p.parse('startdate / 2'), p.parse('DATE(2019,11,20) / 2'))
+        # Comparisons between two raw dates
+        self.assertEqual(p.parse('startdate < enddate'), {'result': True, 'error': None})
+        self.assertEqual(p.parse('startdate = startdate'), {'result': True, 'error': None})
+        self.assertEqual(p.parse('startdate > enddate'), {'result': False, 'error': None})
+        # Mixed datetime.date / datetime.datetime (DATE(...)) operands
+        self.assertEqual(p.parse('startdate + DATE(2019,11,22)'), p.parse('DATE(2019,11,20) + DATE(2019,11,22)'))
+        self.assertEqual(p.parse('startdate < DATE(2019,11,22)'), p.parse('DATE(2019,11,20) < DATE(2019,11,22)'))
+        # Blank still compares to a raw date the same way it does to DATE(...)
+        self.assertEqual(p.parse('startdate > B3'), p.parse('DATE(2019,11,20) > B3'))
+
     def test_implicit_conversions_bool(self):
         # Cell references will be blanks in this test
         # since we don't teach the parser how to get cells

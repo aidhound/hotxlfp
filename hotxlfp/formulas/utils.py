@@ -129,6 +129,8 @@ def parse_date(date):
         return date
     if isinstance(date, datetime.datetime):
         return date
+    if isinstance(date, datetime.date):
+        return datetime.datetime(date.year, date.month, date.day)
     date = to_number(date)
     if isinstance(date, number_types):
         if date < 0:

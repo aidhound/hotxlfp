@@ -13,7 +13,9 @@ class ExcelComparator(object):
 
     def __init__(self, value):
         self.value = value
-        if isinstance(value, datetime.datetime):
+        if isinstance(value, datetime.date):
+            # datetime.datetime is a subclass of datetime.date; serialize_date
+            # (via parse_date) already normalizes plain dates correctly.
             self.value = serialize_date(value)
 
     def convert_other(self, other):
@@ -24,7 +26,7 @@ class ExcelComparator(object):
                 other = type(self.value)(0)  # so it's the same number type
             elif isinstance(self.value, string_types):
                 other = ''
-        elif isinstance(other, datetime.datetime):
+        elif isinstance(other, datetime.date):
             other = serialize_date(other)
         return other
 
@@ -142,6 +144,11 @@ def value_and_type(value):
         return (value, number_types)
     if isinstance(value, datetime.datetime):
         return (value, datetime.datetime)
+    if isinstance(value, datetime.date):
+        # Normalize a plain date to a real datetime so every downstream
+        # conversion in IMPLICIT_DATA_TYPE_CONVERSIONS (keyed by
+        # datetime.datetime) applies to it unchanged.
+        return (datetime.datetime(value.year, value.month, value.day), datetime.datetime)
     if isinstance(value, string_types):
         value = to_number(value)
         if isinstance(value, number_types):

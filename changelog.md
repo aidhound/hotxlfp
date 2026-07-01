@@ -1,5 +1,9 @@
 # hotxlfp changelog
 
+## 1.0.3
+
+* Plain `datetime.date` objects (not just `datetime.datetime`) are now accepted everywhere a date can be used: the date functions (`DATE`, `DAYS`, `EDATE`, `YEAR`, `MONTH`, `DAY`, ...), `N`, and directly in arithmetic (`+`, `-`, `*`, `/`) and comparison operators, matching `datetime.datetime` behavior exactly.
+
 ## 1.0.2
 
 * Support for LARGE
