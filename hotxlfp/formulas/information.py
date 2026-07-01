@@ -79,7 +79,7 @@ def ISNA(value):
 def N(value):
     if isinstance(value, (error.XLError, number_types)):
         return value
-    if isinstance(value, datetime.datetime):
+    if isinstance(value, datetime.date):
         return utils.serialize_date(value)
     if value is True:
         return 1

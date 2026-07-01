@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+import datetime
 from hotxlfp import Parser
 
 
@@ -159,6 +160,12 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         ret = p.parse('N(FALSE())')
         self.assertEqual(ret['result'], 0)
+        self.assertEqual(ret['error'], None)
+        # N() must treat a raw datetime.date the same as a DATE(...) result
+        p.set_variable('rawdate', datetime.date(2019, 11, 20))
+        ret = p.parse('N(rawdate)')
+        ret2 = p.parse('N(DATE(2019,11,20))')
+        self.assertEqual(ret['result'], ret2['result'])
         self.assertEqual(ret['error'], None)
 
     def test_t(self):
