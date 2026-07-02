@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run tests with coverage
+        run: uv run --locked coverage run --source hotxlfp -m unittest discover -s tests
+
+      - name: Coverage report
+        run: uv run coverage xml
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml-${{ matrix.python-version }}
+          path: coverage.xml
+
+      - name: Upload coverage to Codecov
+        if: github.repository == 'aidhound/hotxlfp' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
