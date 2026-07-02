@@ -51,21 +51,29 @@ Fork the project
 ## Installing Dependencies  
   
 Depends on ply and python-dateutil.  
-   
-To install dependencies automatically using pip run:
 
-    pip install -r requirements.txt
-  
+This project uses [uv](https://docs.astral.sh/uv/) to manage dependencies and the virtual environment. To install dependencies automatically run:
+
+    uv sync
+
+## Updating Dependencies
+
+To upgrade ply/python-dateutil to their latest compatible versions and update `uv.lock` accordingly:
+
+    uv lock --upgrade
+
+Commit the updated `uv.lock` along with your change.
+
 ## Testing   
 
-    python -m unittest
+    uv run python -m unittest discover
 
 ## Coverage
 
-    coverage run --source hotxlfp setup.py test
+    uv run coverage run --source hotxlfp -m unittest discover
 
 ## Update SUPPORTED_FORMULAS.md
 
 Inside the project directory run:
 
-    python -m "scripts.update_supported_formulas"
+    uv run python -m "scripts.update_supported_formulas"

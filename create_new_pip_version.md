@@ -2,16 +2,16 @@ Send new version to pip
 
 # Make sure tests pass
 
-python -m unittest discover
+uv run python -m unittest discover
 
 # Update supported formulas
 
-python -m "scripts.update_supported_formulas"
+uv run python -m "scripts.update_supported_formulas"
 
 # Edit
 
-setup.py - bump the version and download url
-changelog.md - put the change you made there
+pyproject.toml - bump the version and download url
+changelog.md - put the changes you made there
 
 # Create the release in github
 
@@ -26,6 +26,6 @@ Press draft a new release
 
 delete stuff inside dist/*
 
-python setup.py sdist bdist_wheel
+uv build
 
 twine upload dist/*
