@@ -97,7 +97,6 @@ dmypy.json
 *.dbg
 *.out
 *.tab
-*parsetab.py
 
 # pyCharm
 .idea/

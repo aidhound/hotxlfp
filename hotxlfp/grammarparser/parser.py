@@ -33,13 +33,12 @@ class Parser(object):
         self.call_range_value = call_range_value
         self.throw_error = throw_error
         self.names = {}
-        try:
-            modname = os.path.split(os.path.splitext(__file__)[0])[
-                1] + "_" + self.__class__.__name__
-        except:
-            modname = "parser" + "_" + self.__class__.__name__
+        package = __package__ or __name__.rpartition('.')[0]
+        modname = "parser" + "_" + self.__class__.__name__
         self.debugfile = modname + ".dbg"
         self.tabmodule = modname + "_" + "parsetab"
+        if package:
+            self.tabmodule = package + "." + self.tabmodule
 
         # Build the lexer and parser
         self.lex = lex.lex(module=lexer, debug=self.debug)

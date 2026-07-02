@@ -3,6 +3,7 @@
 ## 1.0.3
 
 * Plain `datetime.date` objects (not just `datetime.datetime`) are now accepted everywhere a date can be used: the date functions (`DATE`, `DAYS`, `EDATE`, `YEAR`, `MONTH`, `DAY`, ...), `N`, and directly in arithmetic (`+`, `-`, `*`, `/`) and comparison operators, matching `datetime.datetime` behavior exactly.
+* Include the generated PLY parser table in the package to avoid runtime write warnings in read-only installs.
 
 ## 1.0.2
 
