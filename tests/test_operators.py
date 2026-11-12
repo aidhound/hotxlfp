@@ -2,6 +2,7 @@
 import unittest
 import datetime
 from hotxlfp import Parser
+from hotxlfp.formulas import error
 
 
 class TestOperators(unittest.TestCase):
@@ -79,6 +80,43 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['result'], 0.5)
         self.assertEqual(ret['error'], None)
 
+
+    def test_comparisons_preserve_error_codes(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('ERR', lambda value=source_error: value)
+            for op in ('=', '<>', '<', '>', '<=', '>='):
+                for left, right in (('ERR()', '0'), ('0', 'ERR()'),
+                                    ('ERR()', 'ERR()')):
+                    expression = left + op + right
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+
+    def test_comparison_errors_reach_handlers(self):
+        p = Parser()
+        p.set_function('ERR', lambda: error.DIV_ZERO)
+        for op in ('=', '<>', '<', '>', '<=', '>='):
+            for left, right in (('ERR()', '0'), ('0', 'ERR()')):
+                expression = 'IFERROR(' + left + op + right + ',99)'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': 99, 'error': None})
+            expression = 'IFNA(NA()' + op + '0,77)'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': 77, 'error': None})
+
+    def test_comparisons_follow_arithmetic_left_error_policy(self):
+        p = Parser()
+        p.set_function('ERR', lambda: error.DIV_ZERO)
+        for op in ('=', '<>', '<', '>', '<=', '>='):
+            for left, right, code in (('ERR()', 'NA()', '#DIV/0!'),
+                                      ('NA()', 'ERR()', '#N/A')):
+                expression = left + op + right
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': code})
 
     def test_logic(self):
         p = Parser(debug=True)

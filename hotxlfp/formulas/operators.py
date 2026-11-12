@@ -399,4 +399,8 @@ def evaluate_arithmetic(op, lval, rval):
 
 
 def evaluate_logic(op, lval, rval):
+    if isinstance(lval, error.XLError):
+        return lval
+    if isinstance(rval, error.XLError):
+        return rval
     return OPERATOR_DICT[op](ExcelComparator(lval), rval)
