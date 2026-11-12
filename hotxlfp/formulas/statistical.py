@@ -3,11 +3,12 @@
 inspired by:
 https://github.com/sutoiku/formula.js/blob/master/lib/statistical.js
 """
+import datetime
 import statistics
 from . import dispatcher
 from . import error
 from . import utils
-from .._compat import number_types
+from .._compat import number_types, string_types
 from ..helper.number import to_number
 
 
@@ -49,7 +50,25 @@ def AVERAGEIF(args, criteria, average_range=None):
 
 @dispatcher.register_for('COUNT')
 def COUNT(*args):
-    return len(utils.flatten(args))
+    count = 0
+    for arg in args:
+        if isinstance(arg, (list, tuple)):
+            values = (
+                to_number(value)
+                for value in utils.iflatten(arg)
+                if not isinstance(value, bool)
+            )
+        else:
+            value = to_number(arg)
+            if isinstance(value, string_types):
+                value = utils.parse_date(value)
+            values = (value,)
+
+        count += sum(
+            1 for value in values
+            if isinstance(value, number_types) or isinstance(value, datetime.date)
+        )
+    return count
 
 
 @dispatcher.register_for('COUNTA')
