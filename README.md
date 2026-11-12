@@ -56,6 +56,39 @@ You can also set variables that you can then use in your formulas
     p.set_variable('foo', 33)
     p.parse('foo/3') # returns {'result': 11.0, 'error': None}
 
+# Differences from Excel
+
+## Blank values
+
+hotxlfp treats both `None` and the empty string (`""`) as blank. This preserves
+compatibility with applications that use empty strings for unanswered inputs.
+Zero, `False`, whitespace-only strings and arrays are not scalar blanks. Strings
+are not trimmed before checking whether they are blank.
+
+The following compares an empty-string value in hotxlfp with an Excel reference
+to a cell whose formula returns empty text (`=""`):
+
+| Function | hotxlfp | Excel |
+| --- | --- | --- |
+| ISBLANK | `True` | `FALSE` |
+| COUNTA | Not counted | Counted |
+| COUNTBLANK | Counted | Counted |
+
+These blank-handling rules are intentional compatibility choices. Excel's
+[ISBLANK](https://support.microsoft.com/en-us/excel/functions/is-functions)
+and [COUNTA](https://support.microsoft.com/en-us/excel/functions/counta-function)
+distinguish empty cells from empty text. Its
+[COUNTBLANK](https://support.microsoft.com/en-us/excel/functions/countblank-function)
+also counts cells whose formulas return empty text.
+
+## Array-literal orientation
+
+The parser currently represents both `{1,2,3}` and `{1;2;3}` as the same flat
+list, `[1, 2, 3]`. Excel distinguishes a horizontal row from a vertical column.
+This is a known parser limitation. Callbacks can provide nested arrays such as
+`[[1, 2, 3]]` for one row or `[[1], [2], [3]]` for one column when orientation
+matters.
+
 # Contributing
 
 Fork the project

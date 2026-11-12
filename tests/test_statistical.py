@@ -148,6 +148,25 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
 
+    def test_blank_functions_agree_on_scalar_values(self):
+        p = Parser()
+        for value, blank in [
+            (None, True), ('', True), (0, False), (False, False),
+            (' ', False), ('Alice', False), (error.DIV_ZERO, False),
+        ]:
+            p.set_function('DATA', lambda value=value: value)
+            for name, expected in [('ISBLANK', blank),
+                                    ('COUNTA', int(not blank)),
+                                    ('COUNTBLANK', int(blank))]:
+                with self.subTest(value=value, function=name):
+                    self.assertEqual(p.parse(name + '(DATA())'),
+                                     {'result': expected, 'error': None})
+        p.set_function('DATA', lambda: [None, '', 7, False, error.DIV_ZERO])
+        self.assertEqual(p.parse('COUNTA(DATA())'),
+                         {'result': 3, 'error': None})
+        self.assertEqual(p.parse('COUNTBLANK(DATA())'),
+                         {'result': 2, 'error': None})
+
     def test_countblank(self):
         p = Parser(debug=True)
         ret = p.parse('COUNTBLANK(1;"2")')

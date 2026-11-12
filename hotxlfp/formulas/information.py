@@ -28,7 +28,7 @@ def ERROR_TYPE(error_val):
 
 @dispatcher.register_for('ISBLANK')
 def ISBLANK(value):
-    return value is None
+    return value is None or value == ''
 
 
 @dispatcher.register_for('ISERR')

@@ -3,9 +3,30 @@
 import unittest
 import datetime
 from hotxlfp import Parser
+from hotxlfp.formulas import error
 
 
 class TestStatistical(unittest.TestCase):
+
+    def test_isblank_empty_input_compatibility(self):
+        p = Parser()
+        for value, expected in [
+            (None, True), ('', True), (0, False), (False, False),
+            (' ', False), ('Alice', False), ([], False), ((), False),
+            (error.DIV_ZERO, False),
+        ]:
+            with self.subTest(value=value):
+                p.set_function('DATA', lambda value=value: value)
+                self.assertEqual(p.parse('ISBLANK(DATA())'),
+                                 {'result': expected, 'error': None})
+        for expression, expected in [
+            ('ISBLANK(NULL)', True), ('ISBLANK("")', True),
+            ('ISBLANK(0)', False), ('ISBLANK(FALSE())', False),
+            ('ISBLANK(" ")', False),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
 
     def test_error_type(self):
         p = Parser(debug=True)
