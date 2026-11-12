@@ -1,10 +1,70 @@
 # -*- coding: utf-8 -*-
 import unittest
 from hotxlfp import Parser
+from hotxlfp.formulas import error
 
 
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
+
+    def test_aggregate_errors_reach_enclosing_functions(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            for aggregate in ('SUM', 'AVERAGE'):
+                expression = aggregate + '(DATA())'
+                cases = [
+                    (expression, None, str(source_error)),
+                    ('IFERROR(' + expression + ',99)', 99, None),
+                    ('ISERROR(' + expression + ')', True, None),
+                    ('IF(FALSE(),' + expression + ',5)', 5, None),
+                ]
+                if source_error is error.NOT_AVAILABLE:
+                    cases.append(('IFNA(' + expression + ',77)', 77, None))
+                else:
+                    cases.append(('IFNA(' + expression + ',77)',
+                                  None, str(source_error)))
+                for formula, result, code in cases:
+                    with self.subTest(formula=formula, error=str(source_error)):
+                        self.assertEqual(p.parse(formula),
+                                         {'result': result, 'error': code})
+
+    def test_index_can_select_a_value_before_an_array_error(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [5, error.DIV_ZERO])
+        self.assertEqual(p.parse('INDEX(DATA(),1)'),
+                         {'result': 5, 'error': None})
+
+    def test_raised_custom_excel_errors_reach_handlers(self):
+        def fail():
+            raise error.NOT_AVAILABLE
+
+        p = Parser()
+        p.set_function('FAIL', fail)
+        self.assertEqual(p.parse('FAIL()'),
+                         {'result': None, 'error': '#N/A'})
+        self.assertEqual(p.parse('IFNA(FAIL(),77)'),
+                         {'result': 77, 'error': None})
+
+    def test_function_event_can_override_an_aggregate_error(self):
+        def override(name, args, set_value):
+            if name == 'SUM':
+                set_value(12)
+
+        p = Parser()
+        p.set_function('DATA', lambda: [5, error.DIV_ZERO])
+        p.on('callFunction', override)
+        self.assertEqual(p.parse('SUM(DATA())'),
+                         {'result': 12, 'error': None})
+
+    def test_python_implementation_errors_still_abort_evaluation(self):
+        def fail():
+            raise ValueError('callback bug')
+
+        p = Parser()
+        p.set_function('FAIL', fail)
+        self.assertEqual(p.parse('IFERROR(FAIL(),99)'),
+                         {'result': None, 'error': '#ERROR!'})
 
     def test_div_zero(self):
         p = Parser()

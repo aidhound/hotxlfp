@@ -56,7 +56,11 @@ class Parser(Emitter):
             fn = formulas.get_for(name)
         if fn is None:
             raise formulaserror.NAME
-        result['value'] = fn(*args)
+        try:
+            result['value'] = fn(*args)
+        except formulaserror.XLError as exc:
+            # Let enclosing formula functions handle semantic Excel errors.
+            result['value'] = exc
 
         def valsetter(new_value):
             if new_value is not None:

@@ -100,3 +100,6 @@ dmypy.json
 
 # pyCharm
 .idea/
+
+# temp files
+/tmp
