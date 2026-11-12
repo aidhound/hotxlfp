@@ -17,6 +17,41 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 2)
         self.assertEqual(ret['error'], None)
 
+    def test_average_empty_inputs_return_handleable_division_errors(self):
+        p = Parser()
+        for values in ([], (), [None], [[None], [None]], [None, ''], ['text']):
+            p.set_function('DATA', lambda values=values: values)
+            for expression, result, code in [
+                ('AVERAGE(DATA())', None, '#DIV/0!'),
+                ('IFERROR(AVERAGE(DATA()),99)', 99, None),
+                ('IFNA(AVERAGE(DATA()),77)', None, '#DIV/0!'),
+            ]:
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': result, 'error': code})
+
+    def test_average_preserves_coercion_and_text_exclusion(self):
+        p = Parser()
+        for values, expected in [
+            ([5, '7'], 6), ([5, 'text'], 5), ([5, ''], 5),
+            ([5, None], 5), ([None, '', 7], 7), ([0], 0),
+        ]:
+            with self.subTest(values=values):
+                p.set_function('DATA', lambda values=values: values)
+                self.assertEqual(p.parse('AVERAGE(DATA())'),
+                                 {'result': expected, 'error': None})
+
+    def test_avedev_propagates_average_errors(self):
+        p = Parser()
+        for values in ([], [None], [None, ''], [5, error.NOT_AVAILABLE]):
+            p.set_function('DATA', lambda values=values: values)
+            code = '#N/A' if values == [5, error.NOT_AVAILABLE] else '#DIV/0!'
+            with self.subTest(values=values):
+                self.assertEqual(p.parse('AVEDEV(DATA())'),
+                                 {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(AVEDEV(DATA()),99)'),
+                                 {'result': 99, 'error': None})
+
     def test_avedev(self):
         p = Parser(debug=True)
         ret = p.parse('AVEDEV(1)')
@@ -35,6 +70,60 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('AVERAGEA(1;"2";TRUE;TRUE)')
         self.assertEqual(ret['result'], 1.25)
         self.assertEqual(ret['error'], None)
+
+    def test_averagea_empty_inputs_return_handleable_division_errors(self):
+        p = Parser()
+        for values in ([], (), [None], [[None], [None]]):
+            p.set_function('DATA', lambda values=values: values)
+            for expression, result, code in [
+                ('AVERAGEA(DATA())', None, '#DIV/0!'),
+                ('IFERROR(AVERAGEA(DATA()),99)', 99, None),
+                ('IFNA(AVERAGEA(DATA()),77)', None, '#DIV/0!'),
+            ]:
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': result, 'error': code})
+        self.assertEqual(p.parse('AVERAGEA(NULL)'),
+                         {'result': None, 'error': '#DIV/0!'})
+
+    def test_averagea_preserves_numeric_string_and_text_coercion(self):
+        p = Parser()
+        for values, expected in [
+            ([5, '7'], 6), ([5, 'text'], 2.5), ([5, ''], 2.5),
+            ([5, True], 3), ([5, False], 2.5), ([5, None], 5),
+            ([None, '', 7], 3.5), ([None, ''], 0), ([0], 0),
+            ((5, '7'), 6), ([[5, None], ['7']], 6),
+        ]:
+            with self.subTest(values=values):
+                p.set_function('DATA', lambda values=values: values)
+                self.assertEqual(p.parse('AVERAGEA(DATA())'),
+                                 {'result': expected, 'error': None})
+        for expression, expected in [
+            ('AVERAGEA("7",3)', 5), ('AVERAGEA("text",3)', 1.5),
+            ('AVERAGEA("",3)', 1.5), ('AVERAGEA("")', 0),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
+
+    def test_averagea_preserves_input_errors_and_explicit_fallbacks(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            cases = [
+                ('AVERAGEA(DATA())', None, str(source_error)),
+                ('IFERROR(AVERAGEA(DATA()),99)', 99, None),
+                ('AVERAGEA(IFERROR(DATA(),0))', 2.5, None),
+                ('AVERAGEA(IFERROR(DATA(),""))', 2.5, None),
+            ]
+            if source_error is error.NOT_AVAILABLE:
+                cases.append(('IFNA(AVERAGEA(DATA()),77)', 77, None))
+            else:
+                cases.append(('IFNA(AVERAGEA(DATA()),77)', None, '#DIV/0!'))
+            for expression, result, code in cases:
+                with self.subTest(error=str(source_error), expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': result, 'error': code})
 
     def test_averagif(self):
         p = Parser(debug=True)

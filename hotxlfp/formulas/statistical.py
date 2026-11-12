@@ -14,19 +14,29 @@ from ..helper.number import to_number
 
 @dispatcher.register_for('AVERAGE')
 def AVERAGE(*args):
-    return statistics.mean(utils.inumbers(args, try_parse=True))
+    try:
+        return statistics.mean(utils.inumbers(args, try_parse=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('AVEDEV')
 def AVEDEV(*args):
     args = utils.flatten(args)
     average = AVERAGE(*args)
+    if isinstance(average, error.XLError):
+        return average
     return sum(abs(arg - average) for arg in utils.iflatten(args)) / len(args)
 
 
 @dispatcher.register_for('AVERAGEA')
 def AVERAGEA(*args):
-    return statistics.mean(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    try:
+        return statistics.mean(
+            utils.inumbers(args, try_parse=True, text_is_zero=True)
+        )
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('AVERAGEIF')

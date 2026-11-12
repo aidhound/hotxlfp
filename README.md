@@ -81,6 +81,24 @@ distinguish empty cells from empty text. Its
 [COUNTBLANK](https://support.microsoft.com/en-us/excel/functions/countblank-function)
 also counts cells whose formulas return empty text.
 
+## Numeric strings
+
+COUNT, SUM, AVERAGE and AVERAGEA convert numeric strings to numbers, including
+inside arrays. For `[5, "7"]`, their results are 2, 12, 6 and 6 respectively.
+This supports applications whose numeric answers arrive as strings. The parser
+does not know the source field type, so numeric-looking text is converted even
+when it came from a text field.
+
+Excel's [COUNT](https://support.microsoft.com/en-us/excel/functions/count-function)
+ignores numeric text in arrays and references. hotxlfp intentionally counts it,
+while still excluding array booleans, blanks, nonnumeric text and typed errors.
+Direct boolean arguments continue to count.
+
+AVERAGEA also retains its text-as-zero behavior for nonnumeric text in both
+direct arguments and arrays, including empty strings. `None` is excluded from
+the average. These are function-specific rules; input values are not globally
+replaced with zero.
+
 ## Array-literal orientation
 
 The parser currently represents both `{1,2,3}` and `{1;2;3}` as the same flat
