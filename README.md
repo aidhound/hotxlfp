@@ -37,6 +37,18 @@ You can teach the parser to use it with set_function
     p.set_function('TRIPLE', triple)
     p.parse('TRIPLE(2)') # returns {'result': 6, 'error': None}
 
+Function names are case-insensitive: `TRIPLE(2)`, `triple(2)` and `Triple(2)` call
+the same function. `set_function` and `get_function` also ignore case.
+
+A custom function with the same name as a built-in overrides it for that parser
+instance. For example, registering `average` makes both `average(...)` and
+`AVERAGE(...)` call your custom function. Registering the name again replaces the
+previous custom function, even if you use different capitalization.
+
+String arguments and variable names keep their original case. The `callFunction`
+event receives the function name exactly as written in the expression. An unknown
+function returns a `#NAME?` formula error.
+
 ## Variables
 
 You can also set variables that you can then use in your formulas

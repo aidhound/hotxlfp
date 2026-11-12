@@ -17,7 +17,7 @@ class Dispatcher(object):
         try:
             return self._registry_[fname]
         except KeyError:
-            raise SyntaxError('Function not found for %s' % fname)
+            raise error.NAME
 
     def __iter__(self):
         return iter(registry.values())

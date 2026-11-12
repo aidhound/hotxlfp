@@ -40,23 +40,21 @@ class Parser(Emitter):
         return {'result': result, 'error': error}
 
     def set_function(self, name, f):
-        self.functions[name] = f
+        self.functions[name.upper()] = f
         return self
 
     def get_function(self, name):
-        return self.functions[name]
+        return self.functions[name.upper()]
 
     def call_function(self, name, args=None):
         if args is None:
             args = []
 
-        fn = self.functions.get(name)
+        fn = self.functions.get(name.upper())
         result = {'value': None}  # get around 2.7 not having nonlocal
-        if fn is None:
-            fn = formulas.get_for(name)
-        if fn is None:
-            raise formulaserror.NAME
         try:
+            if fn is None:
+                fn = formulas.get_for(name.upper())
             result['value'] = fn(*args)
         except formulaserror.XLError as exc:
             # Let enclosing formula functions handle semantic Excel errors.
