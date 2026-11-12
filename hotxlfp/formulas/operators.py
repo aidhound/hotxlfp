@@ -141,6 +141,9 @@ class ExcelArrayOps(object):
 
 def value_and_type(value):
     if isinstance(value, number_types):
+        value = to_number(value)
+        if isinstance(value, error.XLError):
+            return (value, error.XLError)
         return (value, number_types)
     if isinstance(value, datetime.datetime):
         return (value, datetime.datetime)
@@ -151,6 +154,8 @@ def value_and_type(value):
         return (datetime.datetime(value.year, value.month, value.day), datetime.datetime)
     if isinstance(value, string_types):
         value = to_number(value)
+        if isinstance(value, error.XLError):
+            return (value, error.XLError)
         if isinstance(value, number_types):
             return value_and_type(value)
         try_date = parse_date(value)
@@ -374,7 +379,11 @@ def evaluate_arithmetic(op, lval, rval):
         return OPERATOR_DICT[op](lval, ExcelArrayOps(rval))
 
     lval, ltype = value_and_type(lval)
+    if isinstance(lval, error.XLError):
+        return lval
     rval, rtype = value_and_type(rval)
+    if isinstance(rval, error.XLError):
+        return rval
     conversions = IMPLICIT_DATA_TYPE_CONVERSIONS[op]
 
     if ltype not in conversions:

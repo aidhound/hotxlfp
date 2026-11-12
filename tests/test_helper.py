@@ -2,9 +2,32 @@
 
 import unittest
 from hotxlfp.helper import cell, number
+from hotxlfp.formulas import error
 
 
 class TestHelper(unittest.TestCase):
+
+    def test_to_number_returns_num_for_nonfinite_values(self):
+        for value in (
+            float('nan'), float('inf'), float('-inf'),
+            complex(float('nan'), 0), complex(0, float('inf')),
+            'NaN', 'inf', '-Infinity', '1e309',
+        ):
+            with self.subTest(value=value):
+                self.assertIs(number.to_number(value), error.NUM)
+                self.assertIs(number.invert_number(value), error.NUM)
+
+    def test_to_number_preserves_valid_values_and_unparseable_text(self):
+        for value, expected in [
+            (0, 0), (False, False), (True, True), (10 ** 400, 10 ** 400),
+            (complex(3, 4), complex(3, 4)), ('7', 7), ('3.5', 3.5),
+            ('text', 'text'), ('', ''), (None, None),
+            (error.DIV_ZERO, error.DIV_ZERO),
+        ]:
+            with self.subTest(value=value):
+                actual = number.to_number(value)
+                self.assertEqual(actual, expected)
+                self.assertIs(type(actual), type(expected))
 
     def test_row_index_to_label(self):
         res = cell.row_index_to_label(0)

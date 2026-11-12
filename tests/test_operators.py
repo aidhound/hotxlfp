@@ -7,6 +7,28 @@ from hotxlfp.formulas import error
 
 class TestOperators(unittest.TestCase):
 
+    def test_nonfinite_arithmetic_inputs_preserve_numeric_error(self):
+        p = Parser()
+        for value in (float('nan'), float('inf'), 'NaN', '1e309'):
+            p.set_function('DATA', lambda value=value: value)
+            for op in ('+', '-', '*', '/'):
+                for expression in ('DATA()' + op + '1', '1' + op + 'DATA()'):
+                    with self.subTest(value=value, expression=expression):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': '#NUM!'})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+
+    def test_overflowing_decimal_literals_preserve_numeric_error(self):
+        p = Parser()
+        literal = '9' * 400 + '.0'
+        for expression in (literal, '-' + literal):
+            with self.subTest(negative=expression.startswith('-')):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
     def test_plus(self):
         p = Parser(debug=True)
         ret = p.parse('1 + 1')

@@ -185,6 +185,89 @@ class TestStatistical(unittest.TestCase):
                 self.assertEqual(p.parse(expression),
                                  {'result': expected, 'error': None})
 
+    def test_count_skips_nonfinite_scalar_values(self):
+        p = Parser()
+        for value in (
+            float('nan'), float('inf'), float('-inf'),
+            complex(float('nan'), 0), complex(0, float('inf')),
+            'NaN', 'inf', '-Infinity', '1e309',
+        ):
+            with self.subTest(value=value):
+                p.set_function('DATA', lambda value=value: value)
+                self.assertEqual(p.parse('COUNT(DATA())'),
+                                 {'result': 0, 'error': None})
+                self.assertEqual(p.parse('COUNT(DATA(),0,"7",FALSE())'),
+                                 {'result': 3, 'error': None})
+
+    def test_count_skips_nonfinite_array_and_range_values(self):
+        p = Parser()
+        values = [
+            float('nan'), float('inf'), float('-inf'), 'NaN', 'inf',
+            '-Infinity', '1e309', complex(0, float('inf')),
+            True, False, None, '', 'text', error.DIV_ZERO, 0, '7', 5,
+        ]
+        p.set_function('DATA', lambda: values)
+        self.assertEqual(p.parse('COUNT(DATA())'),
+                         {'result': 3, 'error': None})
+        p.set_function('DATA', lambda: [[float('nan'), 'inf'],
+                                       (float('-inf'), '3.5', 0)])
+        self.assertEqual(p.parse('COUNT(DATA())'),
+                         {'result': 2, 'error': None})
+        p.on('callRangeValue', lambda start, end, set_value:
+             set_value([[float('nan'), 0], ['Infinity', '7'], [True, False]]))
+        self.assertEqual(p.parse('COUNT(A1:B3)'),
+                         {'result': 2, 'error': None})
+
+    def test_nonfinite_conversion_errors_reach_aggregate_handlers(self):
+        p = Parser()
+        for value in (float('nan'), float('inf'), float('-inf'), 'NaN', '1e309'):
+            p.set_function('DATA', lambda value=value: [5, value, 7])
+            for name in ('SUM', 'AVERAGE', 'AVERAGEA'):
+                with self.subTest(value=value, function=name):
+                    self.assertEqual(p.parse(name + '(DATA())'),
+                                     {'result': None, 'error': '#NUM!'})
+                    self.assertEqual(p.parse('IFERROR(' + name + '(DATA()),99)'),
+                                     {'result': 99, 'error': None})
+            self.assertEqual(p.parse('COUNT(DATA())'),
+                             {'result': 2, 'error': None})
+            self.assertEqual(p.parse('COUNTA(DATA())'),
+                             {'result': 3, 'error': None})
+
+    def test_nonparsing_aggregates_validate_numbers_without_coercing_text(self):
+        p = Parser()
+        for value in (float('nan'), float('inf')):
+            p.set_function('DATA', lambda value=value: [5, value, 7])
+            for name in ('MIN', 'MAX', 'VAR', 'PRODUCT'):
+                with self.subTest(value=value, function=name):
+                    self.assertEqual(p.parse(name + '(DATA())'),
+                                     {'result': None, 'error': '#NUM!'})
+        p.set_function('DATA', lambda: [5, 'NaN', 7])
+        self.assertEqual(p.parse('MIN(DATA())'), {'result': 5, 'error': None})
+        self.assertEqual(p.parse('MAX(DATA())'), {'result': 7, 'error': None})
+
+    def test_countif_propagates_invalid_numeric_criteria(self):
+        p = Parser()
+        for criterion in ('NaN', '>inf', '-Infinity'):
+            expression = 'COUNTIF({1;2},"' + criterion + '")'
+            with self.subTest(criterion=criterion):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
+    def test_count_preserves_finite_numbers_and_dates(self):
+        p = Parser()
+        values = [0, -0.0, 1, -2.5, '3.5', 10 ** 400, complex(3, 4),
+                  datetime.date(2026, 11, 11), datetime.datetime(2026, 11, 11, 12)]
+        p.set_function('DATA', lambda: values)
+        self.assertEqual(p.parse('COUNT(DATA())'),
+                         {'result': 9, 'error': None})
+        for value in values:
+            with self.subTest(value=value):
+                p.set_function('DATA', lambda value=value: value)
+                self.assertEqual(p.parse('COUNT(DATA())'),
+                                 {'result': 1, 'error': None})
+
     def test_count_numeric_strings_match_existing_aggregate_coercion(self):
         p = Parser()
         p.set_function('DATA', lambda: [5, '7'])

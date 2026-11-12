@@ -51,10 +51,10 @@ def flatten(l):
 def inumbers(l, try_parse=False, text_is_zero=False):
     """ only the numbers """
     for el in iflatten(l):
+        if try_parse or isinstance(el, number_types):
+            el = to_number(el)
         if isinstance(el, error.XLError):
             raise el
-        if try_parse:
-            el = to_number(el)
         if isinstance(el, number_types):
             yield el
         elif text_is_zero and isinstance(el, string_types):
@@ -102,6 +102,8 @@ def parse_criteria(criteria):
     val = match.group('val')
     if op:
         val = to_number(val)
+        if isinstance(val, error.XLError):
+            raise val
         op = OPERATOR_DICT[op]
         return lambda a: op(a, val)
     else:
@@ -109,7 +111,10 @@ def parse_criteria(criteria):
             # Then use fnmatch
             return lambda a: fnmatch.fnmatch(val, a)
         else:
-            return lambda a: a == to_number(val)
+            val = to_number(val)
+            if isinstance(val, error.XLError):
+                raise val
+            return lambda a: a == val
 
 
 def any_is_error(iterable):
@@ -132,6 +137,8 @@ def parse_date(date):
     if isinstance(date, datetime.date):
         return datetime.datetime(date.year, date.month, date.day)
     date = to_number(date)
+    if isinstance(date, error.XLError):
+        return date
     if isinstance(date, number_types):
         if date < 0:
             return error.NUM
@@ -150,6 +157,8 @@ def parse_date(date):
 
 def serialize_date(date):
     date = parse_date(date)
+    if isinstance(date, error.XLError):
+        return date
     if not isinstance(date, datetime.datetime):
         return error.VALUE
     if date == date_1900:

@@ -7,6 +7,18 @@ import datetime
 
 class TestDateAndTime(unittest.TestCase):
 
+    def test_date_conversion_preserves_nonfinite_numeric_errors(self):
+        p = Parser()
+        for value in (float('nan'), float('inf'), 'NaN', '1e309'):
+            p.set_function('DATA', lambda value=value: value)
+            for name in ('YEAR', 'MONTH', 'DAY', 'DATEVALUE'):
+                expression = name + '(DATA())'
+                with self.subTest(value=value, function=name):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': '#NUM!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
     def test_date(self):
         p = Parser(debug=True)
         ret = p.parse('DATE(2020;10;12)')
