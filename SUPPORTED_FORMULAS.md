@@ -1,4 +1,4 @@
-# Supported Formulas - 156
+# Supported Formulas - 157
 
 * ABS
 * ACOS
@@ -120,6 +120,7 @@
 * ROUND
 * ROUNDDOWN
 * ROUNDUP
+* ROWS
 * SECOND
 * SIGN
 * SIN
@@ -158,7 +159,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 332
+# Not Yet Supported Formulas - 331
 
 * ACCRINT
 * ACCRINTM
@@ -423,7 +424,6 @@
 * REPLACEB
 * REPT
 * ROW
-* ROWS
 * RRI
 * RSQ
 * RTD

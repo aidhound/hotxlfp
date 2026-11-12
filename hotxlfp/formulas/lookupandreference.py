@@ -7,6 +7,20 @@ from .utils import DEFAULT
 from .._compat import string_types
 
 
+@dispatcher.register_for('ROWS')
+def ROWS(*args):
+    if len(args) != 1:
+        return error.NOT_AVAILABLE
+
+    array = args[0]
+    if isinstance(array, error.XLError):
+        return array
+    if not isinstance(array, (list, tuple)):
+        return error.VALUE
+
+    return len(array)
+
+
 @dispatcher.register_for('CHOOSE')
 def CHOOSE(*args):
     if (len(args) < 2):

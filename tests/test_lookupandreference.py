@@ -1,9 +1,68 @@
 # -*- coding: utf-8 -*-
 import unittest
-from hotxlfp import Parser
+from hotxlfp import Parser, formulas
+from hotxlfp.formulas import error
 
 
 class TestLookupAndReference(unittest.TestCase):
+
+    def test_rows_counts_outer_entries(self):
+        p = Parser()
+        cases = [
+            (['Alice', 'Bob'], 2),
+            (['Alice', None, ''], 3),
+            ([0, False, error.DIV_ZERO], 3),
+            ([], 0),
+            ([[1, 2, 3]], 1),
+            ([[1], [2], [3]], 3),
+            ([[1, 2], [3, 4]], 2),
+            ((1, None, 3), 3),
+            ((), 0),
+            ([[1], [2, 3]], 2),
+        ]
+        for values, expected in cases:
+            p.set_function('DATA', lambda values=values: values)
+            for name in ('ROWS', 'rows', 'rOwS'):
+                with self.subTest(values=values, function=name):
+                    self.assertEqual(p.parse(name + '(DATA())'),
+                                     {'result': expected, 'error': None})
+        self.assertTrue(callable(formulas.get_for('ROWS')))
+
+    def test_rows_invalid_inputs_and_argument_counts(self):
+        p = Parser()
+        for value in (None, 7, False, 'text'):
+            with self.subTest(value=value):
+                p.set_function('DATA', lambda value=value: value)
+                self.assertEqual(p.parse('ROWS(DATA())'),
+                                 {'result': None, 'error': '#VALUE!'})
+        for expression in ('ROWS()', 'ROWS(1,2)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#N/A'})
+        self.assertEqual(p.parse('IFERROR(ROWS(7),99)'),
+                         {'result': 99, 'error': None})
+
+    def test_rows_preserves_direct_errors_for_handlers(self):
+        p = Parser()
+        p.set_function('ERR', lambda: error.DIV_ZERO)
+        for expression, result, code in [
+            ('ROWS(ERR())', None, '#DIV/0!'),
+            ('IFERROR(ROWS(ERR()),99)', 99, None),
+            ('IFNA(ROWS(ERR()),77)', None, '#DIV/0!'),
+            ('IFNA(ROWS(NA()),77)', 77, None),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': result, 'error': code})
+
+    def test_rows_counts_range_rows_and_two_dimensional_literals(self):
+        p = Parser()
+        p.on('callRangeValue', lambda start, end, set_value:
+             set_value([[None, 1], [error.DIV_ZERO, False], ['', None]]))
+        self.assertEqual(p.parse('ROWS(A1:B3)'),
+                         {'result': 3, 'error': None})
+        self.assertEqual(p.parse('ROWS({1,2,3;4,5,6})'),
+                         {'result': 2, 'error': None})
 
     def test_choose(self):
         p = Parser(debug=True)
