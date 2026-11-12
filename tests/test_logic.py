@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 from hotxlfp import Parser
+from hotxlfp.formulas import error
 
 
 class TestLogic(unittest.TestCase):
@@ -58,6 +59,70 @@ class TestLogic(unittest.TestCase):
         ret = p.parse('IFNA(2,1)')
         self.assertEqual(ret['result'], 2)
         self.assertEqual(ret['error'], None)
+
+    def test_iferror_arrays_preserve_shape_and_ordinary_values(self):
+        p = Parser()
+        cases = [
+            ([5, error.DIV_ZERO, None, '', False, '#DIV/0!'],
+             [5, 0, None, '', False, '#DIV/0!']),
+            ((5, error.NOT_AVAILABLE, None), (5, 0, None)),
+            ([[5, error.DIV_ZERO], (error.NOT_AVAILABLE, None)],
+             [[5, 0], (0, None)]),
+        ]
+        for values, expected in cases:
+            with self.subTest(values=values):
+                p.set_function('DATA', lambda values=values: values)
+                self.assertEqual(p.parse('IFERROR(DATA(),0)'),
+                                 {'result': expected, 'error': None})
+
+    def test_ifna_arrays_only_replace_na_errors(self):
+        p = Parser()
+        cases = [
+            ([5, error.NOT_AVAILABLE, error.DIV_ZERO, None, '#N/A'],
+             [5, 77, error.DIV_ZERO, None, '#N/A']),
+            ((error.NOT_AVAILABLE, 5), (77, 5)),
+            ([[5, error.DIV_ZERO], (error.NOT_AVAILABLE, None)],
+             [[5, error.DIV_ZERO], (77, None)]),
+        ]
+        for values, expected in cases:
+            with self.subTest(values=values):
+                p.set_function('DATA', lambda values=values: values)
+                self.assertEqual(p.parse('IFNA(DATA(),77)'),
+                                 {'result': expected, 'error': None})
+
+    def test_array_error_handlers_do_not_modify_input(self):
+        p = Parser()
+        values = [[5, error.DIV_ZERO], [error.NOT_AVAILABLE, None]]
+        p.set_function('DATA', lambda: values)
+        for name in ('IFERROR', 'IFNA'):
+            with self.subTest(function=name):
+                p.parse(name + '(DATA(),0)')
+                self.assertEqual(values,
+                                 [[5, error.DIV_ZERO], [error.NOT_AVAILABLE, None]])
+
+    def test_array_error_handlers_preserve_empty_arrays(self):
+        p = Parser()
+        for values in ([], (), [[], ()]):
+            p.set_function('DATA', lambda values=values: values)
+            for name in ('IFERROR', 'IFNA'):
+                with self.subTest(function=name, values=values):
+                    self.assertEqual(p.parse(name + '(DATA(),0)'),
+                                     {'result': values, 'error': None})
+
+    def test_aggregates_consume_arrays_after_error_substitution(self):
+        p = Parser()
+        cases = [
+            ([5, error.DIV_ZERO, None], 'SUM(IFERROR(DATA(),0))', 5, None),
+            ([5, error.DIV_ZERO, None], 'AVERAGE(IFERROR(DATA(),0))', 2.5, None),
+            ([5, error.DIV_ZERO, None], 'AVERAGE(IFERROR(DATA(),""))', 5, None),
+            ([5, error.NOT_AVAILABLE], 'SUM(IFNA(DATA(),0))', 5, None),
+            ([5, error.DIV_ZERO], 'SUM(IFNA(DATA(),0))', None, '#DIV/0!'),
+        ]
+        for values, expression, result, code in cases:
+            with self.subTest(expression=expression):
+                p.set_function('DATA', lambda values=values: values)
+                self.assertEqual(p.parse(expression),
+                                 {'result': result, 'error': code})
 
     def test_ifs(self):
         p = Parser(debug=True)

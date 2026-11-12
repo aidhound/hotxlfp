@@ -21,12 +21,22 @@ def IF(test, then, otherwise):
 
 @dispatcher.register_for('IFERROR')
 def IFERROR(value, value_if_error):
-    return value if not isinstance(value, error.XLError) else value_if_error
+    value_type = type(value)
+    if value_type in (list, tuple):
+        return value_type(
+            IFERROR(item, value_if_error) for item in value
+        )
+    return value_if_error if isinstance(value, error.XLError) else value
 
 
 @dispatcher.register_for('IFNA')
 def IFNA(value, value_if_na):
-    return value if value != error.NOT_AVAILABLE else value_if_na
+    value_type = type(value)
+    if value_type in (list, tuple):
+        return value_type(
+            IFNA(item, value_if_na) for item in value
+        )
+    return value_if_na if value is error.NOT_AVAILABLE else value
 
 
 @dispatcher.register_for('NOT')
