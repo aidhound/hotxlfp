@@ -51,21 +51,22 @@ class Parser(Emitter):
             args = []
 
         fn = self.functions.get(name.upper())
-        result = {'value': None}  # get around 2.7 not having nonlocal
+        result = None
         try:
             if fn is None:
                 fn = formulas.get_for(name.upper())
-            result['value'] = fn(*args)
+            result = fn(*args)
         except formulaserror.XLError as exc:
             # Let enclosing formula functions handle semantic Excel errors.
-            result['value'] = exc
+            result = exc
 
         def valsetter(new_value):
+            nonlocal result
             if new_value is not None:
-                result['value'] = new_value
+                result = new_value
 
         self.emit('callFunction', name, args, valsetter)
-        return result['value']
+        return result
 
     def set_variable(self, name, v):
         self.variables[name] = v
