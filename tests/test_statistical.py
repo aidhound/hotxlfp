@@ -445,6 +445,79 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1.5)
         self.assertEqual(ret['error'], None)
 
+    def test_averageifs_accepts_flat_row_column_and_matrix_ranges(self):
+        p = Parser()
+        for shape in (lambda values: values,
+                      lambda values: [values],
+                      lambda values: [[value] for value in values],
+                      lambda values: [values[:2], values[2:]],
+                      lambda values: (tuple(values[:2]), tuple(values[2:]))):
+            averages = shape([10, 20, 30, 40])
+            first = shape([1, 2, 3, 4])
+            second = shape(['x', 'y', 'x', 'y'])
+            p.set_function('DATA', lambda: averages)
+            p.set_function('FIRST', lambda: first)
+            p.set_function('SECOND', lambda: second)
+            for expression in ('AVERAGEIFS(DATA(),FIRST(),">1")',
+                               'AVERAGEIFS(DATA(),FIRST(),">2",SECOND(),"x")'):
+                with self.subTest(averages=averages, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': 30, 'error': None})
+
+    def test_averageifs_accepts_nested_range_callbacks(self):
+        for label, values, expected in (
+            ('A1:C1', [[1, 2, 3]], 2.5),
+            ('A1:A3', [[1], [2], [3]], 2.5),
+            ('A1:B2', [[1, 2], [3, 4]], 3),
+        ):
+            p = Parser()
+            p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+            expression = 'AVERAGEIFS(' + label + ',' + label + ',">1")'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_averageifs_treats_flat_vectors_as_columns(self):
+        p = Parser()
+        for averages, criteria in (([10, 20, 30], [[1], [2], [3]]),
+                                   ([[10], [20], [30]], [1, 2, 3])):
+            p.set_function('DATA', lambda: averages)
+            p.set_function('CRITERIA', lambda: criteria)
+            with self.subTest(averages=averages, criteria=criteria):
+                self.assertEqual(p.parse('AVERAGEIFS(DATA(),CRITERIA(),">1")'),
+                                 {'result': 25, 'error': None})
+
+    def test_averageifs_rejects_mismatched_and_invalid_range_shapes(self):
+        p = Parser()
+        for averages, criteria in (
+            ([[10, 20]], [[1], [2]]),
+            ([[10, 20], [30, 40]], [[1, 2, 3, 4]]),
+            ([[10], [20, 30]], [[1], [2, 3]]),
+            ([10, [20]], [1, [2]]),
+            ([[[10]]], [[[1]]]),
+            ([10, 20], [1, 2, 3]),
+            ([10, 20, 30], [1, 2]),
+            ([10, 20], 'text'),
+        ):
+            p.set_function('DATA', lambda: averages)
+            p.set_function('CRITERIA', lambda: criteria)
+            expression = 'AVERAGEIFS(DATA(),CRITERIA(),">1")'
+            with self.subTest(averages=averages, criteria=criteria):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
+    def test_averageifs_no_matches_and_empty_ranges_return_div_zero(self):
+        p = Parser()
+        for values in ([1, 2, 3], [[1, 2, 3]], [[1], [2], [3]],
+                       [[1, 2], [3, 4]], []):
+            p.set_function('DATA', lambda: values)
+            expression = 'AVERAGEIFS(DATA(),DATA(),">9")'
+            with self.subTest(values=values):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#DIV/0!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': '#DIV/0!'})
+
     def test_maxifs(self):
         p = Parser(debug=True)
         ret = p.parse('MAXIFS({1;2;3;4};{1;2;3;4};">2")')

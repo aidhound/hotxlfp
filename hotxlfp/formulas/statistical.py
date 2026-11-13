@@ -176,15 +176,28 @@ def GEOMEAN(*args):
 def AVERAGEIFS(average_range, *criteria):
     if len(criteria) % 2 != 0:
         return error.ERROR
-    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
+
+    average_shape = utils.array_shape(average_range)
+    if isinstance(average_shape, error.XLError):
+        return average_shape
+
+    range_and_preds = []
+    for criteria_range, criterion in zip(criteria[::2], criteria[1::2]):
+        criteria_shape = utils.array_shape(criteria_range)
+        if isinstance(criteria_shape, error.XLError):
+            return criteria_shape
+        if criteria_shape != average_shape:
+            return error.VALUE
+        range_and_preds.append((utils.flatten(criteria_range), utils.parse_criteria(criterion)))
+
     sum_value = 0
     count_value = 0
-    for i, a in enumerate(average_range):
+    for i, a in enumerate(utils.iflatten(average_range)):
         if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds):
             sum_value += a
             count_value += 1
     if count_value == 0:
-        return error.DIV0
+        return error.DIV_ZERO
     return sum_value / count_value
 
 
