@@ -7,6 +7,71 @@ from hotxlfp.formulas import error, utils
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
+    def test_numeric_consumers_preserve_errors_in_every_argument(self):
+        p = Parser()
+        for name, valid_args in (
+            ('ROUND', ['23.7825', '2']),
+            ('ROUNDUP', ['23.7825', '2']),
+            ('ROUNDDOWN', ['23.7825', '2']),
+            ('POWER', ['2', '3']),
+            ('PV', ['0.1', '3', '-10']),
+            ('PV', ['0.1', '3', '-10', '5', '1']),
+        ):
+            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+                p.set_function('ERR', lambda value=source_error: value)
+                for position in range(len(valid_args)):
+                    for source in (str(source_error), 'ERR()'):
+                        args = valid_args.copy()
+                        args[position] = source
+                        expression = name + '(' + ','.join(args) + ')'
+                        with self.subTest(expression=expression, error=str(source_error)):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+                            expected = ({'result': 77, 'error': None}
+                                        if source_error is error.NOT_AVAILABLE
+                                        else {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_numeric_consumers_preserve_first_error_order(self):
+        p = Parser()
+        for name in ('ROUND', 'ROUNDUP', 'ROUNDDOWN', 'POWER', 'PV'):
+            for first, second in ((error.NOT_AVAILABLE, error.DIV_ZERO),
+                                   (error.DIV_ZERO, error.NOT_AVAILABLE)):
+                args = [str(first), str(second)]
+                if name == 'PV':
+                    args.append('1')
+                expression = name + '(' + ','.join(args) + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': str(first)})
+
+    def test_numeric_consumers_keep_conversion_checks_and_valid_results(self):
+        p = Parser()
+        for expression, expected in (
+            ('ROUND(23.7825,2)', 23.78),
+            ('ROUNDUP(23.7825,2)', 23.79),
+            ('ROUNDDOWN(-23.7895,2)', -23.78),
+            ('POWER("2","3")', 8),
+            ('PV(0,2,10)', -20),
+            ('PV(0,2,10,5)', -25),
+            ('PV(0,2,10,5,1)', -25),
+            ('PV(0,2,10,NULL,NULL)', -20),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        for name, valid_args in (
+            ('ROUND', ['2', '1']), ('ROUNDUP', ['2', '1']),
+            ('ROUNDDOWN', ['2', '1']), ('POWER', ['2', '3']),
+            ('PV', ['0', '2', '10', '5', '1']),
+        ):
+            for position in range(len(valid_args)):
+                args = valid_args.copy()
+                args[position] = '"invalid"'
+                expression = name + '(' + ','.join(args) + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+
     def test_conditional_aggregates_preserve_selected_errors(self):
         p = Parser()
         for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):

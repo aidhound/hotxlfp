@@ -16,6 +16,6 @@ class TestFinancial(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         ret = p.parse('PV(1/0, 12*20, 500)')
         self.assertEqual(ret['result'], None)
-        self.assertEqual(ret['error'], '#VALUE!')
+        self.assertEqual(ret['error'], '#DIV/0!')
         ret = p.parse('PV(0, 12*20, 500)')
         self.assertEqual(ret['result'], -120000)

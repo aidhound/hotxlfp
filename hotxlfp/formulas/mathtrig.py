@@ -202,6 +202,7 @@ def PI():
 
 
 @dispatcher.register_for('ROUND')
+@utils.propagate_errors()
 def ROUND(number, digits):
     number = utils.parse_number(number)
     digits = utils.parse_number(digits)
@@ -211,6 +212,7 @@ def ROUND(number, digits):
 
 
 @dispatcher.register_for('ROUNDUP')
+@utils.propagate_errors()
 def ROUNDUP(number, digits):
     number = utils.parse_number(number)
     digits = utils.parse_number(digits)
@@ -221,6 +223,7 @@ def ROUNDUP(number, digits):
 
 
 @dispatcher.register_for('ROUNDDOWN')
+@utils.propagate_errors()
 def ROUNDDOWN(number, digits):
     number = utils.parse_number(number)
     digits = utils.parse_number(digits)
@@ -285,6 +288,7 @@ def FLOOR(number, significance=1):
 
 
 @dispatcher.register_for('POWER')
+@utils.propagate_errors()
 def POWER(number, power):
     number = utils.parse_number(number)
     power = utils.parse_number(power)

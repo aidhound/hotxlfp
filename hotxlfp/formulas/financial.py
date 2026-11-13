@@ -5,6 +5,7 @@ from . import utils
 
 
 @dispatcher.register_for('PV')
+@utils.propagate_errors()
 def PV(rate, periods, payment, future=None, type=None):
     if future is None:
         future = 0
