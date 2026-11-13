@@ -77,9 +77,11 @@ def SWITCH(target_value, *args):
 
 @dispatcher.register_for('IFS')
 def IFS(*args):
-    for pair in zip(args[::2], args[1::2]):
-        if pair[0]:
-            return pair[1]
+    for test, value in zip(args[::2], args[1::2]):
+        if isinstance(test, error.XLError):
+            return test
+        if test:
+            return value
     return error.NOT_AVAILABLE
 
 

@@ -222,6 +222,48 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#N/A')
 
+    def test_ifs_preserves_errors_in_conditions_before_a_match(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            for condition in (str(source_error), 'ERR()', 'SUM(DATA())'):
+                for args in (condition + ',1,TRUE(),2',
+                             'FALSE(),0,' + condition + ',1,TRUE(),2'):
+                    expression = 'IFS(' + args + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        for expression, code in [
+            ('IFS(missing_condition,1,TRUE(),2)', '#NAME?'),
+            ('IFS(#N/A,1,#DIV/0!,2)', '#N/A'),
+            ('IFS(#DIV/0!,1,#N/A,2)', '#DIV/0!'),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+
+    def test_ifs_preserves_errors_only_from_reached_conditions_or_selected_results(self):
+        p = Parser()
+        p.set_function('ERR', lambda: error.DIV_ZERO)
+        for expression, result, code in [
+            ('IFS(TRUE(),5,ERR(),1)', 5, None),
+            ('IFS(TRUE(),5,missing_condition,1)', 5, None),
+            ('IFS(FALSE(),ERR(),TRUE(),5)', 5, None),
+            ('IFS(TRUE(),5,FALSE(),ERR())', 5, None),
+            ('IFS(TRUE(),ERR(),TRUE(),5)', None, '#DIV/0!'),
+            ('IFS(FALSE(),0,TRUE(),ERR())', None, '#DIV/0!'),
+            ('IFS(FALSE(),ERR(),FALSE(),5)', None, '#N/A'),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': result, 'error': code})
+
     def test_switch(self):
         p = Parser(debug=True)
         ret = p.parse('SWITCH(2,2,"lele",3, "lili")')
