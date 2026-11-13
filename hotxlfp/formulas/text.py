@@ -27,6 +27,7 @@ def CHAR(number):
 
 
 @dispatcher.register_for('CODE')
+@utils.propagate_errors()
 def CODE(char):
     return ord(char)
 
@@ -100,6 +101,7 @@ def PROPER(text):
 
 
 @dispatcher.register_for('SUBSTITUTE')
+@utils.propagate_errors()
 def SUBSTITUTE(text, old_text, new_text, instance_num=DEFAULT):
     if instance_num is not DEFAULT:
         instance_num = utils.parse_number(instance_num)
@@ -123,6 +125,7 @@ def SUBSTITUTE(text, old_text, new_text, instance_num=DEFAULT):
 
 
 @dispatcher.register_for('TEXTJOIN')
+@utils.propagate_errors(nested=True)
 def TEXTJOIN(delimiter, ignore_empty, *args):
     if not isinstance(delimiter, string_types):
         return error.VALUE
@@ -134,6 +137,7 @@ def TEXTJOIN(delimiter, ignore_empty, *args):
 
 
 @dispatcher.register_for('LEFT', 'LEFTB')
+@utils.propagate_errors()
 def LEFT(text, num_chars=1):
     if num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
@@ -141,6 +145,7 @@ def LEFT(text, num_chars=1):
 
 
 @dispatcher.register_for('RIGHT', 'RIGHTB')
+@utils.propagate_errors()
 def RIGHT(text, num_chars=1):
     if num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
@@ -148,6 +153,7 @@ def RIGHT(text, num_chars=1):
 
 
 @dispatcher.register_for('MID', 'MIDB')
+@utils.propagate_errors()
 def MID(text, start_num, num_chars=1):
     if start_num < 1 or num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
@@ -155,6 +161,7 @@ def MID(text, start_num, num_chars=1):
 
 
 @dispatcher.register_for('TEXT')
+@utils.propagate_errors()
 def TEXT(value, format_text):
     if not isinstance(format_text, string_types):
         return error.NAME

@@ -2,9 +2,74 @@
 import unittest
 import math
 from hotxlfp import Parser
+from hotxlfp.formulas import error
 
 
 class TestText(unittest.TestCase):
+
+    def test_text_consumers_preserve_errors_in_every_argument(self):
+        p = Parser()
+        for name, valid_args in (
+            ('CODE', ['"A"']),
+            ('SUBSTITUTE', ['"abc"', '"a"', '"x"', '1']),
+            ('TEXTJOIN', ['","', 'TRUE()', '"a"', '"b"']),
+            ('TEXT', ['12', '"0"']),
+        ):
+            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+                p.set_function('ERR', lambda value=source_error: value)
+                for position in range(len(valid_args)):
+                    for source in (str(source_error), 'ERR()'):
+                        args = valid_args.copy()
+                        args[position] = source
+                        expression = name + '(' + ','.join(args) + ')'
+                        with self.subTest(expression=expression, error=str(source_error)):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+                            expected = ({'result': 77, 'error': None}
+                                        if source_error is error.NOT_AVAILABLE
+                                        else {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_textjoin_preserves_nested_errors_with_either_empty_policy(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('DATA', lambda value=source_error: ['a', (None, ['b', value])])
+            for ignore_empty in ('TRUE()', 'FALSE()'):
+                expression = 'TEXTJOIN(",",' + ignore_empty + ',DATA())'
+                with self.subTest(expression=expression, error=str(source_error)):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_text_consumers_preserve_error_precedence_and_valid_inputs(self):
+        p = Parser()
+        for expression, result, code in (
+            ('SUBSTITUTE(#DIV/0!,"a","x",#N/A)', None, '#DIV/0!'),
+            ('SUBSTITUTE("",#N/A,"x")', None, '#N/A'),
+            ('SUBSTITUTE("abc","",#DIV/0!)', None, '#DIV/0!'),
+            ('TEXTJOIN(#N/A,#DIV/0!,"a")', None, '#N/A'),
+            ('TEXTJOIN(",",TRUE(),{"a",#DIV/0!},#N/A)', None, '#DIV/0!'),
+            ('TEXT(#DIV/0!,#N/A)', None, '#DIV/0!'),
+            ('CODE("A")', 65, None),
+            ('SUBSTITUTE("#N/A","N","X")', '#X/A', None),
+            ('SUBSTITUTE("abc","a","x",2)', 'abc', None),
+            ('SUBSTITUTE("abc","a","x","bad")', None, '#VALUE!'),
+            ('SUBSTITUTE("abc","a","x",0)', None, '#VALUE!'),
+            ('TEXTJOIN(",",TRUE(),{"a",,"#N/A"})', 'a,#N/A', None),
+            ('TEXTJOIN(",",FALSE(),{"a",,"b"})', 'a,,b', None),
+            ('TEXTJOIN(1,TRUE(),"a")', None, '#VALUE!'),
+            ('TEXT(12,"0.00")', '12.00', None),
+            ('TEXT(12,1)', None, '#NAME?'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': result, 'error': code})
 
     def test_char(self):
         p = Parser(debug=True)
@@ -185,6 +250,80 @@ class TestText(unittest.TestCase):
         ret = p.parse('LEFT("Sale Price", 400)')
         self.assertEqual(ret['result'], 'Sale Price')
         self.assertEqual(ret['error'], None)
+
+    def test_left_and_leftb_preserve_errors_in_either_argument(self):
+        p = Parser()
+        for name in ('LEFT', 'LEFTB'):
+            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+                p.set_function('ERR', lambda value=source_error: value)
+                for args in (str(source_error), str(source_error) + ',1',
+                             'ERR(),1', '"Sale Price",' + str(source_error),
+                             '"Sale Price",ERR()'):
+                    expression = name + '(' + args + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_left_and_leftb_preserve_the_first_error_and_ordinary_text(self):
+        p = Parser()
+        for name in ('LEFT', 'LEFTB'):
+            for args, result, code in [
+                ('#DIV/0!,#N/A', None, '#DIV/0!'),
+                ('#N/A,#DIV/0!', None, '#N/A'),
+                ('"#N/A",2', '#N', None),
+                ('"Sale Price",0', '', None),
+            ]:
+                expression = name + '(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': result, 'error': code})
+
+    def test_right_and_mid_preserve_errors_in_every_argument(self):
+        p = Parser()
+        for name, valid_args in (
+            ('RIGHT', ['"Sale Price"', '5']),
+            ('RIGHTB', ['"Sale Price"', '5']),
+            ('MID', ['"Sale Price"', '2', '5']),
+            ('MIDB', ['"Sale Price"', '2', '5']),
+        ):
+            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+                p.set_function('ERR', lambda value=source_error: value)
+                for position in range(len(valid_args)):
+                    for source in (str(source_error), 'ERR()'):
+                        args = valid_args.copy()
+                        args[position] = source
+                        expression = name + '(' + ','.join(args) + ')'
+                        with self.subTest(expression=expression, error=str(source_error)):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+                            expected = ({'result': 77, 'error': None}
+                                        if source_error is error.NOT_AVAILABLE
+                                        else {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_right_and_mid_preserve_first_errors_and_default_lengths(self):
+        p = Parser()
+        for name, args, result, code in (
+            ('RIGHT', '#DIV/0!,#N/A', None, '#DIV/0!'),
+            ('RIGHTB', '#N/A,#DIV/0!', None, '#N/A'),
+            ('MID', '"abc",#DIV/0!,#N/A', None, '#DIV/0!'),
+            ('MIDB', '#N/A,#DIV/0!,1', None, '#N/A'),
+            ('RIGHT', '#N/A', None, '#N/A'),
+            ('RIGHTB', '"#N/A"', 'A', None),
+            ('MID', '#N/A,1', None, '#N/A'),
+            ('MIDB', '"#N/A",2', 'N', None),
+        ):
+            expression = name + '(' + args + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': result, 'error': code})
 
     def test_right(self):
         p = Parser(debug=True)
