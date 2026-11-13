@@ -82,6 +82,40 @@ class TestParser(unittest.TestCase):
         self.assertEqual(parser.parse('IFERROR(blank(),99)'),
                          {'result': None, 'error': None})
 
+    def test_unknown_variables_return_handleable_name_errors(self):
+        parser = Parser()
+        for expression in ('missing_name', 'missing_name+2',
+                           'SUM(missing_name,2)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(parser.parse(expression),
+                                 {'result': None, 'error': '#NAME?'})
+        self.assertEqual(parser.parse('IFERROR(missing_name,99)'),
+                         {'result': 99, 'error': None})
+        self.assertEqual(parser.parse('ISERROR(missing_name)'),
+                         {'result': True, 'error': None})
+        parser.set_variable('known_name', 7)
+        self.assertEqual(parser.parse('known_name'),
+                         {'result': 7, 'error': None})
+
+    def test_variable_events_can_resolve_or_override_values(self):
+        for value in (12, 0, False, '', error.NOT_AVAILABLE):
+            with self.subTest(value=value):
+                parser = Parser()
+
+                def override(name, set_value):
+                    if name == 'supplied_name':
+                        set_value(value)
+
+                parser.on('callVariable', override)
+                expected = ({'result': None, 'error': '#N/A'}
+                            if value is error.NOT_AVAILABLE
+                            else {'result': value, 'error': None})
+                self.assertEqual(parser.parse('supplied_name'), expected)
+                parser.set_variable('supplied_name', 7)
+                self.assertEqual(parser.parse('supplied_name'), expected)
+                self.assertEqual(parser.parse('IFERROR(missing_name,99)'),
+                                 {'result': 99, 'error': None})
+
     def test_parser_within_parser(self):
 
         def parse(formula):

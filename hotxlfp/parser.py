@@ -77,28 +77,30 @@ class Parser(Emitter):
 
     def call_variable(self, name):
         not_found = lambda : 0
-        value = self.variables.get(name, not_found)
-        result = {'value': value}  # get around 2.7 not having nonlocal
+        result = self.variables.get(name, not_found)
 
         def valsetter(new_value):
+            nonlocal result
             if new_value is not None:
-                result['value'] = new_value
+                result = new_value
+
         self.emit('callVariable', name, valsetter)
-        if result['value'] is not_found:
-            raise formulaserror.NAME
-        return result['value']
+        if result is not_found:
+            return formulaserror.NAME
+        return result
 
     def call_cell_value(self, label):
         label = label.upper()
         row, col = extract_label(label)
-        result = {'value': None}  # get around 2.7 not having nonlocal
+        result = None
 
         def valsetter(new_value):
+            nonlocal result
             if new_value is not None:
-                result['value'] = new_value
+                result = new_value
 
         self.emit('callCellValue', Cell(label, row, col), valsetter)
-        return result['value']
+        return result
 
     def call_range_value(self, start_label, end_label):
         if start_label is None or end_label is None:
@@ -125,14 +127,15 @@ class Parser(Emitter):
             end_cell.col = start_col
             start_cell.col = end_col
 
-        result = {'value': None}  # get around 2.7 not having nonlocal
+        result = None
 
         def valsetter(new_value):
+            nonlocal result
             if new_value is not None:
-                result['value'] = new_value
+                result = new_value
 
         self.emit('callRangeValue', start_cell, end_cell, valsetter)
-        return result['value']
+        return result
 
     def _throw_error(self, error_name):
         raise formulaserror.from_message(error_name)
