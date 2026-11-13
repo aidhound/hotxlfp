@@ -136,6 +136,77 @@ class TestLookupAndReference(unittest.TestCase):
                     self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
                                      {'result': 99, 'error': None})
 
+    def test_index_accepts_flat_row_and_column_vectors(self):
+        p = Parser()
+        for values in ([10, 20, 30], [[10, 20, 30]], [[10], [20], [30]]):
+            p.set_function('DATA', lambda values=values: values)
+            for expression, expected in [('INDEX(DATA(),2)', 20),
+                                          ('INDEX(DATA(),2,)', 20),
+                                          ('INDEX(DATA(),0)', [10, 20, 30])]:
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': expected, 'error': None})
+
+    def test_index_preserves_row_and_column_coordinates(self):
+        p = Parser()
+        for values, cases in [
+            ([[10, 20, 30]], [('INDEX(DATA(),,2)', 20),
+                              ('INDEX(DATA(),1,2)', 20),
+                              ('INDEX(DATA(),0,2)', [20]),
+                              ('INDEX(DATA(),1,0)', [10, 20, 30]),
+                              ('IFERROR(INDEX(DATA(),2,1),99)', 99)]),
+            ([[10], [20], [30]], [('INDEX(DATA(),2,1)', 20),
+                                  ('INDEX(DATA(),,1)', [10, 20, 30]),
+                                  ('INDEX(DATA(),0,1)', [10, 20, 30]),
+                                  ('INDEX(DATA(),2,0)', [20]),
+                                  ('IFERROR(INDEX(DATA(),1,2),99)', 99)]),
+            ([[10, 20], [30, 40]], [('INDEX(DATA(),2)', [30, 40]),
+                                   ('INDEX(DATA(),,2)', [20, 40]),
+                                   ('INDEX(DATA(),2,2)', 40)]),
+            ([[20]], [('INDEX(DATA(),1)', 20), ('INDEX(DATA(),,1)', 20)]),
+        ]:
+            p.set_function('DATA', lambda values=values: values)
+            cases.append(('INDEX(DATA(),0,0)', values))
+            for expression, expected in cases:
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': expected, 'error': None})
+
+    def test_index_vector_positions_outside_bounds_return_ref(self):
+        p = Parser()
+        for values in ([10, 20, 30], [[10, 20, 30]], [[10], [20], [30]], []):
+            p.set_function('DATA', lambda values=values: values)
+            for indices in ('-1', '4', '-1,1', '1,-1'):
+                expression = 'INDEX(DATA(),' + indices + ')'
+                with self.subTest(values=values, indices=indices):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': '#REF!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_index_accepts_single_row_and_column_ranges(self):
+        for label, values in [('A1:C1', [[10, 20, 30]]),
+                              ('A1:A3', [[10], [20], [30]])]:
+            with self.subTest(label=label):
+                p = Parser()
+                p.on('callRangeValue',
+                     lambda start, end, set_value: set_value(values))
+                self.assertEqual(p.parse('INDEX(' + label + ',2)'),
+                                 {'result': 20, 'error': None})
+
+    def test_index_vector_selection_preserves_selected_errors(self):
+        p = Parser()
+        for values in ([error.DIV_ZERO, 20], [[error.DIV_ZERO, 20]],
+                       [[error.DIV_ZERO], [20]]):
+            with self.subTest(values=values):
+                p.set_function('DATA', lambda values=values: values)
+                self.assertEqual(p.parse('INDEX(DATA(),2)'),
+                                 {'result': 20, 'error': None})
+                self.assertEqual(p.parse('INDEX(DATA(),1)'),
+                                 {'result': None, 'error': '#DIV/0!'})
+                self.assertEqual(p.parse('IFERROR(INDEX(DATA(),1),99)'),
+                                 {'result': 99, 'error': None})
+
     def test_index(self):
         p = Parser(debug=True)
         ret = p.parse('INDEX({25,38,40,41},1)')

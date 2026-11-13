@@ -103,6 +103,9 @@ def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
     if not isinstance(arr, list):
         arr = [[arr]]
 
+    if not arr:
+        return error.REF
+
     bidimensional = isinstance(arr[0], list)
 
     if row_num is not DEFAULT:
@@ -115,11 +118,27 @@ def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
         if isinstance(column_num, error.XLError):
             return column_num
     try:
+        if row_num is not DEFAULT and row_num < 0:
+            return error.REF
+        if column_num is not DEFAULT and column_num < 0:
+            return error.REF
+
+        # A vector uses a single position when one coordinate is omitted.
+        if bidimensional:
+            if len(arr) == 1 and (row_num is DEFAULT or column_num is DEFAULT):
+                arr = arr[0]
+                bidimensional = False
+            elif column_num is DEFAULT and all(isinstance(row, list) and len(row) == 1
+                                               for row in arr):
+                arr = [row[0] for row in arr]
+                bidimensional = False
+
+        if not bidimensional and (row_num is DEFAULT or column_num is DEFAULT):
+            position = column_num if row_num is DEFAULT else row_num
+            return arr if position == 0 else arr[position - 1]
+
         if row_num is DEFAULT:
-            if bidimensional:
-                return [row[column_num - 1] for row in arr]
-            else:
-                return arr[column_num - 1]
+            return [row[column_num - 1] for row in arr]
         if column_num is DEFAULT:
             return arr[row_num - 1]
         if row_num == 0 and column_num == 0:
