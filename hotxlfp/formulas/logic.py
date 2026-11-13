@@ -65,11 +65,13 @@ def OR(*args):
 def SWITCH(target_value, *args):
     if len(args) <= 1:
         return error.NOT_AVAILABLE
+    if isinstance(target_value, error.XLError):
+        return target_value
     argc = len(args)
     default_clause = utils.DEFAULT if (argc % 2 == 0) else args[-1]
-    for i in range(0, argc, 2):
-        if target_value == args[i]:
-            return args[i + 1]
+    for value, result in zip(args[::2], args[1::2]):
+        if target_value == value:
+            return result
     if default_clause is not utils.DEFAULT:
         return default_clause
     return error.NOT_AVAILABLE

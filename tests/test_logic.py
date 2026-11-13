@@ -282,6 +282,55 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#N/A')
 
+    def test_switch_preserves_errors_in_its_target(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            for target in (str(source_error), 'ERR()', 'SUM(DATA())'):
+                for suffix in ('1,5', '1,5,99'):
+                    expression = 'SWITCH(' + target + ',' + suffix + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',77)'),
+                                         {'result': 77, 'error': None})
+                        expected = ({'result': 88, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',88)'), expected)
+        self.assertEqual(p.parse('SWITCH(missing_target,1,5,99)'),
+                         {'result': None, 'error': '#NAME?'})
+
+    def test_switch_preserves_errors_only_in_selected_results_and_defaults(self):
+        p = Parser()
+        for expression, result, code in [
+            ('SWITCH(1,1,5,2,#DIV/0!,#N/A)', 5, None),
+            ('SWITCH(2,1,#DIV/0!,2,5,#N/A)', 5, None),
+            ('SWITCH(1,1,5,1,#DIV/0!)', 5, None),
+            ('SWITCH(1,1,#DIV/0!,2,5)', None, '#DIV/0!'),
+            ('SWITCH(2,1,5,#DIV/0!)', None, '#DIV/0!'),
+            ('IFNA(SWITCH(2,1,5,#N/A),77)', 77, None),
+            ('SWITCH(2,1,#DIV/0!)', None, '#N/A'),
+            ('SWITCH(#DIV/0!,1,5,#N/A)', None, '#DIV/0!'),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': result, 'error': code})
+
+    def test_switch_does_not_compare_its_default_as_a_case(self):
+        p = Parser()
+        for expression, expected in [
+            ('SWITCH(0,1,5,0)', 0),
+            ('SWITCH(FALSE(),1,5,FALSE())', False),
+            ('SWITCH("fallback",1,5,"fallback")', 'fallback'),
+            ('SWITCH("",1,5,"")', ''),
+            ('SWITCH(NULL,1,5,NULL)', None),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
+
     def test_not(self):
         p = Parser(debug=True)
         ret = p.parse('NOT(TRUE())')
