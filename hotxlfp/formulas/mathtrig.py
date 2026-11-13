@@ -183,6 +183,7 @@ def LN(number):
 
 
 @dispatcher.register_for('LOG')
+@utils.propagate_errors()
 def LOG(number, base=10):
     number = utils.parse_number(number)
     base = utils.parse_number(base)
@@ -245,6 +246,7 @@ def SUMIF(args, criteria):
 
 
 @dispatcher.register_for('CEILING', 'CEILING.MATH', 'CEILING.PRECISE')
+@utils.propagate_errors()
 def CEILING(number, significance=1):
     number = utils.parse_number(number)
     significance = utils.parse_number(significance)
@@ -266,6 +268,7 @@ def CEILING(number, significance=1):
 
 
 @dispatcher.register_for('FLOOR', 'FLOOR.MATH', 'FLOOR.PRECISE')
+@utils.propagate_errors()
 def FLOOR(number, significance=1):
     number = utils.parse_number(number)
     significance = utils.parse_number(significance)
@@ -301,6 +304,7 @@ def POWER(number, power):
 
 
 @dispatcher.register_for('QUOTIENT')
+@utils.propagate_errors()
 def QUOTIENT(numerator, denominator):
     numerator = utils.parse_number(numerator)
     denominator = utils.parse_number(denominator)
@@ -431,6 +435,7 @@ def FACTDOUBLE(number):
 
 
 @dispatcher.register_for('ROMAN')
+@utils.propagate_errors()
 def ROMAN(number, form=0):
     number = utils.parse_number(number)
     form = utils.parse_number(form)
@@ -474,6 +479,7 @@ def ROMAN(number, form=0):
 
 
 @dispatcher.register_for('ARABIC')
+@utils.propagate_errors()
 def ARABIC(text):
     text = str(text).upper()
     roman_numeral_regex = '^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$'
@@ -506,6 +512,7 @@ def RAND():
 
 
 @dispatcher.register_for('RANDBETWEEN')
+@utils.propagate_errors()
 def RANDBETWEEN(bottom, top):
     bottom = utils.parse_number(bottom)
     top = utils.parse_number(top)
@@ -517,6 +524,7 @@ def RANDBETWEEN(bottom, top):
 
 
 @dispatcher.register_for('INT')
+@utils.propagate_errors()
 def INT(number):
     if not isinstance(number, (int, float)):
         return error.VALUE

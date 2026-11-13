@@ -16,6 +16,26 @@ class TestError(unittest.TestCase):
             ('POWER', ['2', '3']),
             ('PV', ['0.1', '3', '-10']),
             ('PV', ['0.1', '3', '-10', '5', '1']),
+            ('LOG', ['100']),
+            ('LOG', ['100', '10']),
+            ('CEILING', ['2.5']),
+            ('CEILING', ['2.5', '1']),
+            ('CEILING.MATH', ['2.5']),
+            ('CEILING.MATH', ['2.5', '1']),
+            ('CEILING.PRECISE', ['2.5']),
+            ('CEILING.PRECISE', ['2.5', '1']),
+            ('FLOOR', ['2.5']),
+            ('FLOOR', ['2.5', '1']),
+            ('FLOOR.MATH', ['2.5']),
+            ('FLOOR.MATH', ['2.5', '1']),
+            ('FLOOR.PRECISE', ['2.5']),
+            ('FLOOR.PRECISE', ['2.5', '1']),
+            ('QUOTIENT', ['5', '2']),
+            ('INT', ['2.5']),
+            ('RANDBETWEEN', ['1', '5']),
+            ('ROMAN', ['14']),
+            ('ROMAN', ['14', '0']),
+            ('ARABIC', ['"XIV"']),
         ):
             for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
                 p.set_function('ERR', lambda value=source_error: value)
@@ -36,7 +56,10 @@ class TestError(unittest.TestCase):
 
     def test_numeric_consumers_preserve_first_error_order(self):
         p = Parser()
-        for name in ('ROUND', 'ROUNDUP', 'ROUNDDOWN', 'POWER', 'PV'):
+        for name in ('ROUND', 'ROUNDUP', 'ROUNDDOWN', 'POWER', 'PV', 'LOG',
+                     'CEILING', 'CEILING.MATH', 'CEILING.PRECISE',
+                     'FLOOR', 'FLOOR.MATH', 'FLOOR.PRECISE',
+                     'QUOTIENT', 'RANDBETWEEN', 'ROMAN'):
             for first, second in ((error.NOT_AVAILABLE, error.DIV_ZERO),
                                    (error.DIV_ZERO, error.NOT_AVAILABLE)):
                 args = [str(first), str(second)]
@@ -57,6 +80,14 @@ class TestError(unittest.TestCase):
             ('PV(0,2,10,5)', -25),
             ('PV(0,2,10,5,1)', -25),
             ('PV(0,2,10,NULL,NULL)', -20),
+            ('LOG(100)', 2),
+            ('LOG(8,2)', 3),
+            ('QUOTIENT(-10,3)', -3),
+            ('INT(2.9)', 2),
+            ('INT(-2.9)', -3),
+            ('RANDBETWEEN(7,7)', 7),
+            ('ROMAN(14)', 'XIV'),
+            ('ARABIC("xiv")', 14),
         ):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
@@ -64,6 +95,14 @@ class TestError(unittest.TestCase):
             ('ROUND', ['2', '1']), ('ROUNDUP', ['2', '1']),
             ('ROUNDDOWN', ['2', '1']), ('POWER', ['2', '3']),
             ('PV', ['0', '2', '10', '5', '1']),
+            ('LOG', ['100', '10']),
+            ('CEILING', ['2.5', '1']), ('CEILING.MATH', ['2.5', '1']),
+            ('CEILING.PRECISE', ['2.5', '1']),
+            ('FLOOR', ['2.5', '1']), ('FLOOR.MATH', ['2.5', '1']),
+            ('FLOOR.PRECISE', ['2.5', '1']),
+            ('QUOTIENT', ['5', '2']), ('INT', ['2.5']),
+            ('RANDBETWEEN', ['1', '5']), ('ROMAN', ['14', '0']),
+            ('ARABIC', ['"XIV"']),
         ):
             for position in range(len(valid_args)):
                 args = valid_args.copy()
@@ -71,6 +110,22 @@ class TestError(unittest.TestCase):
                 expression = name + '(' + ','.join(args) + ')'
                 with self.subTest(expression=expression):
                     self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+
+    def test_math_aliases_keep_defaults_and_domain_checks(self):
+        p = Parser()
+        for name, expected in (('CEILING', 3), ('CEILING.MATH', 3),
+                               ('CEILING.PRECISE', 3), ('FLOOR', 2),
+                               ('FLOOR.MATH', 2), ('FLOOR.PRECISE', 2)):
+            with self.subTest(name=name):
+                self.assertEqual(p.parse(name + '(2.5)'), {'result': expected, 'error': None})
+                self.assertEqual(p.parse(name + '(2.5,0)'), {'result': 0, 'error': None})
+        for expression, code in (('QUOTIENT(1,0)', '#DIV/0!'),
+                                  ('FLOOR(2.5,-1)', '#NUM!'),
+                                  ('ROMAN(4000)', '#VALUE!'),
+                                  ('ROMAN(14,5)', '#VALUE!'),
+                                  ('ARABIC("invalid")', '#VALUE!')):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
 
     def test_conditional_aggregates_preserve_selected_errors(self):
         p = Parser()
