@@ -7,6 +7,44 @@ from hotxlfp.formulas import error
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
+    def test_bare_error_literals_preserve_their_codes(self):
+        p = Parser()
+        for source_error in (error.ERROR, error.DIV_ZERO, error.NAME,
+                             error.NOT_AVAILABLE, error.NULL, error.NUM,
+                             error.REF, error.VALUE):
+            with self.subTest(error=str(source_error)):
+                self.assertEqual(p.parse(str(source_error)),
+                                 {'result': None, 'error': str(source_error)})
+
+    def test_error_literals_reach_enclosing_functions(self):
+        p = Parser()
+        cases = [
+            ('IFERROR(#DIV/0!,99)', 99, None),
+            ('IFNA(#N/A,77)', 77, None),
+            ('IFNA(#DIV/0!,77)', None, '#DIV/0!'),
+            ('ISERROR(#VALUE!)', True, None),
+            ('IF(FALSE(),#DIV/0!,5)', 5, None),
+            ('COUNT(#DIV/0!)', 0, None),
+            ('IFERROR(SUM(5,#DIV/0!),99)', 99, None),
+            ('IFERROR("#DIV/0!",99)', '#DIV/0!', None),
+        ]
+        for formula, result, code in cases:
+            with self.subTest(formula=formula):
+                self.assertEqual(p.parse(formula),
+                                 {'result': result, 'error': code})
+
+    def test_syntax_errors_abort_even_inside_error_handlers(self):
+        p = Parser()
+        for formula in ('1+', 'SUM(1', 'IFERROR(1+,99)',
+                        'IFERROR(#DIV/0!,99'):
+            with self.subTest(formula=formula):
+                with self.assertRaises(error.XLError) as caught:
+                    p.parser.parse(formula)
+                self.assertIs(caught.exception, error.ERROR)
+                self.assertEqual(p.parse(formula),
+                                 {'result': None, 'error': '#ERROR!'})
+        self.assertEqual(p.parse('1+2'), {'result': 3, 'error': None})
+
     def test_aggregate_errors_reach_enclosing_functions(self):
         p = Parser()
         for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):

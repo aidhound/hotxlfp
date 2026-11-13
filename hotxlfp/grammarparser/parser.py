@@ -230,13 +230,11 @@ class FormulaParser(Parser):
         """
         expression : XLERROR
         """
-        p[0] = self.throw_error(p[1])
+        p[0] = error.from_message(p[1])
 
     def p_error(self, p):
-        """
-        SyntaxError
-        """
-        p[0] = self.throw_error(error.ERROR)
+        """Abort parsing on invalid syntax, including unexpected end of input."""
+        self.throw_error(error.ERROR)
 
     def p_expression_paren(self, p):
         """
