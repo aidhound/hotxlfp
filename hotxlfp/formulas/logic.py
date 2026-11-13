@@ -16,6 +16,8 @@ def AND(*args):
 
 @dispatcher.register_for('IF')
 def IF(test, then, otherwise):
+    if isinstance(test, error.XLError):
+        return test
     return then if test else otherwise
 
 

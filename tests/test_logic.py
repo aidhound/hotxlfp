@@ -39,6 +39,40 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(ret['result'], True)
         self.assertEqual(ret['error'], None)
 
+    def test_if_preserves_errors_from_its_condition(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            for condition in (str(source_error), 'ERR()', 'SUM(DATA())'):
+                expression = 'IF(' + condition + ',1,2)'
+                with self.subTest(error=str(source_error), condition=condition):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        self.assertEqual(p.parse('IF(missing_condition,1,2)'),
+                         {'result': None, 'error': '#NAME?'})
+        self.assertEqual(p.parse('IFERROR(IF(missing_condition,1,2),99)'),
+                         {'result': 99, 'error': None})
+
+    def test_if_preserves_errors_only_from_the_selected_branch(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [5, error.DIV_ZERO])
+        for expression, result, code in [
+            ('IF(TRUE(),SUM(DATA()),5)', None, '#DIV/0!'),
+            ('IF(FALSE(),5,SUM(DATA()))', None, '#DIV/0!'),
+            ('IF(FALSE(),SUM(DATA()),5)', 5, None),
+            ('IF(TRUE(),5,SUM(DATA()))', 5, None),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': result, 'error': code})
+
     def test_iferror(self):
         p = Parser(debug=True)
         ret = p.parse('IFERROR(1/0,1)')
