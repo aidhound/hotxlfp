@@ -62,6 +62,8 @@ def MATCH(lookup_value, lookup_array, match_type=1):
     index = None
     index_value = None
     for idx in range(len(lookup_array)):
+        if isinstance(lookup_array[idx], error.XLError):
+            continue
         if match_type == 1:
             if lookup_array[idx] == lookup_value:
                 return idx + 1

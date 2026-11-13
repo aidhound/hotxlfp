@@ -168,6 +168,62 @@ class TestLookupAndReference(unittest.TestCase):
                 with self.subTest(values=values, expression=expression):
                     self.assertEqual(p.parse(expression), {'result': 1, 'error': None})
 
+    def test_match_skips_error_cells_in_exact_searches(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM):
+            for vector, target, expected in (
+                ([source_error, 'Beta'], '"b*"', 2),
+                (['a', source_error, 'b'], '"b"', 3),
+                ([source_error, 2], '2', 2),
+                ([1, source_error, 3], '3', 3),
+            ):
+                for values in (vector, [vector], [[item] for item in vector]):
+                    p.set_function('DATA', lambda values=values: values)
+                    expression = 'MATCH(' + target + ',DATA(),0)'
+                    with self.subTest(values=values, expression=expression):
+                        for formula in (expression, 'IFERROR(' + expression + ',99)',
+                                        'IFNA(' + expression + ',77)'):
+                            self.assertEqual(p.parse(formula), {'result': expected, 'error': None})
+
+    def test_match_skips_error_cells_in_approximate_searches(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM):
+            for vector, target, match_type, expected in (
+                ([source_error, 10, 30], '20', ',1', 2),
+                ([10, source_error, 30], '20', ',1', 1),
+                ([30, source_error, 10], '20', ',-1', 1),
+                ([source_error, 30, 10], '20', ',-1', 2),
+                (['a', source_error, 'c'], '"b"', ',1', 1),
+                (['c', source_error, 'a'], '"b"', ',-1', 1),
+                ([source_error, 20], '20', ',1', 2),
+                ([source_error, 10, 30], '20', '', 2),
+            ):
+                for values in (vector, [vector], [[item] for item in vector]):
+                    p.set_function('DATA', lambda values=values: values)
+                    expression = 'MATCH(' + target + ',DATA()' + match_type + ')'
+                    with self.subTest(values=values, expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_match_returns_na_when_skipping_errors_leaves_no_match(self):
+        p = Parser()
+        for vector, target, match_type in (
+            ([error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM], '2', -1),
+            ([error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM], '2', 0),
+            ([error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM], '2', 1),
+            (['a', error.DIV_ZERO], '"b"', 0),
+            ([error.NUM, 10], '5', 1),
+            ([30, error.NUM], '40', -1),
+        ):
+            for values in (vector, [vector], [[item] for item in vector]):
+                p.set_function('DATA', lambda values=values: values)
+                expression = 'MATCH(' + target + ',DATA(),' + str(match_type) + ')'
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#N/A'})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': 77, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
     def test_match_accepts_flat_row_and_column_vectors(self):
         p = Parser()
         cases = [
