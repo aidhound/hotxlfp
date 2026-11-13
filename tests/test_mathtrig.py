@@ -602,6 +602,68 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
+    def test_sumifs_accepts_flat_row_column_and_matrix_ranges(self):
+        p = Parser()
+        for shape in (lambda values: values,
+                      lambda values: [values],
+                      lambda values: [[value] for value in values],
+                      lambda values: [values[:2], values[2:]],
+                      lambda values: (tuple(values[:2]), tuple(values[2:]))):
+            sums = shape([10, 20, 30, 40])
+            first = shape([1, 2, 3, 4])
+            second = shape(['x', 'y', 'x', 'y'])
+            p.set_function('SUMDATA', lambda: sums)
+            p.set_function('FIRST', lambda: first)
+            p.set_function('SECOND', lambda: second)
+            for expression, expected in (
+                ('SUMIFS(SUMDATA(),FIRST(),">1")', 90),
+                ('SUMIFS(SUMDATA(),FIRST(),">1",SECOND(),"x")', 30),
+                ('SUMIFS(SUMDATA(),FIRST(),">9")', 0),
+            ):
+                with self.subTest(sums=sums, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_sumifs_accepts_nested_range_callbacks(self):
+        for label, values, expected in (
+            ('A1:C1', [[1, 2, 3]], 5),
+            ('A1:A3', [[1], [2], [3]], 5),
+            ('A1:B2', [[1, 2], [3, 4]], 9),
+        ):
+            p = Parser()
+            p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+            expression = 'SUMIFS(' + label + ',' + label + ',">1")'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_sumifs_treats_flat_vectors_as_columns(self):
+        p = Parser()
+        for sums, criteria in (([10, 20, 30], [[1], [2], [3]]),
+                               ([[10], [20], [30]], [1, 2, 3]), ([], [])):
+            p.set_function('SUMDATA', lambda: sums)
+            p.set_function('CRITERIA', lambda: criteria)
+            with self.subTest(sums=sums, criteria=criteria):
+                self.assertEqual(p.parse('SUMIFS(SUMDATA(),CRITERIA(),">1")'),
+                                 {'result': 50 if sums else 0, 'error': None})
+
+    def test_sumifs_rejects_mismatched_and_invalid_range_shapes(self):
+        p = Parser()
+        for sums, criteria in (
+            ([[10, 20]], [[1], [2]]),
+            ([[10, 20], [30, 40]], [[1, 2, 3, 4]]),
+            ([[10, 20], [30, 40]], [[1], [2]]),
+            ([[10], [20, 30]], [[1], [2, 3]]),
+            ([10, [20]], [1, [2]]),
+            ([[[10]]], [[[1]]]),
+            ([10, 20], [[1], [2, 3]]),
+        ):
+            p.set_function('SUMDATA', lambda: sums)
+            p.set_function('CRITERIA', lambda: criteria)
+            expression = 'SUMIFS(SUMDATA(),CRITERIA(),">1")'
+            with self.subTest(sums=sums, criteria=criteria):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
     def test_sign(self):
         p = Parser(debug=True)
         ret = p.parse('SIGN(2)')

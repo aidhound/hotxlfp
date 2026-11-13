@@ -49,6 +49,28 @@ def flatten(l):
     return list(iflatten(l))
 
 
+def array_shape(array):
+    """Return a two-dimensional shape, or an Excel error for an invalid array.
+
+    Flat lists/tuples are columns. Nested arrays must be rectangular and have
+    no more than two dimensions.
+    """
+    if isinstance(array, error.XLError):
+        return array
+    if not isinstance(array, (list, tuple)):
+        return error.VALUE
+    if not any(isinstance(item, (list, tuple)) for item in array):
+        return len(array), 1
+    if not all(isinstance(row, (list, tuple)) for row in array):
+        return error.VALUE
+
+    columns = len(array[0])
+    for row in array:
+        if len(row) != columns or any(isinstance(item, (list, tuple)) for item in row):
+            return error.VALUE
+    return len(array), columns
+
+
 def inumbers(l, try_parse=False, text_is_zero=False):
     """Yield numeric values, raising XLError to abort on an Excel error.
 

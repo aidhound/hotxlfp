@@ -528,16 +528,24 @@ def INT(number):
 def SUMIFS(sum_args, *criteria):
     if len(criteria) % 2 != 0:
         return error.ERROR
-    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
-    # Validate criteria ranges
-    sum_args_len = len(sum_args)
-    for criteria_range,pred in range_and_preds:
+
+    sum_shape = utils.array_shape(sum_args)
+    if isinstance(sum_shape, error.XLError):
+        return sum_shape
+
+    range_and_preds = []
+    for criteria_range, criterion in zip(criteria[::2], criteria[1::2]):
         if isinstance(criteria_range, string_types):
             return error.ERROR
-        if len(criteria_range) != sum_args_len:
+        criteria_shape = utils.array_shape(criteria_range)
+        if isinstance(criteria_shape, error.XLError):
+            return criteria_shape
+        if criteria_shape != sum_shape:
             return error.VALUE
+        range_and_preds.append((utils.flatten(criteria_range), utils.parse_criteria(criterion)))
+
     b = 0
-    for i, a in enumerate(sum_args):
+    for i, a in enumerate(utils.iflatten(sum_args)):
         if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
             b += a
     return b
