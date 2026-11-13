@@ -325,6 +325,21 @@ class TestText(unittest.TestCase):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': result, 'error': code})
 
+    def test_right_and_rightb_zero_length_returns_empty_text(self):
+        p = Parser()
+        for name in ('RIGHT', 'RIGHTB'):
+            for args, result, code in (
+                ('"abc",0', '', None),
+                ('"ㅍa",0', '', None),
+                ('"",0', '', None),
+                ('123,0', None, '#VALUE!'),
+                ('#N/A,0', None, '#N/A'),
+                ('#DIV/0!,0', None, '#DIV/0!'),
+            ):
+                expression = name + '(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': result, 'error': code})
+
     def test_right(self):
         p = Parser(debug=True)
         ret = p.parse('RIGHT("Sale Price", 5)')

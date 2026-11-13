@@ -149,6 +149,8 @@ def LEFT(text, num_chars=1):
 def RIGHT(text, num_chars=1):
     if num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
+    if num_chars == 0:
+        return ''
     return text[-num_chars:]
 
 
