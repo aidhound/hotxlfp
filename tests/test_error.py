@@ -7,6 +7,56 @@ from hotxlfp.formulas import error, utils
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
+    def test_conditional_aggregates_preserve_selected_errors(self):
+        p = Parser()
+        for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):
+            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+                for values, criteria in (
+                    ([10, source_error], [1, 2]),
+                    ([[10, source_error]], [[1, 2]]),
+                    ([[10], [source_error]], [[1], [2]]),
+                ):
+                    p.set_function('DATA', lambda: values)
+                    p.set_function('CRITERIA', lambda: criteria)
+                    expressions = (name + '(DATA(),CRITERIA(),">0")',
+                                   name + '({10,' + str(source_error) + '},{1,2},">0")')
+                    for expression in expressions:
+                        with self.subTest(expression=expression, values=values):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+                            expected = ({'result': 77, 'error': None}
+                                        if source_error is error.NOT_AVAILABLE
+                                        else {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_conditional_aggregates_ignore_unselected_errors(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [[error.DIV_ZERO, 10], [20, error.NOT_AVAILABLE]])
+        p.set_function('FIRST', lambda: [[0, 1], [2, 3]])
+        p.set_function('SECOND', lambda: [['x', 'x'], ['y', 'y']])
+        for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):
+            expression = name + '(DATA(),FIRST(),">0",SECOND(),"x")'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': 10, 'error': None})
+            expression = name + '(DATA(),FIRST(),">9")'
+            expected = ({'result': None, 'error': '#DIV/0!'} if name == 'AVERAGEIFS'
+                        else {'result': 0, 'error': None})
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), expected)
+
+    def test_conditional_aggregates_preserve_first_selected_error(self):
+        p = Parser()
+        p.set_function('CRITERIA', lambda: [[1, 2], [3, 4]])
+        for first, second in ((error.DIV_ZERO, error.NOT_AVAILABLE),
+                               (error.NOT_AVAILABLE, error.DIV_ZERO)):
+            p.set_function('DATA', lambda: [[10, first], [second, 20]])
+            for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):
+                expression = name + '(DATA(),CRITERIA(),">0")'
+                with self.subTest(expression=expression, first=str(first)):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': str(first)})
+
     def test_error_decorator_checks_direct_arguments_and_forwards_valid_values(self):
         calls = []
 

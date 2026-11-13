@@ -547,6 +547,8 @@ def SUMIFS(sum_args, *criteria):
     b = 0
     for i, a in enumerate(utils.iflatten(sum_args)):
         if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
+            if isinstance(a, error.XLError):
+                return a
             b += a
     return b
 

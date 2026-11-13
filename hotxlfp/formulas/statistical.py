@@ -193,6 +193,8 @@ def AVERAGEIFS(average_range, *criteria):
     count_value = 0
     for i, a in enumerate(utils.iflatten(average_range)):
         if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds):
+            if isinstance(a, error.XLError):
+                return a
             sum_value += a
             count_value += 1
     if count_value == 0:
@@ -222,7 +224,13 @@ def MAXIFS(sum_args, *criteria):
         value for i, value in enumerate(utils.iflatten(sum_args))
         if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds)
     )
-    return max(values, default=0)
+    max_value = utils.DEFAULT
+    for value in values:
+        if isinstance(value, error.XLError):
+            return value
+        if max_value is utils.DEFAULT or value > max_value:
+            max_value = value
+    return 0 if max_value is utils.DEFAULT else max_value
 
 
 @dispatcher.register_for('SLOPE')
