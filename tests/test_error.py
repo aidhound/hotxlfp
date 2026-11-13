@@ -1,11 +1,44 @@
 # -*- coding: utf-8 -*-
 import unittest
 from hotxlfp import Parser
-from hotxlfp.formulas import error
+from hotxlfp.formulas import error, utils
 
 
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
+
+    def test_error_decorator_checks_direct_arguments_and_forwards_valid_values(self):
+        calls = []
+
+        @utils.propagate_errors()
+        def echo(value):
+            calls.append(value)
+            return value
+
+        self.assertIs(echo(error.NOT_AVAILABLE), error.NOT_AVAILABLE)
+        self.assertIs(echo(value=error.DIV_ZERO), error.DIV_ZERO)
+        self.assertEqual(calls, [])
+        self.assertEqual(echo(value=7), 7)
+        values = [error.NOT_AVAILABLE]
+        self.assertIs(echo(values), values)
+        self.assertEqual(calls, [7, values])
+        with self.assertRaises(TypeError):
+            echo()
+
+    def test_error_decorator_checks_nested_arguments_before_calling_consumer(self):
+        calls = []
+
+        @utils.propagate_errors(nested=True)
+        def consume(values):
+            calls.append(values)
+            return all(utils.iflatten(values))
+
+        values = [False, (error.NOT_AVAILABLE, error.DIV_ZERO)]
+        self.assertIs(consume(values), error.NOT_AVAILABLE)
+        self.assertIs(consume(values=[False, [error.DIV_ZERO]]), error.DIV_ZERO)
+        self.assertEqual(calls, [])
+        self.assertIs(consume(values=[True, (1, 2)]), True)
+        self.assertEqual(calls, [[True, (1, 2)]])
 
     def test_bare_error_literals_preserve_their_codes(self):
         p = Parser()

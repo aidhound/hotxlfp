@@ -9,9 +9,9 @@ from . import utils
 
 
 @dispatcher.register_for('AND')
+@utils.propagate_errors(nested=True)
 def AND(*args):
-    args = utils.iflatten(args)
-    return all(args)
+    return all(utils.iflatten(args))
 
 
 @dispatcher.register_for('IF')
@@ -42,11 +42,13 @@ def IFNA(value, value_if_na):
 
 
 @dispatcher.register_for('NOT')
+@utils.propagate_errors()
 def NOT(boolean):
     return not boolean
 
 
 @dispatcher.register_for('XOR')
+@utils.propagate_errors(nested=True)
 def XOR(*args):
     args = utils.iflatten(args)
     result = sum(bool(a) for a in args)
@@ -54,9 +56,9 @@ def XOR(*args):
 
 
 @dispatcher.register_for('OR')
+@utils.propagate_errors(nested=True)
 def OR(*args):
-    args = utils.iflatten(args)
-    return any(args)
+    return any(utils.iflatten(args))
 
 
 @dispatcher.register_for('SWITCH')

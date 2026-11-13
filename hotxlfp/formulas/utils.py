@@ -2,6 +2,7 @@
 import re
 import fnmatch
 import itertools
+from functools import wraps
 from .._compat import number_types, string_types
 from ..helper.number import to_number
 import operator
@@ -124,6 +125,29 @@ def parse_criteria(criteria):
 
 def any_is_error(iterable):
     return any(isinstance(el, error.XLError) for el in iterable)
+
+
+def propagate_errors(*, nested=False):
+    """Return the first typed error before calling the decorated function.
+
+    By default only direct arguments are checked. With nested=True, list/tuple
+    elements are checked too. The scan completes before a short-circuiting
+    consumer runs; the original arguments remain available to the function.
+    """
+    def decorate(function):
+        @wraps(function)
+        def wrapped(*args, **kwargs):
+            values = itertools.chain(args, kwargs.values())
+            if nested:
+                values = itertools.chain.from_iterable(
+                    iflatten(value) for value in values
+                )
+            for value in values:
+                if isinstance(value, error.XLError):
+                    return value
+            return function(*args, **kwargs)
+        return wrapped
+    return decorate
 
 
 date_1900 = datetime.datetime(1900, 1, 1)

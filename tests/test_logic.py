@@ -21,6 +21,58 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(ret['result'], True)
         self.assertEqual(ret['error'], None)
 
+    def test_and_or_preserve_direct_errors_even_after_decisive_values(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('ERR', lambda value=source_error: value)
+            for name in ('AND', 'OR'):
+                for source in ('ERR()', str(source_error)):
+                    for value in ('TRUE()', 'FALSE()'):
+                        for args in (value + ',' + source, source + ',' + value):
+                            expression = name + '(' + args + ')'
+                            with self.subTest(expression=expression,
+                                              error=str(source_error)):
+                                self.assertEqual(p.parse(expression),
+                                                 {'result': None, 'error': str(source_error)})
+                                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                                 {'result': 99, 'error': None})
+                                expected = ({'result': 77, 'error': None}
+                                            if source_error is error.NOT_AVAILABLE
+                                            else {'result': None, 'error': str(source_error)})
+                                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                                 expected)
+        for name in ('AND', 'OR'):
+            self.assertEqual(p.parse(name + '(missing_value,TRUE())'),
+                             {'result': None, 'error': '#NAME?'})
+
+    def test_and_or_preserve_the_first_error_in_nested_arrays(self):
+        p = Parser()
+        for name, decisive_value in (('AND', False), ('OR', True)):
+            for first_error, second_error in ((error.NOT_AVAILABLE, error.DIV_ZERO),
+                                              (error.DIV_ZERO, error.NOT_AVAILABLE)):
+                values = [decisive_value, (first_error, [second_error])]
+                p.set_function('DATA', lambda values=values: values)
+                expression = name + '(DATA())'
+                with self.subTest(expression=expression, error=str(first_error)):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(first_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_and_or_preserve_boolean_results_for_valid_arrays(self):
+        p = Parser()
+        for values, and_result, or_result in [
+            ([True, (1, 2)], True, True),
+            ([True, (0, False)], False, True),
+            ([False, (0, False)], False, False),
+        ]:
+            p.set_function('DATA', lambda values=values: values)
+            for name, expected in (('AND', and_result), ('OR', or_result)):
+                with self.subTest(function=name, values=values):
+                    actual = p.parse(name + '(DATA())')
+                    self.assertEqual(actual, {'result': expected, 'error': None})
+                    self.assertIs(actual['result'], expected)
+
     def test_if(self):
         p = Parser(debug=True)
         ret = p.parse('IF(TRUE,1,3)')
@@ -197,6 +249,25 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(ret['result'], True)
         self.assertEqual(ret['error'], None)
 
+    def test_not_preserves_errors_for_enclosing_handlers(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            for source in (str(source_error), 'ERR()', 'SUM(DATA())'):
+                expression = 'NOT(' + source + ')'
+                with self.subTest(source=source, error=str(source_error)):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        self.assertEqual(p.parse('NOT(missing_value)'),
+                         {'result': None, 'error': '#NAME?'})
+
     def test_or(self):
         p = Parser(debug=True)
         ret = p.parse('OR(TRUE,TRUE, FALSE)')
@@ -223,3 +294,38 @@ class TestLogic(unittest.TestCase):
         ret = p.parse('XOR(3>12,4>2)')
         self.assertEqual(ret['result'], True)
         self.assertEqual(ret['error'], None)
+
+    def test_xor_preserves_scalar_and_nested_errors(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error:
+                           [False, (value, error.DIV_ZERO)])
+            for expression in ('XOR(' + str(source_error) + ')',
+                               'XOR(TRUE(),ERR())', 'XOR(ERR(),FALSE())',
+                               'XOR(DATA())', 'XOR(SUM(DATA()),TRUE())'):
+                with self.subTest(expression=expression, error=str(source_error)):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        self.assertEqual(p.parse('XOR(missing_value)'),
+                         {'result': None, 'error': '#NAME?'})
+
+    def test_xor_preserves_valid_nested_parity(self):
+        p = Parser()
+        for values, expected in [
+            ([True, (False, False)], True),
+            ([True, (True, False)], False),
+            ([True, [True, (True,)]], True),
+            ([False, (False,)], False),
+        ]:
+            with self.subTest(values=values):
+                p.set_function('DATA', lambda values=values: values)
+                actual = p.parse('XOR(DATA())')
+                self.assertEqual(actual, {'result': expected, 'error': None})
+                self.assertIs(actual['result'], expected)
