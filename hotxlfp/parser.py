@@ -62,8 +62,7 @@ class Parser(Emitter):
 
         def valsetter(new_value):
             nonlocal result
-            if new_value is not None:
-                result = new_value
+            result = new_value
 
         self.emit('callFunction', name, args, valsetter)
         return result
@@ -81,8 +80,7 @@ class Parser(Emitter):
 
         def valsetter(new_value):
             nonlocal result
-            if new_value is not None:
-                result = new_value
+            result = new_value
 
         self.emit('callVariable', name, valsetter)
         if result is not_found:
@@ -96,8 +94,7 @@ class Parser(Emitter):
 
         def valsetter(new_value):
             nonlocal result
-            if new_value is not None:
-                result = new_value
+            result = new_value
 
         self.emit('callCellValue', Cell(label, row, col), valsetter)
         return result
@@ -131,8 +128,7 @@ class Parser(Emitter):
 
         def valsetter(new_value):
             nonlocal result
-            if new_value is not None:
-                result = new_value
+            result = new_value
 
         self.emit('callRangeValue', start_cell, end_cell, valsetter)
         return result

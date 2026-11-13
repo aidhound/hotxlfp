@@ -98,7 +98,7 @@ class TestParser(unittest.TestCase):
                          {'result': 7, 'error': None})
 
     def test_variable_events_can_resolve_or_override_values(self):
-        for value in (12, 0, False, '', error.NOT_AVAILABLE):
+        for value in (12, 0, False, '', None, error.NOT_AVAILABLE):
             with self.subTest(value=value):
                 parser = Parser()
 
@@ -115,6 +115,51 @@ class TestParser(unittest.TestCase):
                 self.assertEqual(parser.parse('supplied_name'), expected)
                 self.assertEqual(parser.parse('IFERROR(missing_name,99)'),
                                  {'result': 99, 'error': None})
+
+    def test_function_events_can_replace_results_with_blank(self):
+        def clear(name, args, set_value):
+            if name == 'CUSTOM':
+                set_value(None)
+
+        for value in (12, error.DIV_ZERO):
+            with self.subTest(value=value):
+                parser = Parser()
+                parser.set_function('CUSTOM', lambda: value)
+                parser.on('callFunction', clear)
+                self.assertEqual(parser.parse('CUSTOM()'),
+                                 {'result': None, 'error': None})
+                self.assertEqual(parser.parse('ISBLANK(CUSTOM())'),
+                                 {'result': True, 'error': None})
+
+    def test_event_setters_distinguish_blank_from_no_override(self):
+        cases = [
+            ('callFunction', 'CUSTOM()', 12),
+            ('callVariable', 'supplied_name', 12),
+            ('callCellValue', 'A1', 12),
+            ('callRangeValue', 'A1:A2', [[12], [13]]),
+        ]
+        for event, expression, value in cases:
+            with self.subTest(event=event):
+                parser = Parser()
+                parser.set_function('CUSTOM', lambda: 7)
+
+                # Every event passes its setter as the last argument.
+                def supply(*args):
+                    args[-1](value)
+
+                def leave_unchanged(*args):
+                    pass
+
+                def clear(*args):
+                    args[-1](None)
+
+                parser.on(event, supply)
+                parser.on(event, leave_unchanged)
+                self.assertEqual(parser.parse(expression),
+                                 {'result': value, 'error': None})
+                parser.on(event, clear)
+                self.assertEqual(parser.parse(expression),
+                                 {'result': None, 'error': None})
 
     def test_parser_within_parser(self):
 
