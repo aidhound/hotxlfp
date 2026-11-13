@@ -205,13 +205,25 @@ def AVERAGEIFS(average_range, *criteria):
 def MAXIFS(sum_args, *criteria):
     if len(criteria) % 2 != 0:
         return error.ERROR
-    range_and_preds = list(zip(criteria[::2], (utils.parse_criteria(criterion) for criterion in criteria[1::2])))
-    b = 0
-    for i, a in enumerate(sum_args):
-        if all(pred(criteria_range[i]) for criteria_range,pred in range_and_preds):
-            if a > b: 
-                b = a
-    return b
+
+    max_shape = utils.array_shape(sum_args)
+    if isinstance(max_shape, error.XLError):
+        return max_shape
+
+    range_and_preds = []
+    for criteria_range, criterion in zip(criteria[::2], criteria[1::2]):
+        criteria_shape = utils.array_shape(criteria_range)
+        if isinstance(criteria_shape, error.XLError):
+            return criteria_shape
+        if criteria_shape != max_shape:
+            return error.VALUE
+        range_and_preds.append((utils.flatten(criteria_range), utils.parse_criteria(criterion)))
+
+    values = (
+        value for i, value in enumerate(utils.iflatten(sum_args))
+        if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds)
+    )
+    return max(values, default=0)
 
 
 @dispatcher.register_for('SLOPE')

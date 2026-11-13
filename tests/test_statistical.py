@@ -530,6 +530,81 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
+    def test_maxifs_accepts_flat_row_column_and_matrix_ranges(self):
+        p = Parser()
+        for shape in (lambda values: values,
+                      lambda values: [values],
+                      lambda values: [[value] for value in values],
+                      lambda values: [values[:2], values[2:]],
+                      lambda values: (tuple(values[:2]), tuple(values[2:]))):
+            maxima = shape([10, 20, 30, 40])
+            first = shape([1, 2, 3, 4])
+            second = shape(['x', 'y', 'x', 'y'])
+            p.set_function('DATA', lambda: maxima)
+            p.set_function('FIRST', lambda: first)
+            p.set_function('SECOND', lambda: second)
+            for expression, expected in (
+                ('MAXIFS(DATA(),FIRST(),">1")', 40),
+                ('MAXIFS(DATA(),FIRST(),"<3",SECOND(),"x")', 10),
+            ):
+                with self.subTest(maxima=maxima, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_maxifs_accepts_nested_range_callbacks(self):
+        for label, values, expected in (
+            ('A1:C1', [[1, 2, 3]], 3),
+            ('A1:A3', [[1], [2], [3]], 3),
+            ('A1:B2', [[1, 2], [3, 4]], 4),
+        ):
+            p = Parser()
+            p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+            expression = 'MAXIFS(' + label + ',' + label + ',">1")'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_maxifs_treats_flat_vectors_as_columns(self):
+        p = Parser()
+        for maxima, criteria in (([10, 20, 30], [[1], [2], [3]]),
+                                 ([[10], [20], [30]], [1, 2, 3])):
+            p.set_function('DATA', lambda: maxima)
+            p.set_function('CRITERIA', lambda: criteria)
+            with self.subTest(maxima=maxima, criteria=criteria):
+                self.assertEqual(p.parse('MAXIFS(DATA(),CRITERIA(),">1")'),
+                                 {'result': 30, 'error': None})
+
+    def test_maxifs_rejects_mismatched_and_invalid_range_shapes(self):
+        p = Parser()
+        for maxima, criteria in (
+            ([[10, 20]], [[1], [2]]),
+            ([[10, 20], [30, 40]], [[1, 2, 3, 4]]),
+            ([[10], [20, 30]], [[1], [2, 3]]),
+            ([10, [20]], [1, [2]]),
+            ([[[10]]], [[[1]]]),
+            ([10, 20], [1, 2, 3]),
+            ([10, 20, 30], [1, 2]),
+            ([10, 20], 'text'),
+        ):
+            p.set_function('DATA', lambda: maxima)
+            p.set_function('CRITERIA', lambda: criteria)
+            expression = 'MAXIFS(DATA(),CRITERIA(),">1")'
+            with self.subTest(maxima=maxima, criteria=criteria):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
+    def test_maxifs_preserves_negative_maxima_and_zero_for_no_matches(self):
+        p = Parser()
+        for vector, expected in (([-5, -2, -9], -2), ([-5], -5),
+                                  ([100, -5, -2], -2), ([-5, 0, -9], -5), ([], 0)):
+            for values in (vector, [vector], [[value] for value in vector]):
+                p.set_function('DATA', lambda: values)
+                for criteria, result in (("<0", expected), (">999", 0)):
+                    expression = 'MAXIFS(DATA(),DATA(),"' + criteria + '")'
+                    with self.subTest(values=values, expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': result, 'error': None})
+        self.assertEqual(p.parse('MAXIFS({-5,0,-9},{-5,0,-9},"<=0")'),
+                         {'result': 0, 'error': None})
+
     def test_slope(self):
         p = Parser(debug=True)
         ret = p.parse('SLOPE(1;2;3;4;1;2;3;4)')
