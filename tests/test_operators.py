@@ -819,6 +819,39 @@ class TestOperators(unittest.TestCase):
 
     def test_amp(self):
         p = Parser(debug=True)
-        ret = p.parse('1&2')
-        self.assertEqual(ret['result'], '12')
-        self.assertEqual(ret['error'], None)
+        for expression, expected in [
+            ('1&2', '12'),
+            ('"prefix"&7', 'prefix7'),
+            ('""&"suffix"', 'suffix'),
+            ('"#DIV/0!"&"suffix"', '#DIV/0!suffix'),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
+
+    def test_concatenation_preserves_errors_for_enclosing_handlers(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            expressions = ('ERR()&"suffix"', '"prefix"&ERR()', 'ERR()&ERR()',
+                           str(source_error) + '&"suffix"')
+            for expression in expressions:
+                with self.subTest(error=str(source_error), expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        self.assertEqual(p.parse('IFERROR((1/0)&"suffix",99)'),
+                         {'result': 99, 'error': None})
+
+    def test_concatenation_preserves_the_left_error_when_both_sides_fail(self):
+        p = Parser()
+        for expression, code in [('#REF!&#N/A', '#REF!'),
+                                 ('#N/A&#REF!', '#N/A')]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': code})

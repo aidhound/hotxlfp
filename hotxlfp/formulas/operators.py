@@ -373,6 +373,8 @@ def evaluate_arithmetic(op, lval, rval):
         return lval
     if isinstance(rval, error.XLError):
         return rval
+    if op == '&':
+        return str(lval) + str(rval)
     if isinstance(lval, list):
         return OPERATOR_DICT[op](ExcelArrayOps(lval), rval)
     if isinstance(rval, list):

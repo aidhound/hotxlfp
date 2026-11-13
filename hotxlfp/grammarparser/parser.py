@@ -75,10 +75,7 @@ class FormulaParser(Parser):
                   | expression DIV expression
                   | expression AMP expression
         """
-        if p[2] == '&':
-            p[0] = str(p[1]) + str(p[3])
-        else:
-            p[0] = operators.evaluate_arithmetic(p[2], p[1], p[3])
+        p[0] = operators.evaluate_arithmetic(p[2], p[1], p[3])
 
     def p_expression_logical_operator(self, p):
         """
