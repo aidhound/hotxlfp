@@ -47,6 +47,15 @@ def MATCH(lookup_value, lookup_array, match_type=1):
     if match_type not in (-1, 0, 1):
         return error.NOT_AVAILABLE
 
+    if len(lookup_array) == 1 and isinstance(lookup_array[0], list):
+        lookup_array = lookup_array[0]
+    elif lookup_array and all(isinstance(row, list) and len(row) == 1
+                              for row in lookup_array):
+        lookup_array = [row[0] for row in lookup_array]
+
+    if any(isinstance(value, list) for value in lookup_array):
+        return error.NOT_AVAILABLE
+
     index = None
     index_value = None
     for idx in range(len(lookup_array)):

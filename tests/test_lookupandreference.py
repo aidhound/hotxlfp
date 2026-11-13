@@ -94,6 +94,48 @@ class TestLookupAndReference(unittest.TestCase):
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
 
+    def test_match_accepts_flat_row_and_column_vectors(self):
+        p = Parser()
+        cases = [
+            ([1, 2, 3, 4], 'MATCH(3,DATA(),0)', 3),
+            ([10, 20, 30], 'MATCH(20,DATA(),0)', 2),
+            ([10, 20, 30], 'MATCH(25,DATA(),1)', 2),
+            ([10, 20, 30], 'MATCH(25,DATA())', 2),
+            ([30, 20, 10], 'MATCH(15,DATA(),-1)', 2),
+            (['Alpha', 'Beta', 'Gamma'], 'MATCH("b*",DATA(),0)', 2),
+            ([20, 20, 30], 'MATCH(20,DATA(),0)', 1),
+            ([20], 'MATCH(20,DATA(),0)', 1),
+        ]
+        for vector, expression, expected in cases:
+            for values in (vector, [vector], [[value] for value in vector]):
+                with self.subTest(values=values, expression=expression):
+                    p.set_function('DATA', lambda values=values: values)
+                    self.assertEqual(p.parse(expression),
+                                     {'result': expected, 'error': None})
+
+    def test_match_accepts_single_row_and_column_ranges(self):
+        for label, values in [('A1:C1', [[10, 20, 30]]),
+                              ('A1:A3', [[10], [20], [30]])]:
+            with self.subTest(label=label):
+                p = Parser()
+                p.on('callRangeValue',
+                     lambda start, end, set_value: set_value(values))
+                self.assertEqual(p.parse('MATCH(20,' + label + ',0)'),
+                                 {'result': 2, 'error': None})
+
+    def test_match_rejects_nonvector_arrays(self):
+        p = Parser()
+        for values in ([[1, 2], [3, 4]], [[1], [2, 3]],
+                       [1, [2]], [[1], 2], [[[1]]], [], [[]]):
+            p.set_function('DATA', lambda values=values: values)
+            for match_type in (-1, 0, 1):
+                expression = 'MATCH(2,DATA(),' + str(match_type) + ')'
+                with self.subTest(values=values, match_type=match_type):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': '#N/A'})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
     def test_index(self):
         p = Parser(debug=True)
         ret = p.parse('INDEX({25,38,40,41},1)')
