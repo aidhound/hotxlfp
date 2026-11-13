@@ -263,6 +263,9 @@ def LARGE(arr, n):
     n = utils.parse_number(n)
     if isinstance(n, error.XLError):
         return n
-    if n < 1 or n > len(arr):
+    if n < 1:
         return error.NUM
-    return sorted(utils.inumbers(arr, try_parse=True, text_is_zero=True))[-n]
+    values = utils.numbers(arr, try_parse=True, text_is_zero=True)
+    if n > len(values):
+        return error.NUM
+    return sorted(values)[-n]

@@ -620,6 +620,68 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_large_accepts_flat_row_column_and_matrix_arrays(self):
+        p = Parser()
+        for values in ([29, 14, 33, 19], [[29, 14, 33, 19]],
+                       [[29], [14], [33], [19]], [[29, 14], [33, 19]],
+                       ((29, 14), (33, 19))):
+            p.set_function('DATA', lambda: values)
+            for rank, expected in ((1, 33), (2, 29), (4, 14)):
+                expression = 'LARGE(DATA(),' + str(rank) + ')'
+                with self.subTest(values=values, rank=rank):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_large_accepts_nested_range_callbacks(self):
+        for label, values, rank, expected in (
+            ('A1:C1', [[1, 3, 2]], 2, 2),
+            ('A1:A3', [[1], [3], [2]], 2, 2),
+            ('A1:B2', [[1, 4], [3, 2]], 3, 2),
+        ):
+            p = Parser()
+            p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+            expression = 'LARGE(' + label + ',' + str(rank) + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_large_checks_rank_against_collected_numbers(self):
+        p = Parser()
+        for values, rank, expected, code in (
+            ([10, None, 5], 2, 5, None),
+            ([10, None, 5], 3, None, '#NUM!'),
+            ([None, None], 1, None, '#NUM!'),
+            ([], 1, None, '#NUM!'),
+            ([[]], 1, None, '#NUM!'),
+            ([[1, 2, 3]], 4, None, '#NUM!'),
+            ([[1, 2, 3]], 0, None, '#NUM!'),
+            ([[1, 2, 3]], -1, None, '#NUM!'),
+            ([5, 5, 2], 2, 5, None),
+            ([-5, -2, -9], 2, -5, None),
+            ([10, '5', 'text', None], 3, 0, None),
+        ):
+            p.set_function('DATA', lambda: values)
+            expression = 'LARGE(DATA(),' + str(rank) + ')'
+            with self.subTest(values=values, rank=rank):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': code})
+                if code:
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_large_preserves_errors_while_collecting_nested_values(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            for values in ([5, source_error], [[5, source_error]], [[5], [source_error]]):
+                p.set_function('DATA', lambda: values)
+                expression = 'LARGE(DATA(),2)'
+                with self.subTest(values=values):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_large(self):
         p = Parser(debug=True)
         ret = p.parse('LARGE({29,14,33,19,17},1)')
