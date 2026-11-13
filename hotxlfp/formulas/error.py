@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Defines Excel errors as python exceptions
+Shared Excel error values, also usable as exceptions to abort internal work.
+
+During formula evaluation these instances travel as values. A function or its
+helpers may raise them to stop a calculation; Parser.call_function converts
+those exceptions back into values so enclosing formula functions can consume
+them. Syntax failures abort parsing. Parser.parse reports an unhandled final
+error through its error field.
 """
 
 class XLError(RuntimeError):

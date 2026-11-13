@@ -48,6 +48,12 @@ class Parser(Emitter):
         return self.functions[name.upper()]
 
     def call_function(self, name, args=None):
+        """Evaluate a function and expose returned or raised XLError as a value.
+
+        Internal helpers may raise XLError to abort their calculation. Catch
+        those errors here so enclosing formula functions can consume them.
+        Other Python exceptions propagate to parse and abort evaluation.
+        """
         if args is None:
             args = []
 
@@ -58,7 +64,6 @@ class Parser(Emitter):
                 fn = formulas.get_for(name.upper())
             result = fn(*args)
         except formulaserror.XLError as exc:
-            # Let enclosing formula functions handle semantic Excel errors.
             result = exc
 
         def valsetter(new_value):

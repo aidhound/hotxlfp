@@ -73,16 +73,36 @@ class TestError(unittest.TestCase):
         self.assertEqual(p.parse('INDEX(DATA(),1)'),
                          {'result': 5, 'error': None})
 
-    def test_raised_custom_excel_errors_reach_handlers(self):
-        def fail():
-            raise error.NOT_AVAILABLE
-
+    def test_returned_and_raised_excel_errors_reach_consumers_identically(self):
         p = Parser()
-        p.set_function('FAIL', fail)
-        self.assertEqual(p.parse('FAIL()'),
-                         {'result': None, 'error': '#N/A'})
-        self.assertEqual(p.parse('IFNA(FAIL(),77)'),
-                         {'result': 77, 'error': None})
+        for source_error in (error.ERROR, error.DIV_ZERO, error.NAME,
+                             error.NOT_AVAILABLE, error.NULL, error.NUM,
+                             error.REF, error.VALUE, error.DATA):
+            def return_error():
+                return source_error
+
+            def raise_error():
+                raise source_error
+
+            for implementation in (return_error, raise_error):
+                p.set_function('FAIL', implementation)
+                cases = [
+                    ('FAIL()', None, str(source_error)),
+                    ('IFERROR(FAIL(),99)', 99, None),
+                    ('ISERROR(FAIL())', True, None),
+                    ('COUNT(FAIL())', 0, None),
+                    ('COUNTA(FAIL())', 1, None),
+                ]
+                cases.append(('IFNA(FAIL(),77)', 77, None)
+                             if source_error is error.NOT_AVAILABLE
+                             else ('IFNA(FAIL(),77)', None, str(source_error)))
+                with self.subTest(error=str(source_error),
+                                  implementation=implementation.__name__):
+                    self.assertIs(p.call_function('FAIL'), source_error)
+                    for formula, result, code in cases:
+                        with self.subTest(formula=formula):
+                            self.assertEqual(p.parse(formula),
+                                             {'result': result, 'error': code})
 
     def test_function_event_can_override_an_aggregate_error(self):
         def override(name, args, set_value):
@@ -96,13 +116,17 @@ class TestError(unittest.TestCase):
                          {'result': 12, 'error': None})
 
     def test_python_implementation_errors_still_abort_evaluation(self):
-        def fail():
-            raise ValueError('callback bug')
-
         p = Parser()
-        p.set_function('FAIL', fail)
-        self.assertEqual(p.parse('IFERROR(FAIL(),99)'),
-                         {'result': None, 'error': '#ERROR!'})
+        for exception_type in (ValueError, TypeError):
+            def fail():
+                raise exception_type('callback bug')
+
+            p.set_function('FAIL', fail)
+            with self.subTest(exception_type=exception_type):
+                with self.assertRaises(exception_type):
+                    p.call_function('FAIL')
+                self.assertEqual(p.parse('IFERROR(FAIL(),99)'),
+                                 {'result': None, 'error': '#ERROR!'})
 
     def test_div_zero(self):
         p = Parser()

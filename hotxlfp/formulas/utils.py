@@ -49,7 +49,12 @@ def flatten(l):
 
 
 def inumbers(l, try_parse=False, text_is_zero=False):
-    """ only the numbers """
+    """Yield numeric values, raising XLError to abort on an Excel error.
+
+    Raising prevents consumers such as sum from accepting a partial result.
+    Parser.call_function catches this internal abort and returns the error as
+    a value for enclosing formula functions to handle.
+    """
     for el in iflatten(l):
         if try_parse or isinstance(el, number_types):
             el = to_number(el)
