@@ -1,3 +1,4 @@
+import datetime
 import unittest
 from hotxlfp import Parser, formulas
 from hotxlfp.formulas import error
@@ -160,6 +161,72 @@ class TestParser(unittest.TestCase):
                 parser.on(event, clear)
                 self.assertEqual(parser.parse(expression),
                                  {'result': None, 'error': None})
+
+    def test_nonfinite_numbers_are_errors_before_consumers_run(self):
+        for value in (float('nan'), float('inf'), float('-inf'),
+                      complex(float('nan'), 0), complex(0, float('inf'))):
+            parser = Parser()
+            parser.set_function('BAD', lambda: value)
+            parser.set_variable('bad_value', value)
+            parser.on('callCellValue', lambda cell, set_value: set_value(value))
+            for source in ('BAD()', 'bad_value', 'A1'):
+                for expression in (source, source + '=0', '-' + source):
+                    with self.subTest(value=value, expression=expression):
+                        self.assertEqual(parser.parse(expression),
+                                         {'result': None, 'error': '#NUM!'})
+                        self.assertEqual(parser.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+
+    def test_numeric_validation_uses_final_callback_values(self):
+        sources = [('callFunction', 'DATA()'),
+                   ('callVariable', 'input_value'),
+                   ('callCellValue', 'A1'),
+                   ('callRangeValue', 'A1:A2')]
+        cases = [(float('nan'), error.NUM), (float('inf'), error.NUM),
+                 (float('-inf'), error.NUM)]
+        cases.extend((value, value) for value in (
+            0, -2.5, 10 ** 400, complex(3, 4), True, False,
+            None, '', '7', 'NaN', 'inf', '2026-11-11',
+            datetime.date(2026, 11, 11), error.DIV_ZERO,
+        ))
+        for event, expression in sources:
+            for value, expected_value in cases:
+                with self.subTest(event=event, value=value):
+                    parser = Parser()
+                    parser.set_function('DATA', lambda: float('nan'))
+                    parser.set_variable('input_value', float('nan'))
+                    parser.on(event, lambda *args: args[-1](float('nan')))
+                    parser.on(event, lambda *args: args[-1](value))
+                    if isinstance(expected_value, error.XLError):
+                        expected = {'result': None, 'error': str(expected_value)}
+                    else:
+                        expected = {'result': expected_value, 'error': None}
+                    actual = parser.parse(expression)
+                    self.assertEqual(actual, expected)
+                    self.assertIs(type(actual['result']), type(expected['result']))
+
+    def test_numeric_validation_preserves_array_shape_and_error_elements(self):
+        invalid = float('nan')
+        values = [(invalid, '7', None), [float('inf'), 3.5]]
+        expected = [(error.NUM, '7', None), [error.NUM, 3.5]]
+        parser = Parser()
+        parser.set_function('DATA', lambda: values)
+        parser.set_variable('input_values', values)
+        parser.on('callCellValue', lambda cell, set_value: set_value(values))
+        parser.on('callRangeValue',
+                  lambda start, end, set_value: set_value(values))
+        for source in ('DATA()', 'input_values', 'A1', 'A1:A2'):
+            cases = [
+                (source, expected, None),
+                ('IFERROR(' + source + ',0)', [(0, '7', None), [0, 3.5]], None),
+                ('COUNT(' + source + ')', 2, None),
+                ('SUM(' + source + ')', None, '#NUM!'),
+            ]
+            for expression, result, code in cases:
+                with self.subTest(expression=expression):
+                    self.assertEqual(parser.parse(expression),
+                                     {'result': result, 'error': code})
+        self.assertIs(values[0][0], invalid)
 
     def test_parser_within_parser(self):
 

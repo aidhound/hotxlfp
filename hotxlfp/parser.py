@@ -4,6 +4,7 @@ from . import formulas
 from .formulas import error as formulaserror
 from .grammarparser.parser import FormulaParser
 from .helper.cell import extract_label, to_label, Cell
+from .helper.value import validate_value
 import traceback
 
 
@@ -65,7 +66,7 @@ class Parser(Emitter):
             result = new_value
 
         self.emit('callFunction', name, args, valsetter)
-        return result
+        return validate_value(result)
 
     def set_variable(self, name, v):
         self.variables[name] = v
@@ -85,7 +86,7 @@ class Parser(Emitter):
         self.emit('callVariable', name, valsetter)
         if result is not_found:
             return formulaserror.NAME
-        return result
+        return validate_value(result)
 
     def call_cell_value(self, label):
         label = label.upper()
@@ -97,7 +98,7 @@ class Parser(Emitter):
             result = new_value
 
         self.emit('callCellValue', Cell(label, row, col), valsetter)
-        return result
+        return validate_value(result)
 
     def call_range_value(self, start_label, end_label):
         if start_label is None or end_label is None:
@@ -131,7 +132,7 @@ class Parser(Emitter):
             result = new_value
 
         self.emit('callRangeValue', start_cell, end_cell, valsetter)
-        return result
+        return validate_value(result)
 
     def _throw_error(self, error_name):
         raise formulaserror.from_message(error_name)

@@ -3,12 +3,18 @@ import cmath
 from .._compat import number_types, string_types
 from ..formulas import error
 
+
+def validate_number(number):
+    """Return a native number unchanged, or #NUM! if it is nonfinite."""
+    # Integers are always finite; avoid converting large ints to floats.
+    if isinstance(number, int) or cmath.isfinite(number):
+        return number
+    return error.NUM
+
+
 def to_number(number):
     if isinstance(number, number_types):
-        # Integers are always finite; avoid converting large ints to floats.
-        if isinstance(number, int) or cmath.isfinite(number):
-            return number
-        return error.NUM
+        return validate_number(number)
     if isinstance(number, string_types):
         try:
             return int(number)
