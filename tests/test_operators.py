@@ -7,6 +7,60 @@ from hotxlfp.formulas import error
 
 class TestOperators(unittest.TestCase):
 
+    def test_nonfinite_arithmetic_results_return_numeric_errors(self):
+        p = Parser()
+        p.set_function('BIG', lambda: 1e308)
+        p.set_function('SMALL', lambda: 1e-308)
+        p.set_function('HUGE', lambda: 10 ** 400)
+        p.set_function('COMPLEX', lambda: complex(1e308, 1e308))
+        for expression in ('BIG()+BIG()', '-BIG()-BIG()', 'BIG()*BIG()',
+                           'BIG()/SMALL()', 'COMPLEX()*COMPLEX()',
+                           'HUGE()+1.0', 'HUGE()*1.0', 'HUGE()/1',
+                           'DATE(2026,1,1)*BIG()'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+        self.assertEqual(p.parse('IFERROR(BIG()*BIG()=0,99)'),
+                         {'result': 99, 'error': None})
+
+    def test_arithmetic_result_validation_preserves_valid_results(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10 ** 400)
+        for expression, result, code in [
+            ('HUGE()+1', 10 ** 400 + 1, None),
+            ('HUGE()/HUGE()', 1.0, None),
+            ('2^8', 256, None),
+            ('2^1024', 2 ** 1024, None),
+            ('50%', 0.5, None),
+            ('1/0', None, '#DIV/0!'),
+            ('0/0', None, '#DIV/0!'),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': result, 'error': code})
+
+    def test_percentage_overflow_returns_a_handleable_numeric_error(self):
+        p = Parser()
+        expression = '9' * 400 + '%'
+        self.assertEqual(p.parse(expression),
+                         {'result': None, 'error': '#NUM!'})
+        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                         {'result': 99, 'error': None})
+
+    def test_array_arithmetic_keeps_numeric_errors_as_elements(self):
+        p = Parser()
+        for value in (1e308, 10 ** 400):
+            p.set_function('DATA', lambda: [[value, 3], [4, value]])
+            for expression in ('DATA()*2.0', '2.0*DATA()'):
+                with self.subTest(value=value, expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': [[error.NUM, 6], [8, error.NUM]],
+                                      'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',0)'),
+                                     {'result': [[0, 6], [8, 0]], 'error': None})
+
     def test_nonfinite_arithmetic_inputs_preserve_numeric_error(self):
         p = Parser()
         for value in (float('nan'), float('inf'), 'NaN', '1e309'):

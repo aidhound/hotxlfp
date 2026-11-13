@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
 from . import error
-from ..helper.number import to_number
+from ..helper.number import to_number, validate_number
 from .utils import OPERATOR_DICT, serialize_date, parse_date, date_1900
 from .._compat import number_types, string_types
 
@@ -399,12 +399,16 @@ def evaluate_arithmetic(op, lval, rval):
         rval = rconv(rval)
 
     try:
-        result = OPERATOR_DICT[op](lval, rval)
+        result = validate_number(OPERATOR_DICT[op](lval, rval))
+        if isinstance(result, error.XLError):
+            return result
         if 'result' in conversions[ltype][rtype]:
             result = conversions[ltype][rtype]['result'](result)
         return result
     except ZeroDivisionError:
         return error.DIV_ZERO
+    except OverflowError:
+        return error.NUM
 
 
 def evaluate_logic(op, lval, rval):

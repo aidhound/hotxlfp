@@ -112,7 +112,7 @@ class FormulaParser(Parser):
         elif p[2] == '^':
             p[0] = to_number(p[1])**to_number(p[3])
         elif p[2] == '%':
-            p[0] = to_number(p[1]) * 0.01
+            p[0] = operators.evaluate_arithmetic('*', p[1], 0.01)
 
     def p_expression_string(self, p):
         """
