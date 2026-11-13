@@ -82,6 +82,41 @@ class TestLookupAndReference(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#N/A')
 
+    def test_choose_preserves_selector_and_selected_errors(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            for source in (str(source_error), 'ERR()'):
+                for args in (source + ',10,20', '1,' + source + ',20',
+                             '2,10,' + source):
+                    expression = 'CHOOSE(' + args + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_choose_ignores_unselected_errors_and_preserves_validation(self):
+        p = Parser()
+        for expression, result, code in (
+            ('CHOOSE(1,10,#DIV/0!)', 10, None),
+            ('CHOOSE(2,#N/A,20)', 20, None),
+            ('CHOOSE(#NUM!,#N/A,20)', None, '#NUM!'),
+            ('CHOOSE(1,0,#N/A)', 0, None),
+            ('CHOOSE(1,FALSE(),#N/A)', False, None),
+            ('CHOOSE(1,"#N/A",#DIV/0!)', '#N/A', None),
+            ('CHOOSE(0,10,20)', None, '#VALUE!'),
+            ('CHOOSE(3,10,20)', None, '#VALUE!'),
+            ('CHOOSE()', None, '#N/A'),
+            ('CHOOSE(1)', None, '#N/A'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': result, 'error': code})
+
     def test_match(self):
         p = Parser(debug=True)
         ret = p.parse('MATCH(39,{25,38,40,41},1)')
@@ -93,6 +128,45 @@ class TestLookupAndReference(unittest.TestCase):
         ret = p.parse('MATCH(39,{25,38,40,41},-1)')
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
+
+    def test_match_preserves_direct_error_arguments(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            for source in (str(source_error), 'ERR()'):
+                for args in (source + ',{1,2}', '1,' + source,
+                             source + ',{1,2},0', '1,' + source + ',0',
+                             '1,{1,2},' + source):
+                    expression = 'MATCH(' + args + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_match_preserves_error_order_without_rejecting_whole_vectors(self):
+        p = Parser()
+        for expression, result, code in (
+            ('MATCH(#DIV/0!,#N/A,0)', None, '#DIV/0!'),
+            ('MATCH(1,#NUM!,#DIV/0!)', None, '#NUM!'),
+            ('MATCH(#N/A,{1,2},#DIV/0!)', None, '#N/A'),
+            ('MATCH("#N/A",{"text","#N/A"},0)', 2, None),
+            ('MATCH(3,{1,2},0)', None, '#N/A'),
+            ('IFNA(MATCH(3,{1,2},0),77)', 77, None),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': result, 'error': code})
+        for values in ([1, error.DIV_ZERO], [[1, error.DIV_ZERO]],
+                       [[1], [error.DIV_ZERO]]):
+            p.set_function('DATA', lambda values=values: values)
+            for match_type in (-1, 0, 1):
+                expression = 'MATCH(1,DATA(),' + str(match_type) + ')'
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': 1, 'error': None})
 
     def test_match_accepts_flat_row_and_column_vectors(self):
         p = Parser()
@@ -135,6 +209,57 @@ class TestLookupAndReference(unittest.TestCase):
                                      {'result': None, 'error': '#N/A'})
                     self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
                                      {'result': 99, 'error': None})
+
+    def test_index_preserves_direct_error_arguments(self):
+        p = Parser()
+        valid_args = ['{10,20}', '1', '1', '1']
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            for position in range(len(valid_args)):
+                for source in (str(source_error), 'ERR()'):
+                    args = valid_args.copy()
+                    args[position] = source
+                    expression = 'INDEX(' + ','.join(args) + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_index_preserves_errors_before_array_validation_and_wrapping(self):
+        p = Parser()
+        p.set_function('EMPTY', lambda: [])
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            for args in (str(source_error) + ',2', str(source_error) + ',,2',
+                         str(source_error) + ',0,0', str(source_error) + ',#VALUE!',
+                         'NULL,' + str(source_error), 'EMPTY(),' + str(source_error)):
+                expression = 'INDEX(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_index_keeps_selected_array_errors_and_conversion_checks(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [[error.DIV_ZERO, 20], [30, error.NOT_AVAILABLE]])
+        for expression, result, code in (
+            ('INDEX(DATA(),1,2)', 20, None),
+            ('INDEX(DATA(),2,1)', 30, None),
+            ('INDEX(DATA(),1,1)', None, '#DIV/0!'),
+            ('INDEX(DATA(),2,2)', None, '#N/A'),
+            ('IFERROR(INDEX(DATA(),0,2),99)', [20, 99], None),
+            ('IFERROR(INDEX(DATA(),1,0),99)', [99, 20], None),
+            ('INDEX({10,20},"2")', 20, None),
+            ('INDEX({10,20},"bad")', None, '#VALUE!'),
+            ('INDEX({10,20},1,"bad")', None, '#VALUE!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': result, 'error': code})
 
     def test_index_accepts_flat_row_and_column_vectors(self):
         p = Parser()

@@ -27,6 +27,8 @@ def CHOOSE(*args):
         return error.NOT_AVAILABLE
 
     index = args[0]
+    if isinstance(index, error.XLError):
+        return index
     if (index < 1 or index > 254):
         return error.VALUE
 
@@ -37,6 +39,7 @@ def CHOOSE(*args):
 
 
 @dispatcher.register_for('MATCH')
+@utils.propagate_errors()
 def MATCH(lookup_value, lookup_array, match_type=1):
     if not lookup_value and not lookup_array:
         return error.NOT_AVAILABLE
@@ -91,6 +94,7 @@ def MATCH(lookup_value, lookup_array, match_type=1):
 
 
 @dispatcher.register_for('INDEX')
+@utils.propagate_errors()
 def INDEX(arr, row_num=DEFAULT, column_num=DEFAULT, area_num=DEFAULT):
     if row_num is None:
         row_num = DEFAULT
