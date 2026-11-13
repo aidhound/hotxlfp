@@ -280,10 +280,31 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(p.parse('COUNT(DATA())'),
                          {'result': 2, 'error': None})
 
-    def test_count_array_literals_coerce_only_numeric_text(self):
+    def test_count_array_literals_coerce_numeric_and_date_text(self):
         p = Parser()
-        self.assertEqual(p.parse('COUNT({1;"2";"text";TRUE;NULL;NA()})'),
-                         {'result': 2, 'error': None})
+        self.assertEqual(p.parse('COUNT({1;"2";"2026-11-11";"text";TRUE;NULL;NA()})'),
+                         {'result': 3, 'error': None})
+
+    def test_count_parses_date_text_in_arrays_using_direct_argument_rules(self):
+        p = Parser()
+        for value in ('2026-11-11', '22-MAY-2011', '2011/02/23'):
+            p.set_function('DIRECT', lambda: value)
+            self.assertEqual(p.parse('COUNT(DIRECT())'), {'result': 1, 'error': None})
+            for values in ([value], [[value]], ((value,),)):
+                p.set_function('DATA', lambda: values)
+                with self.subTest(value=value, values=values):
+                    self.assertEqual(p.parse('COUNT(DATA())'), {'result': 1, 'error': None})
+        values = ['2026-11-11', 'not-a-date', '2026-02-30', None, '', True,
+                  False, error.DIV_ZERO, error.NOT_AVAILABLE, 'NaN', '1e309', '7', 0]
+        p.set_function('DATA', lambda: values)
+        self.assertEqual(p.parse('COUNT(DATA())'), {'result': 3, 'error': None})
+        self.assertEqual(p.parse('COUNT(DATA(),TRUE(),FALSE())'), {'result': 5, 'error': None})
+
+    def test_count_parses_date_text_in_range_callbacks(self):
+        p = Parser()
+        values = [['2026-11-11', None], ['invalid', datetime.date(2026, 11, 11)], [True, '7']]
+        p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+        self.assertEqual(p.parse('COUNT(A1:B3)'), {'result': 3, 'error': None})
 
     def test_count_range_callback_values(self):
         p = Parser()
@@ -299,13 +320,13 @@ class TestStatistical(unittest.TestCase):
         p.set_function('DATA', lambda: [day, moment, '2026-11-11', '7', True, 0])
         p.set_function('DAYVALUE', lambda: day)
         self.assertEqual(p.parse('COUNT(DATA())'),
-                         {'result': 4, 'error': None})
+                         {'result': 5, 'error': None})
         self.assertEqual(p.parse('COUNT(DAYVALUE(),DATE(2026,11,11))'),
                          {'result': 2, 'error': None})
         self.assertEqual(p.parse('COUNT("2026-11-11")'),
                          {'result': 1, 'error': None})
         self.assertEqual(p.parse('COUNT(DATA(),"2026-11-11")'),
-                         {'result': 5, 'error': None})
+                         {'result': 6, 'error': None})
 
     def test_counta(self):
         p = Parser(debug=True)

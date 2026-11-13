@@ -64,20 +64,19 @@ def COUNT(*args):
     for arg in args:
         if isinstance(arg, (list, tuple)):
             values = (
-                to_number(value)
+                value
                 for value in utils.iflatten(arg)
                 if not isinstance(value, bool)
             )
         else:
-            value = to_number(arg)
+            values = (arg,)
+
+        for value in values:
+            value = to_number(value)
             if isinstance(value, string_types):
                 value = utils.parse_date(value)
-            values = (value,)
-
-        count += sum(
-            1 for value in values
-            if isinstance(value, number_types) or isinstance(value, datetime.date)
-        )
+            if isinstance(value, number_types) or isinstance(value, datetime.date):
+                count += 1
     return count
 
 

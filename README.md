@@ -90,9 +90,11 @@ does not know the source field type, so numeric-looking text is converted even
 when it came from a text field.
 
 Excel's [COUNT](https://support.microsoft.com/en-us/excel/functions/count-function)
-ignores numeric text in arrays and references. hotxlfp intentionally counts it,
-while still excluding array booleans, blanks, nonnumeric text and typed errors.
-Direct boolean arguments continue to count.
+ignores numeric and date-looking text in arrays and references. hotxlfp
+intentionally counts numeric strings and date strings recognized by its date
+parser, such as `"2026-11-11"`, both directly and inside arrays and references.
+Native date/datetime values also count. Array booleans, blanks, unrecognized text
+and typed errors remain excluded; direct boolean arguments continue to count.
 
 AVERAGEA also retains its text-as-zero behavior for nonnumeric text in both
 direct arguments and arrays, including empty strings. `None` is excluded from
