@@ -2,7 +2,7 @@
 import datetime
 from . import error
 from ..helper.number import to_number, validate_number
-from .utils import OPERATOR_DICT, serialize_date, parse_date, date_1900
+from .utils import OPERATOR_DICT, serialize_date, parse_date, date_1900, array_shape
 from .._compat import number_types, string_types
 
 
@@ -84,59 +84,6 @@ class ExcelComparator(object):
 
     def __le__(self, other):
         return self.__lt__(other) or self.__eq__(other)
-
-
-class ExcelArrayOps(object):
-
-    def __init__(self, arr):
-        self.arr = arr
-
-    def adapt_value(self, value):
-        if isinstance(value, list) and len(value) == 1 and len(self.arr) != 1:
-            value = value[0]
-        if not isinstance(value, list):
-            value = [value for i in range(len(self.arr))]
-        return value
-
-    def __add__(self, value):
-        value = self.adapt_value(value)
-        if len(value) != len(self.arr):
-            return error.VALUE
-        return [evaluate_arithmetic('+', a, b) for a, b in zip(self.arr, value)]
-
-    __radd__ = __add__
-
-    def __sub__(self, value):
-        value = self.adapt_value(value)
-        if len(value) != len(self.arr):
-            return error.VALUE
-        return [evaluate_arithmetic('-', a, b) for a, b in zip(self.arr, value)]
-
-    def __rsub__(self, value):
-        value = self.adapt_value(value)
-        if len(value) != len(self.arr):
-            return error.VALUE
-        return [evaluate_arithmetic('-', b, a) for a, b in zip(self.arr, value)]
-
-    def __mul__(self, value):
-        value = self.adapt_value(value)
-        if len(value) != len(self.arr):
-            return error.VALUE
-        return [evaluate_arithmetic('*', a, b) for a, b in zip(self.arr, value)]
-
-    __rmul__ = __mul__
-
-    def __truediv__(self, value):
-        value = self.adapt_value(value)
-        if len(value) != len(self.arr):
-            return error.VALUE
-        return [evaluate_arithmetic('/', a, b) for a, b in zip(self.arr, value)]
-
-    def __rtruediv__(self, value):
-        value = self.adapt_value(value)
-        if len(value) != len(self.arr):
-            return error.VALUE
-        return [evaluate_arithmetic('/', b, a) for a, b in zip(self.arr, value)]
 
 
 def value_and_type(value):
@@ -375,10 +322,8 @@ def evaluate_arithmetic(op, lval, rval):
         return rval
     if op == '&':
         return str(lval) + str(rval)
-    if isinstance(lval, list):
-        return OPERATOR_DICT[op](ExcelArrayOps(lval), rval)
-    if isinstance(rval, list):
-        return OPERATOR_DICT[op](lval, ExcelArrayOps(rval))
+    if isinstance(lval, (list, tuple)) or isinstance(rval, (list, tuple)):
+        return evaluate_array_arithmetic(op, lval, rval)
 
     lval, ltype = value_and_type(lval)
     if isinstance(lval, error.XLError):
@@ -419,3 +364,54 @@ def evaluate_logic(op, lval, rval):
     if isinstance(rval, error.XLError):
         return rval
     return OPERATOR_DICT[op](ExcelComparator(lval), rval)
+
+
+def array_value(value, shape, row, column):
+    if not isinstance(value, (list, tuple)):
+        return value
+    row = 0 if shape[0] == 1 else row
+    column = 0 if shape[1] == 1 else column
+    if row >= shape[0] or column >= shape[1]:
+        return error.NOT_AVAILABLE
+    values = value[row]
+    return values[column] if isinstance(values, (list, tuple)) else values
+
+
+def evaluate_array_arithmetic(op, lval, rval):
+    """Broadcast singleton dimensions and keep unmatched cells as #N/A.
+
+    Flat vectors are columns and retain flat results when neither input is a
+    nested array. Scalar cells use the normal arithmetic conversion rules.
+    """
+    left_shape = array_shape(lval) if isinstance(lval, (list, tuple)) else (1, 1)
+    if isinstance(left_shape, error.XLError):
+        return left_shape
+    right_shape = array_shape(rval) if isinstance(rval, (list, tuple)) else (1, 1)
+    if isinstance(right_shape, error.XLError):
+        return right_shape
+
+    shape = []
+    for left_size, right_size in zip(left_shape, right_shape):
+        if left_size == 0 or right_size == 0:
+            if max(left_size, right_size) > 1:
+                return error.VALUE
+            shape.append(0)
+        else:
+            shape.append(max(left_size, right_size))
+
+    nested_result = any(
+        isinstance(item, (list, tuple))
+        for value in (lval, rval) if isinstance(value, (list, tuple))
+        for item in value
+    )
+    result = []
+    # Map result positions to each operand, repeating singleton rows/columns.
+    # Unmatched positions in non-singleton dimensions supply #N/A.
+    for row in range(shape[0]):
+        values = [
+            evaluate_arithmetic(op, array_value(lval, left_shape, row, column),
+                                array_value(rval, right_shape, row, column))
+            for column in range(shape[1])
+        ]
+        result.append(values if nested_result else values[0])
+    return result

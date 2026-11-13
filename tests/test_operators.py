@@ -815,6 +815,112 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(p.parse('IFERROR(LEFTROW()/RIGHTROW(),0)'),
                          {'result': [[2, 0, 0]], 'error': None})
 
+    def test_arithmetic_broadcasts_rows_and_columns_in_both_orders(self):
+        p = Parser()
+        p.set_function('ROW', lambda: [[2, 4]])
+        p.set_function('COL', lambda: [[8], [16]])
+        for expression, expected in (
+            ('ROW()+COL()', [[10, 12], [18, 20]]),
+            ('COL()+ROW()', [[10, 12], [18, 20]]),
+            ('ROW()-COL()', [[-6, -4], [-14, -12]]),
+            ('COL()-ROW()', [[6, 4], [14, 12]]),
+            ('ROW()*COL()', [[16, 32], [32, 64]]),
+            ('COL()*ROW()', [[16, 32], [32, 64]]),
+            ('ROW()/COL()', [[0.25, 0.5], [0.125, 0.25]]),
+            ('COL()/ROW()', [[4, 2], [8, 4]]),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_arithmetic_broadcasts_vectors_over_matrices(self):
+        p = Parser()
+        p.set_function('MATRIX', lambda: [[1, 2], [3, 4]])
+        for vector, forward, reverse in (
+            ([[10, 20]], [[-9, -18], [-7, -16]], [[9, 18], [7, 16]]),
+            ([[10], [20]], [[-9, -8], [-17, -16]], [[9, 8], [17, 16]]),
+            ([[10]], [[-9, -8], [-7, -6]], [[9, 8], [7, 6]]),
+        ):
+            p.set_function('VECTOR', lambda: vector)
+            for expression, expected in (('MATRIX()-VECTOR()', forward),
+                                          ('VECTOR()-MATRIX()', reverse)):
+                with self.subTest(vector=vector, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_array_broadcasting_preserves_flat_columns_and_nested_shapes(self):
+        p = Parser()
+        for left, right, expected in (
+            ([1], [2, 4, 8], [3, 5, 9]),
+            ([1, 2], [[10, 20]], [[11, 21], [12, 22]]),
+            ([[10, 20]], [1, 2], [[11, 21], [12, 22]]),
+            ([1, 2], [[10], [20]], [[11], [22]]),
+            (((1, 2),), ((10,), (20,)), [[11, 12], [21, 22]]),
+            ((1, 2), 10, [11, 12]),
+            ([], 1, []),
+            ([1], [], []),
+        ):
+            p.set_function('LEFTARRAY', lambda: left)
+            p.set_function('RIGHTARRAY', lambda: right)
+            with self.subTest(left=left, right=right):
+                self.assertEqual(p.parse('LEFTARRAY()+RIGHTARRAY()'),
+                                 {'result': expected, 'error': None})
+
+    def test_array_broadcasting_pads_unmatched_cells_with_na(self):
+        p = Parser()
+        for left, right, expected in (
+            ([1, 2, 3], [10, 20], [11, 22, error.NOT_AVAILABLE]),
+            ([[1, 2, 3]], [[10, 20]], [[11, 22, error.NOT_AVAILABLE]]),
+            ([[1], [2], [3]], [[10], [20]], [[11], [22], [error.NOT_AVAILABLE]]),
+            ([[1, 2], [3, 4]], [[10, 20], [30, 40], [50, 60]],
+             [[11, 22], [33, 44], [error.NOT_AVAILABLE, error.NOT_AVAILABLE]]),
+        ):
+            p.set_function('LEFTARRAY', lambda: left)
+            p.set_function('RIGHTARRAY', lambda: right)
+            for expression in ('LEFTARRAY()+RIGHTARRAY()', 'RIGHTARRAY()+LEFTARRAY()'):
+                with self.subTest(left=left, right=right, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                    fallback = ([99 if isinstance(value, error.XLError) else value for value in expected]
+                                if not isinstance(expected[0], list) else
+                                [[99 if isinstance(value, error.XLError) else value for value in row]
+                                 for row in expected])
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                     {'result': fallback, 'error': None})
+
+    def test_broadcast_arithmetic_preserves_cell_errors_and_numeric_validation(self):
+        p = Parser()
+        p.set_function('ROW', lambda: [[2, 4]])
+        p.set_function('COL', lambda: [[2], [0]])
+        self.assertEqual(p.parse('ROW()/COL()'),
+                         {'result': [[1, 2], [error.DIV_ZERO, error.DIV_ZERO]], 'error': None})
+        self.assertEqual(p.parse('IFERROR(ROW()/COL(),99)'),
+                         {'result': [[1, 2], [99, 99]], 'error': None})
+        p.set_function('ROW', lambda: [[1, error.DIV_ZERO]])
+        p.set_function('COL', lambda: [[10], [20]])
+        for expression in ('ROW()+COL()', 'COL()+ROW()'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': [[11, error.DIV_ZERO], [21, error.DIV_ZERO]], 'error': None})
+        p.set_function('ROW', lambda: [[1e308, 2]])
+        p.set_function('COL', lambda: [[2], [3]])
+        self.assertEqual(p.parse('ROW()*COL()'),
+                         {'result': [[error.NUM, 4], [error.NUM, 6]], 'error': None})
+
+    def test_array_broadcasting_uses_nested_range_callbacks(self):
+        p = Parser()
+        ranges = {'A1': [[1, 2]], 'C1': [[10], [20], [30]]}
+        p.on('callRangeValue', lambda start, end, set_value: set_value(ranges[start.label]))
+        for expression in ('A1:B1+C1:C3', 'C1:C3+A1:B1'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': [[11, 12], [21, 22], [31, 32]], 'error': None})
+
+    def test_array_broadcasting_rejects_malformed_arrays(self):
+        p = Parser()
+        for values in ([[1], [2, 3]], [1, [2]], [[[1]]], []):
+            p.set_function('DATA', lambda: values)
+            for expression in ('DATA()+{1,2}', '{1,2}+DATA()'):
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+
     def test_arrays(self):
         p = Parser(debug=True)
         ret = p.parse('2/{1;2;4}')
