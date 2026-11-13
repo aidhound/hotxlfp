@@ -101,11 +101,21 @@ replaced with zero.
 
 ## Array-literal orientation
 
-The parser currently represents both `{1,2,3}` and `{1;2;3}` as the same flat
-list, `[1, 2, 3]`. Excel distinguishes a horizontal row from a vertical column.
-This is a known parser limitation. Callbacks can provide nested arrays such as
-`[[1, 2, 3]]` for one row or `[[1], [2], [3]]` for one column when orientation
-matters.
+In array literals, commas or backslashes separate columns and semicolons
+separate rows. Their results are always lists of rows:
+
+- `{1,2,3}` returns `[[1, 2, 3]]`.
+- `{1;2;3}` returns `[[1], [2], [3]]`.
+- `{1,2;3,4}` returns `[[1, 2], [3, 4]]`.
+- `{1\2;3\4}` also returns `[[1, 2], [3, 4]]`.
+
+Every row must have the same number of columns. Empty entries remain `None`,
+so `{1,,3}` returns `[[1, None, 3]]`. Function-argument separators retain their
+existing behavior.
+
+Earlier versions returned flat lists for single-row and single-column literals.
+Callback arrays retain their supplied shapes; flat callback vectors are treated
+as columns when shape matters.
 
 # Contributing
 

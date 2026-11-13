@@ -4,7 +4,7 @@ import ply.lex as lex
 from . import lexer
 from ..helper.number import to_number
 from .._compat import number_types, string_types
-from ..formulas import error, operators
+from ..formulas import error, operators, utils
 import math
 
 
@@ -139,11 +139,36 @@ class FormulaParser(Parser):
 
     def p_array(self, p):
         """
-        array : LBRACKET expseqsemicolon RBRACKET
-              | LBRACKET expseqcomma RBRACKET
-              | LBRACKET expseqbackslash RBRACKET
+        array : LBRACKET array_rows RBRACKET
         """
-        p[0] = p[2]
+        # Distinguish an empty literal from an explicit blank such as {NULL}.
+        if p[2] == [[utils.DEFAULT]]:
+            self.throw_error(error.ERROR)
+        if isinstance(utils.array_shape(p[2]), error.XLError):
+            self.throw_error(error.ERROR)
+        p[0] = [[None if cell is utils.DEFAULT else cell for cell in row] for row in p[2]]
+
+    def p_array_rows(self, p):
+        """
+        array_rows : array_row
+                   | array_rows SEMICOLON array_row
+        """
+        p[0] = [p[1]] if len(p) == 2 else p[1] + [p[3]]
+
+    def p_array_row(self, p):
+        """
+        array_row : array_cell
+                  | array_row COMMA array_cell
+                  | array_row BACKSLASH array_cell
+        """
+        p[0] = [p[1]] if len(p) == 2 else p[1] + [p[3]]
+
+    def p_array_cell(self, p):
+        """
+        array_cell : expression
+                   |
+        """
+        p[0] = p[1] if len(p) == 2 else utils.DEFAULT
 
     def p_expseq_semicolon(self, p):
         """

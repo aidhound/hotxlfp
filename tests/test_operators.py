@@ -917,35 +917,35 @@ class TestOperators(unittest.TestCase):
         p = Parser()
         for values in ([[1], [2, 3]], [1, [2]], [[[1]]], []):
             p.set_function('DATA', lambda: values)
-            for expression in ('DATA()+{1,2}', '{1,2}+DATA()'):
+            for expression in ('DATA()+{1;2}', '{1;2}+DATA()'):
                 with self.subTest(values=values, expression=expression):
                     self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
 
     def test_arrays(self):
         p = Parser(debug=True)
         ret = p.parse('2/{1;2;4}')
-        self.assertEqual(ret['result'], [2, 1, 0.5])
+        self.assertEqual(ret['result'], [[2], [1], [0.5]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('{1;2;4}/2')
-        self.assertEqual(ret['result'], [0.5, 1, 2])
+        self.assertEqual(ret['result'], [[0.5], [1], [2]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('{1;2;4}*2')
-        self.assertEqual(ret['result'], [2, 4, 8])
+        self.assertEqual(ret['result'], [[2], [4], [8]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('2*{1;2;4}')
-        self.assertEqual(ret['result'], [2, 4, 8])
+        self.assertEqual(ret['result'], [[2], [4], [8]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('2+{1;2;4}')
-        self.assertEqual(ret['result'], [3, 4, 6])
+        self.assertEqual(ret['result'], [[3], [4], [6]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('{1;2;4}+2')
-        self.assertEqual(ret['result'], [3, 4, 6])
+        self.assertEqual(ret['result'], [[3], [4], [6]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('2-{1;2;4}')
-        self.assertEqual(ret['result'], [1, 0, -2])
+        self.assertEqual(ret['result'], [[1], [0], [-2]])
         self.assertEqual(ret['error'], None)
         ret = p.parse('{1;2;4}-2')
-        self.assertEqual(ret['result'], [-1, 0, 2])
+        self.assertEqual(ret['result'], [[-1], [0], [2]])
         self.assertEqual(ret['error'], None)
 
     def test_implicit_conversions_errors(self):
