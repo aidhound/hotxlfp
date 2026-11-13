@@ -769,6 +769,52 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_arithmetic_combines_single_row_arrays_elementwise(self):
+        p = Parser()
+        p.set_function('LEFTROW', lambda: [[2, 4, 8]])
+        p.set_function('RIGHTROW', lambda: [[1, 2, 4]])
+        for op, expected in [('+', [[3, 6, 12]]), ('-', [[1, 2, 4]]),
+                             ('*', [[2, 8, 32]]), ('/', [[2, 2, 2]])]:
+            with self.subTest(op=op):
+                self.assertEqual(p.parse('LEFTROW()' + op + 'RIGHTROW()'),
+                                 {'result': expected, 'error': None})
+        self.assertEqual(p.parse('SUM(LEFTROW()*RIGHTROW())'),
+                         {'result': 42, 'error': None})
+
+    def test_array_adaptation_preserves_existing_shapes_and_broadcasting(self):
+        p = Parser()
+        for left, right, expected in [
+            ([2, 4, 8], [1], [3, 5, 9]),
+            ([[2], [4], [8]], [[1], [2], [4]], [[3], [6], [12]]),
+            ([[2, 4], [6, 8]], [[1, 2], [3, 4]], [[3, 6], [9, 12]]),
+            ([[2]], [[1]], [[3]]),
+            ([], [1], []),
+        ]:
+            with self.subTest(left=left, right=right):
+                p.set_function('LEFTARRAY', lambda: left)
+                p.set_function('RIGHTARRAY', lambda: right)
+                self.assertEqual(p.parse('LEFTARRAY()+RIGHTARRAY()'),
+                                 {'result': expected, 'error': None})
+        p.set_function('DATA', lambda: [[2, 4, 8]])
+        for expression, expected in [
+            ('DATA()+1', [[3, 5, 9]]), ('1+DATA()', [[3, 5, 9]]),
+            ('DATA()-1', [[1, 3, 7]]), ('1-DATA()', [[-1, -3, -7]]),
+            ('DATA()/2', [[1, 2, 4]]), ('16/DATA()', [[8, 4, 2]]),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
+
+    def test_row_array_arithmetic_keeps_errors_in_their_cells(self):
+        p = Parser()
+        p.set_function('LEFTROW', lambda: [[2, error.DIV_ZERO, 8]])
+        p.set_function('RIGHTROW', lambda: [[1, 2, 0]])
+        self.assertEqual(p.parse('LEFTROW()/RIGHTROW()'),
+                         {'result': [[2, error.DIV_ZERO, error.DIV_ZERO]],
+                          'error': None})
+        self.assertEqual(p.parse('IFERROR(LEFTROW()/RIGHTROW(),0)'),
+                         {'result': [[2, 0, 0]], 'error': None})
+
     def test_arrays(self):
         p = Parser(debug=True)
         ret = p.parse('2/{1;2;4}')

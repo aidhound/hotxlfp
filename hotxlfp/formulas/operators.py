@@ -92,7 +92,7 @@ class ExcelArrayOps(object):
         self.arr = arr
 
     def adapt_value(self, value):
-        if isinstance(value, list) and len(value) == 1:
+        if isinstance(value, list) and len(value) == 1 and len(self.arr) != 1:
             value = value[0]
         if not isinstance(value, list):
             value = [value for i in range(len(self.arr))]
