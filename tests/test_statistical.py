@@ -379,6 +379,18 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
+    def test_countif_ordinary_text_criteria_ignore_case(self):
+        p = Parser()
+        p.set_function('DATA', lambda: ['Alpha', 'alpha', 'ALPHA', 'beta', 'Beta',
+                                       7, None, False, error.NOT_AVAILABLE])
+        for criterion, expected in (('ALPHA', 3), ('=aLpHa', 3), ('<>ALPHA', 6),
+                                    ('>ALPHA', 2), ('>=ALPHA', 5),
+                                    ('<BETA', 3), ('<=BETA', 5)):
+            p.set_function('CRITERION', lambda: criterion)
+            with self.subTest(criterion=criterion):
+                self.assertEqual(p.parse('COUNTIF(DATA(),CRITERION())'),
+                                 {'result': expected, 'error': None})
+
     def test_countif_wildcards_ignore_case_without_path_normalization(self):
         p = Parser()
         p.set_function('DATA', lambda: ['folder/file', 'FOLDER/FILE', 'folder\\file',

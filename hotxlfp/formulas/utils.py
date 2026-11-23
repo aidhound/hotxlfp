@@ -181,6 +181,15 @@ def parse_criteria(criteria):
         if val == '':
             return lambda value: (value is None or value == '') == (op == '=')
 
+    if isinstance(val, string_types):
+        val = val.lower()
+
+        def match_text(value):
+            if not isinstance(value, string_types):
+                return op == '<>'
+            return compare(value.lower(), val)
+        return match_text
+
     if op in ('=', '<>'):
         return lambda value: compare(value, val)
 

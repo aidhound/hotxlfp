@@ -5,6 +5,31 @@ from hotxlfp.formulas import error, utils
 
 class TestCriteria(unittest.TestCase):
 
+    def test_text_equality_and_inequality_ignore_case(self):
+        values = ['Alpha', 'alpha', 'ALPHA', 'beta', 'BETA', 'Beta ',
+                  'áRvOrE', 'ÁRVORE', 1, None, False, error.NOT_AVAILABLE]
+        for criterion, expected in (
+            ('ALPHA', [0, 1, 2]), ('=aLpHa', [0, 1, 2]),
+            ('<>ALPHA', list(range(3, len(values)))),
+            ('ÁRVORE', [6, 7]), ('=beta', [3, 4]), ('beta ', [5]),
+        ):
+            with self.subTest(criterion=criterion):
+                predicate = utils.parse_criteria(criterion)
+                self.assertEqual([i for i, value in enumerate(values) if predicate(value)],
+                                 expected)
+
+    def test_text_ordering_ignores_case_and_excludes_nontext_values(self):
+        values = ['Alpha', 'alpha', 'ALPHA', 'beta', 'BETA', 'gamma', 'GAMMA',
+                  1, None, error.DIV_ZERO]
+        for criterion, expected in (
+            ('>BETA', [5, 6]), ('>=BeTa', [3, 4, 5, 6]),
+            ('<BETA', [0, 1, 2]), ('<=bEtA', [0, 1, 2, 3, 4]),
+        ):
+            with self.subTest(criterion=criterion):
+                predicate = utils.parse_criteria(criterion)
+                self.assertEqual([i for i, value in enumerate(values) if predicate(value)],
+                                 expected)
+
     def test_parse_criteria_matches_error_codes_without_matching_error_text(self):
         values = [error.NULL, error.DIV_ZERO, error.VALUE, error.REF,
                   error.NAME, error.NUM, error.NOT_AVAILABLE,
