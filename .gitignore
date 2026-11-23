@@ -100,6 +100,8 @@ dmypy.json
 
 # pyCharm
 .idea/
+# VS Code
+.vscode/
 
 # temp files
 /tmp
