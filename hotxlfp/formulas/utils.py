@@ -132,6 +132,25 @@ def iparse_number_array(arr):
     return iparse_number_array_aux(arr)
 
 
+def compile_criteria_pattern(value):
+    """Compile an Excel wildcard pattern with literal brackets and ~ escapes.
+
+    The caller selects wildcard mode only for criteria containing * or ?;
+    otherwise Excel treats tildes as ordinary text.
+    """
+    parts = []
+    characters = iter(value)
+    for character in characters:
+        if character == '~':
+            character = next(characters, '')
+            if character in ('*', '?', '[', ']'):
+                character = '[' + character + ']'
+        elif character in ('[', ']'):
+            character = '[' + character + ']'
+        parts.append(character)
+    return re.compile(fnmatch.translate(''.join(parts)), re.IGNORECASE)
+
+
 def parse_criteria(criteria):
     """Compile a predicate, treating error criteria as values to match.
 
@@ -171,7 +190,7 @@ def parse_criteria(criteria):
     if isinstance(val, string_types) and op in ('=', '<>'):
         if any(c in val for c in ('?', '*')):
             # Excel criteria ignore case; keep path separators literal.
-            pattern = re.compile(fnmatch.translate(val), re.IGNORECASE)
+            pattern = compile_criteria_pattern(val)
 
             def match_text(value):
                 matched = (isinstance(value, string_types)

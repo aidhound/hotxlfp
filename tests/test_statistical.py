@@ -379,6 +379,18 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
+    def test_countif_excel_wildcard_escapes_and_literal_brackets(self):
+        p = Parser()
+        p.set_function('DATA', lambda: ['*', '?', 'a*b', 'a?b', '~', '~~', 'a~', 'a',
+                                       '[ab]', '[AB]tail', 'abc', None, 7, error.NOT_AVAILABLE])
+        for criterion, expected in (('~*', 1), ('~?', 1), ('a~*b', 1), ('a~?b', 1),
+                                    ('~~', 1), ('*~~', 3), ('*~', 11), ('*~a*', 7),
+                                    ('[ab]*', 2), ('[!a]*', 0), ('<>~*', 13), ('<>[ab]*', 12)):
+            p.set_function('CRITERION', lambda: criterion)
+            with self.subTest(criterion=criterion):
+                self.assertEqual(p.parse('COUNTIF(DATA(),CRITERION())'),
+                                 {'result': expected, 'error': None})
+
     def test_countif_ordinary_text_criteria_ignore_case(self):
         p = Parser()
         p.set_function('DATA', lambda: ['Alpha', 'alpha', 'ALPHA', 'beta', 'Beta',
