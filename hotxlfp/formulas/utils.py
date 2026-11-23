@@ -26,7 +26,15 @@ OPERATOR_DICT = {
     '<=': operator.le,
 }
 
-REGEX_CRITERIA = re.compile(r'(?P<op>[\<\>\=]*)(?P<val>.+)', re.UNICODE)
+REGEX_CRITERIA = re.compile(r'(?P<op><>|<=|>=|<|>|=)?(?P<val>.*)', re.UNICODE)
+
+# Excel orders these error codes when they are used in criteria comparisons.
+CRITERIA_ERROR_ORDER = {
+    str(code): position for position, code in enumerate((
+        error.NULL, error.DIV_ZERO, error.VALUE, error.REF,
+        error.NAME, error.NUM, error.NOT_AVAILABLE,
+    ))
+}
 
 
 def iflatten(iterable):
@@ -125,27 +133,60 @@ def iparse_number_array(arr):
 
 
 def parse_criteria(criteria):
-    """Return a predicate, or raise XLError for the function boundary to catch."""
-    if isinstance(criteria, error.XLError):
-        raise criteria
-    match = REGEX_CRITERIA.match(criteria)
-    op = match.group('op')
-    val = match.group('val')
-    if op:
-        val = to_number(val)
-        if isinstance(val, error.XLError):
-            raise val
-        op = OPERATOR_DICT[op]
-        return lambda a: op(a, val)
-    else:
-        if any(c in val for c in ('?', '*')):
-            # Then use fnmatch
-            return lambda a: fnmatch.fnmatch(val, a)
+    """Compile a predicate, treating error criteria as values to match.
+
+    Error cells do not match numeric ordering, but can match error codes or
+    inequality criteria. Selected aggregate errors are handled by the caller.
+    Invalid numeric conversions still raise XLError at the function boundary.
+    """
+    op = '='
+    val = criteria
+    if isinstance(criteria, string_types):
+        match = REGEX_CRITERIA.match(criteria)
+        op = match.group('op') or '='
+        val = match.group('val')
+        criterion_error = error.from_message(val.upper()) if val.startswith('#') else None
+        if criterion_error is not None and str(criterion_error) == val.upper():
+            val = criterion_error
         else:
             val = to_number(val)
             if isinstance(val, error.XLError):
                 raise val
-            return lambda a: a == val
+
+    compare = OPERATOR_DICT[op]
+    if isinstance(val, error.XLError):
+        criterion_code = str(val)
+        criterion_order = CRITERIA_ERROR_ORDER.get(criterion_code)
+
+        def match_error(value):
+            if not isinstance(value, error.XLError):
+                return op == '<>'
+            if op in ('=', '<>'):
+                return compare(str(value), criterion_code)
+            value_order = CRITERIA_ERROR_ORDER.get(str(value))
+            return (value_order is not None and criterion_order is not None
+                    and compare(value_order, criterion_order))
+        return match_error
+
+    if isinstance(val, string_types) and op in ('=', '<>'):
+        if any(c in val for c in ('?', '*')):
+            # Excel criteria ignore case; keep path separators literal.
+            pattern = re.compile(fnmatch.translate(val), re.IGNORECASE)
+
+            def match_text(value):
+                matched = (isinstance(value, string_types)
+                           and pattern.match(value) is not None)
+                return not matched if op == '<>' else matched
+            return match_text
+        if val == '':
+            return lambda value: (value is None or value == '') == (op == '=')
+
+    if op in ('=', '<>'):
+        return lambda value: compare(value, val)
+
+    # Choose the ordering category once, rather than checking the criterion per cell.
+    value_types = number_types if isinstance(val, number_types) else string_types
+    return lambda value: isinstance(value, value_types) and compare(value, val)
 
 
 def any_is_error(iterable):

@@ -242,7 +242,13 @@ def SUM(*args):
 @dispatcher.register_for('SUMIF')
 def SUMIF(args, criteria):
     predicate = utils.parse_criteria(criteria)
-    return sum(a for a in utils.iflatten(args) if predicate(a))
+    result = 0
+    for value in utils.iflatten(args):
+        if predicate(value):
+            if isinstance(value, error.XLError):
+                return value
+            result += value
+    return result
 
 
 @dispatcher.register_for('CEILING', 'CEILING.MATH', 'CEILING.PRECISE')

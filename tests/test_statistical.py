@@ -379,6 +379,18 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
+    def test_countif_wildcards_ignore_case_without_path_normalization(self):
+        p = Parser()
+        p.set_function('DATA', lambda: ['folder/file', 'FOLDER/FILE', 'folder\\file',
+                                       'FOLDER\\file', 'Alpha', 'alpha', 'AB', 'ab',
+                                       None, 1, error.NOT_AVAILABLE])
+        for criterion, expected in (('folder/*', 2), ('folder\\*', 2), ('a*', 4),
+                                    ('=A?', 2), ('<>a*', 7), ('*', 8), ('<>*', 3)):
+            p.set_function('CRITERION', lambda: criterion)
+            with self.subTest(criterion=criterion):
+                self.assertEqual(p.parse('COUNTIF(DATA(),CRITERION())'),
+                                 {'result': expected, 'error': None})
+
     def test_countif(self):
         p = Parser(debug=True)
         ret = p.parse('COUNTIF({1;3};">2")')

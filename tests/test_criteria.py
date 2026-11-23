@@ -1,0 +1,40 @@
+# -*- coding: utf-8 -*-
+import unittest
+from hotxlfp.formulas import error, utils
+
+
+class TestCriteria(unittest.TestCase):
+
+    def test_parse_criteria_matches_error_codes_without_matching_error_text(self):
+        values = [error.NULL, error.DIV_ZERO, error.VALUE, error.REF,
+                  error.NAME, error.NUM, error.NOT_AVAILABLE,
+                  '#DIV/0!', '#N/A', 1, None]
+        for criterion, positions in (
+            ('#DIV/0!', [1]), ('=#N/A', [6]), (error.NOT_AVAILABLE, [6]),
+            (error.XLError('#N/A'), [6]), ('<>#N/A', [0, 1, 2, 3, 4, 5, 7, 8, 9, 10]),
+            ('<#REF!', [0, 1, 2]), ('<=#REF!', [0, 1, 2, 3]),
+            ('>#REF!', [4, 5, 6]), ('>=#REF!', [3, 4, 5, 6]),
+            ('>0', [9]), ('1', [9]), (1, [9]),
+        ):
+            with self.subTest(criterion=criterion):
+                predicate = utils.parse_criteria(criterion)
+                self.assertEqual([i for i, value in enumerate(values) if predicate(value)],
+                                 positions)
+
+    def test_wildcard_criteria_are_case_insensitive_and_keep_slashes_literal(self):
+        values = ['folder/file', 'folder\\file', 'FOLDER/FILE', 'FOLDER\\FILE',
+                  'Alpha', 'alpha', 'AB', 'ab', '', None, 1, False, error.NOT_AVAILABLE]
+        for criterion, positions in (
+            ('folder/*', [0, 2]), ('folder\\*', [1, 3]),
+            ('a*', [4, 5, 6, 7]), ('=A?', [6, 7]),
+            ('*', list(range(9))),
+        ):
+            for negative in (False, True):
+                text = criterion.removeprefix('=')
+                expression = '<>' + text if negative else criterion
+                expected = ([i for i in range(len(values)) if i not in positions]
+                            if negative else positions)
+                with self.subTest(criterion=expression):
+                    predicate = utils.parse_criteria(expression)
+                    self.assertEqual([i for i, value in enumerate(values) if predicate(value)],
+                                     expected)

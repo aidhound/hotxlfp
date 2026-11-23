@@ -7,56 +7,121 @@ from hotxlfp.formulas import error, utils
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
-    def test_parse_criteria_raises_original_errors_and_returns_predicates(self):
-        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
-            with self.subTest(error=str(source_error)):
-                with self.assertRaises(error.XLError) as caught:
-                    utils.parse_criteria(source_error)
-                self.assertIs(caught.exception, source_error)
-        for criterion, matching, nonmatching in (('>1', 2, 1), ('2', 2, 3)):
-            with self.subTest(criterion=criterion):
-                predicate = utils.parse_criteria(criterion)
-                self.assertTrue(predicate(matching))
-                self.assertFalse(predicate(nonmatching))
-
-    def test_conditional_functions_preserve_error_criteria(self):
+    def test_conditional_functions_match_excel_criteria_with_error_cells(self):
         p = Parser()
-        for name, valid_args in (
-            ('SUMIF', ['{1,2}']),
-            ('COUNTIF', ['{1,2}']),
-            ('AVERAGEIF', ['{1,2}']),
-            ('SUMIFS', ['{10,20}', '{1,2}']),
-            ('AVERAGEIFS', ['{10,20}', '{1,2}']),
-            ('MAXIFS', ['{10,20}', '{1,2}']),
+        criteria_values = [1, error.DIV_ZERO, error.NOT_AVAILABLE, 2]
+        data = [10, 20, 30, 40]
+        for criterion, positions in (
+            ('>0', [0, 3]), ('<2', [0]), ('>=1', [0, 3]), ('<=1', [0]),
+            ('1', [0]), ('=1', [0]), ('<>1', [1, 2, 3]),
+            ('#DIV/0!', [1]), ('=#DIV/0!', [1]), ('<>#DIV/0!', [0, 2, 3]),
+            ('#N/A', [2]), ('<>#N/A', [0, 1, 3]),
+            ('*', []), ('<>*', [0, 1, 2, 3]), ('=', []), ('<>', [0, 1, 2, 3]),
+            ('x', []), ('<>x', [0, 1, 2, 3]), ('>#DIV/0!', [2]), ('<#DIV/0!', []),
         ):
-            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
-                p.set_function('ERR', lambda value=source_error: value)
-                for source in (str(source_error), 'ERR()'):
-                    expression = name + '(' + ','.join(valid_args + [source]) + ')'
-                    with self.subTest(expression=expression, error=str(source_error)):
-                        self.assertEqual(p.parse(expression),
-                                         {'result': None, 'error': str(source_error)})
-                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
-                                         {'result': 99, 'error': None})
-                        expected = ({'result': 77, 'error': None}
-                                    if source_error is error.NOT_AVAILABLE
-                                    else {'result': None, 'error': str(source_error)})
-                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+            selected = [data[i] for i in positions]
+            sumif_result = 0
+            for i in positions:
+                if isinstance(criteria_values[i], error.XLError):
+                    sumif_result = criteria_values[i]
+                    break
+                sumif_result += criteria_values[i]
+            for shape in (lambda values: values, lambda values: [values],
+                          lambda values: [[value] for value in values]):
+                p.set_function('CRITERIA', lambda: shape(criteria_values))
+                p.set_function('DATA', lambda: shape(data))
+                for name, args, expected in (
+                    ('COUNTIF', 'CRITERIA(),"' + criterion + '"', len(selected)),
+                    ('SUMIF', 'CRITERIA(),"' + criterion + '"', sumif_result),
+                    ('AVERAGEIF', 'CRITERIA(),"' + criterion + '",DATA()',
+                     sum(selected) / len(selected) if selected else error.DIV_ZERO),
+                    ('SUMIFS', 'DATA(),CRITERIA(),"' + criterion + '"', sum(selected)),
+                    ('AVERAGEIFS', 'DATA(),CRITERIA(),"' + criterion + '"',
+                     sum(selected) / len(selected) if selected else error.DIV_ZERO),
+                    ('MAXIFS', 'DATA(),CRITERIA(),"' + criterion + '"', max(selected, default=0)),
+                ):
+                    expression = name + '(' + args + ')'
+                    result = ({'result': None, 'error': str(expected)}
+                              if isinstance(expected, error.XLError)
+                              else {'result': expected, 'error': None})
+                    with self.subTest(expression=expression, shape=shape(data)):
+                        self.assertEqual(p.parse(expression), result)
 
-    def test_multiple_criteria_preserve_error_order_even_without_matches(self):
+    def test_conditional_functions_match_typed_error_criteria(self):
         p = Parser()
-        for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):
-            for first, second in ((error.DIV_ZERO, error.NOT_AVAILABLE),
-                                   (error.NOT_AVAILABLE, error.DIV_ZERO)):
-                expression = (name + '({10,20},{1,2},' + str(first)
-                              + ',{3,4},' + str(second) + ')')
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda: source_error)
+            for source in (str(source_error), 'ERR()'):
+                for name, args, expected in (
+                    ('COUNTIF', '{1,ERR()},' + source, 1),
+                    ('SUMIF', '{1,ERR()},' + source, source_error),
+                    ('AVERAGEIF', '{1,ERR()},' + source + ',{10,20}', 20),
+                    ('SUMIFS', '{10,20},{1,ERR()},' + source, 20),
+                    ('AVERAGEIFS', '{10,20},{1,ERR()},' + source, 20),
+                    ('MAXIFS', '{10,20},{1,ERR()},' + source, 20),
+                ):
+                    expression = name + '(' + args + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        result = ({'result': None, 'error': str(expected)}
+                                  if isinstance(expected, error.XLError)
+                                  else {'result': expected, 'error': None})
+                        self.assertEqual(p.parse(expression), result)
+                        fallback = 99 if isinstance(expected, error.XLError) else expected
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': fallback, 'error': None})
+                        na_result = ({'result': 77, 'error': None}
+                                     if expected is error.NOT_AVAILABLE else result)
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), na_result)
+
+    def test_typed_error_criteria_without_matching_cells(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            for name, args, expected in (
+                ('COUNTIF', '{1,2},', 0), ('SUMIF', '{1,2},', 0),
+                ('AVERAGEIF', '{1,2},', error.DIV_ZERO),
+                ('SUMIFS', '{10,20},{1,2},', 0),
+                ('AVERAGEIFS', '{10,20},{1,2},', error.DIV_ZERO),
+                ('MAXIFS', '{10,20},{1,2},', 0),
+            ):
+                expression = name + '(' + args + str(source_error) + ')'
                 with self.subTest(expression=expression):
-                    self.assertEqual(p.parse(expression),
-                                     {'result': None, 'error': str(first)})
-            expression = name + '({10,20},{1,2},">99",{3,4},#N/A)'
+                    result = ({'result': None, 'error': str(expected)}
+                              if isinstance(expected, error.XLError)
+                              else {'result': expected, 'error': None})
+                    self.assertEqual(p.parse(expression), result)
+
+    def test_multiple_criteria_exclude_error_cells_in_either_order(self):
+        p = Parser()
+        for name, expected in (('SUMIFS', 50), ('AVERAGEIFS', 25), ('MAXIFS', 40)):
+            for criteria in ('{1,#DIV/0!,#N/A,2},">0",{1,0,0,1},1',
+                             '{1,0,0,1},1,{1,#DIV/0!,#N/A,2},">0"'):
+                expression = name + '({10,20,30,40},' + criteria + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+            expression = name + '({10,20},{1,2},">99",{3,#N/A},#N/A)'
+            result = error.DIV_ZERO if name == 'AVERAGEIFS' else 0
             with self.subTest(expression=expression):
-                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
-                                 {'result': 77, 'error': None})
+                expected = ({'result': None, 'error': str(result)}
+                            if isinstance(result, error.XLError)
+                            else {'result': result, 'error': None})
+                self.assertEqual(p.parse(expression), expected)
+
+    def test_averageif_preserves_only_selected_aggregate_errors(self):
+        p = Parser()
+        for expression, expected in (
+            ('AVERAGEIF({1,#DIV/0!,#N/A,2},">0")', 1.5),
+            ('AVERAGEIF({1,#DIV/0!,#N/A,2},"#DIV/0!")', error.DIV_ZERO),
+            ('AVERAGEIF({1,#DIV/0!,#N/A,2},"#N/A")', error.NOT_AVAILABLE),
+            ('AVERAGEIF({1,#DIV/0!,#N/A,2},"<>1")', error.DIV_ZERO),
+        ):
+            with self.subTest(expression=expression):
+                result = ({'result': None, 'error': str(expected)}
+                          if isinstance(expected, error.XLError)
+                          else {'result': expected, 'error': None})
+                self.assertEqual(p.parse(expression), result)
+                fallback = 99 if isinstance(expected, error.XLError) else expected
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': fallback, 'error': None})
 
     def test_numeric_consumers_preserve_errors_in_every_argument(self):
         p = Parser()

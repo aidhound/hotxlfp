@@ -53,8 +53,12 @@ def AVERAGEIF(args, criteria, average_range=None):
 
     for i, arg_i in enumerate(args):
         if (predicate(args[i])):
+            if isinstance(average_range[i], error.XLError):
+                return average_range[i]
             result += average_range[i]
             average_count += 1
+    if average_count == 0:
+        return error.DIV_ZERO
     return result / average_count
 
 
