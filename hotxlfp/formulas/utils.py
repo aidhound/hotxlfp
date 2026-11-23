@@ -125,6 +125,9 @@ def iparse_number_array(arr):
 
 
 def parse_criteria(criteria):
+    """Return a predicate, or raise XLError for the function boundary to catch."""
+    if isinstance(criteria, error.XLError):
+        raise criteria
     match = REGEX_CRITERIA.match(criteria)
     op = match.group('op')
     val = match.group('val')

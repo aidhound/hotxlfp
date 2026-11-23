@@ -7,6 +7,57 @@ from hotxlfp.formulas import error, utils
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
+    def test_parse_criteria_raises_original_errors_and_returns_predicates(self):
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            with self.subTest(error=str(source_error)):
+                with self.assertRaises(error.XLError) as caught:
+                    utils.parse_criteria(source_error)
+                self.assertIs(caught.exception, source_error)
+        for criterion, matching, nonmatching in (('>1', 2, 1), ('2', 2, 3)):
+            with self.subTest(criterion=criterion):
+                predicate = utils.parse_criteria(criterion)
+                self.assertTrue(predicate(matching))
+                self.assertFalse(predicate(nonmatching))
+
+    def test_conditional_functions_preserve_error_criteria(self):
+        p = Parser()
+        for name, valid_args in (
+            ('SUMIF', ['{1,2}']),
+            ('COUNTIF', ['{1,2}']),
+            ('AVERAGEIF', ['{1,2}']),
+            ('SUMIFS', ['{10,20}', '{1,2}']),
+            ('AVERAGEIFS', ['{10,20}', '{1,2}']),
+            ('MAXIFS', ['{10,20}', '{1,2}']),
+        ):
+            for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+                p.set_function('ERR', lambda value=source_error: value)
+                for source in (str(source_error), 'ERR()'):
+                    expression = name + '(' + ','.join(valid_args + [source]) + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_multiple_criteria_preserve_error_order_even_without_matches(self):
+        p = Parser()
+        for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):
+            for first, second in ((error.DIV_ZERO, error.NOT_AVAILABLE),
+                                   (error.NOT_AVAILABLE, error.DIV_ZERO)):
+                expression = (name + '({10,20},{1,2},' + str(first)
+                              + ',{3,4},' + str(second) + ')')
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(first)})
+            expression = name + '({10,20},{1,2},">99",{3,4},#N/A)'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': 77, 'error': None})
+
     def test_numeric_consumers_preserve_errors_in_every_argument(self):
         p = Parser()
         for name, valid_args in (
