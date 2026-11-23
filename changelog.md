@@ -1,5 +1,24 @@
 # hotxlfp changelog
 
+## 1.1.0
+
+**Compatibility:** array literals now return lists of rows. For example, `{1,2}`
+returns `[[1, 2]]` and `{1;2}` returns `[[1], [2]]`, rather than flat lists.
+Applications that consume literal results directly may need to adjust. Arrays
+supplied through callbacks retain their original shapes.
+
+* Preserve array-literal orientation: commas or backslashes separate columns, semicolons separate rows, and omitted entries are `None`. Arrays must be rectangular.
+* Broadcast array arithmetic across rows, columns and scalars, preserving row alignment and returning `#N/A` for unmatched cells.
+* Keep typed Excel errors available to enclosing functions such as `IFERROR` and `IFNA`. Fix error propagation in logical, comparison, concatenation, text, lookup and numeric functions. `IFERROR` and `IFNA` also handle nested arrays while preserving their shapes.
+* Make function names and custom function registration case-insensitive. Unknown functions and variables produce handleable `#NAME?` errors. Callback setters can explicitly override results with `None`.
+* Update `COUNT` to recognize numeric and date strings directly and inside arrays and references. Array booleans, blanks, unrecognized text and typed errors are excluded; direct booleans and native dates still count. Counting numeric and date strings in arrays is an intentional difference from Excel.
+* Align `ISBLANK` with the existing blank policy in `COUNTA` and `COUNTBLANK`: both `None` and `""` are blank. Document the intentional differences from Excel in the README.
+* Add `ROWS`, and support both row and column vectors in `MATCH` and `INDEX`. `MATCH` skips error cells while preserving their positions in the vector.
+* Support nested matching range shapes in `SUMIFS`, `AVERAGEIFS` and `MAXIFS`, preserving selected aggregate errors. Return `#DIV/0!` when `AVERAGEIFS` has no matches, and handle negative maxima in `MAXIFS` correctly.
+* Preserve typed errors supplied as criterion arguments in `SUMIF`, `COUNTIF`, `AVERAGEIF`, `SUMIFS`, `AVERAGEIFS` and `MAXIFS`, so enclosing error handlers can catch them.
+* Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
+* Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
+
 ## 1.0.3
 
 * Plain `datetime.date` objects (not just `datetime.datetime`) are now accepted everywhere a date can be used: the date functions (`DATE`, `DAYS`, `EDATE`, `YEAR`, `MONTH`, `DAY`, ...), `N`, and directly in arithmetic (`+`, `-`, `*`, `/`) and comparison operators, matching `datetime.datetime` behavior exactly.
