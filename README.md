@@ -111,6 +111,11 @@ separate rows. Their results are always lists of rows:
 - `{1,2;3,4}` returns `[[1, 2], [3, 4]]`.
 - `{1\2;3\4}` also returns `[[1, 2], [3, 4]]`.
 
+As an intentional extension, array literals can contain scalar expressions and
+function calls, including custom functions registered with `set_function`.
+For example, `IFERROR({F("a"),F("b")},0)` returns `[[1, 2]]` when `F("a")`
+returns 1 and `F("b")` returns 2. This behavior is supported and will be retained.
+
 Every row must have the same number of columns. Empty entries remain `None`,
 so `{1,,3}` returns `[[1, None, 3]]`. Function-argument separators retain their
 existing behavior.

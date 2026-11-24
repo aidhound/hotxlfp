@@ -55,6 +55,18 @@ class TestArrays(unittest.TestCase):
         self.assertEqual(parser.parse(r'{"a,b","c;d","e\f"}'),
                          {'result': [['a,b', 'c;d', r'e\f']], 'error': None})
 
+    def test_custom_functions_are_supported_inside_array_literals(self):
+        parser = Parser()
+        parser.set_function('f', lambda name: {'a': 1, 'b': 2, 'c': 3}[name])
+        for expression, expected in (
+            ('{F("a"),F("b")}', [[1, 2]]),
+            ('{F("a");F("b")}', [[1], [2]]),
+            ('{F("a"),SUM(F("b"),F("c"));F("c"),F("b")+1}', [[1, 5], [3, 3]]),
+            ('IFERROR({F("a"),F("b")},0)', [[1, 2]]),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(parser.parse(expression), {'result': expected, 'error': None})
+
     def test_error_cells_keep_their_positions_and_codes(self):
         parser = Parser()
         expression = '{1,#N/A;#DIV/0!,4}'
