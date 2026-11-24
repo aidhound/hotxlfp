@@ -236,6 +236,52 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#VALUE!')
 
+    def test_slicing_functions_treat_blank_sources_as_empty_text(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for name in ('LEFT', 'LEFTB', 'RIGHT', 'RIGHTB', 'MID', 'MIDB'):
+            tails = (',1', ',1,0', ',1,1', ',5,2') if name.startswith('MID') else ('', ',0', ',1', ',5')
+            for source in ('NULL', 'BLANK()', '""'):
+                for tail in tails:
+                    expression = name + '(' + source + tail + ')'
+                    with self.subTest(expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': '', 'error': None})
+
+    def test_blank_slicing_keeps_position_type_and_argument_count_checks(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for name in ('LEFT', 'LEFTB', 'RIGHT', 'RIGHTB', 'MID', 'MIDB'):
+            invalid_tails = (',0,1', ',1,-1') if name.startswith('MID') else (',-1',)
+            for source in ('NULL', 'BLANK()'):
+                for tail in invalid_tails:
+                    expression = name + '(' + source + tail + ')'
+                    with self.subTest(expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+            for source in ('0', 'FALSE()'):
+                expression = name + '(' + source + ',1)'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+            with self.subTest(name=name, missing_arguments=True):
+                self.assertEqual(p.parse(name + '()'), {'result': None, 'error': '#ERROR!'})
+            if name.startswith('MID'):
+                self.assertEqual(p.parse(name + '(NULL)'), {'result': None, 'error': '#ERROR!'})
+
+    def test_blank_slicing_preserves_errors_in_numeric_arguments(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('FAIL', lambda value=source_error: value)
+            for name in ('LEFT', 'LEFTB', 'RIGHT', 'RIGHTB', 'MID', 'MIDB'):
+                tails = (',FAIL(),1', ',1,FAIL()') if name.startswith('MID') else (',FAIL()',)
+                for source in ('NULL', 'BLANK()'):
+                    for tail in tails:
+                        expression = name + '(' + source + tail + ')'
+                        with self.subTest(expression=expression, error=str(source_error)):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+
     def test_left(self):
         p = Parser(debug=True)
         ret = p.parse('LEFT("Sale Price", 4)')

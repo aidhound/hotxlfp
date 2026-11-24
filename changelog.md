@@ -19,6 +19,7 @@ supplied through callbacks retain their original shapes.
 * Compile wildcard criteria once for reuse. Wildcard matching is case-insensitive on every platform and treats forward slashes and backslashes as distinct literal characters.
 * Make ordinary text criteria case-insensitive for equality, inequality and ordering comparisons.
 * Follow Excel's tilde escapes in wildcard criteria and treat brackets as literal characters rather than shell-pattern groups.
+* Treat blank source values as empty text in `LEFT`, `RIGHT` and `MID`, including their B aliases, while retaining position validation and error propagation.
 * Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
 * Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
 

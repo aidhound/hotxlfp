@@ -139,6 +139,8 @@ def TEXTJOIN(delimiter, ignore_empty, *args):
 @dispatcher.register_for('LEFT', 'LEFTB')
 @utils.propagate_errors()
 def LEFT(text, num_chars=1):
+    if text is None:
+        text = ''
     if num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
     return text[:num_chars]
@@ -147,6 +149,8 @@ def LEFT(text, num_chars=1):
 @dispatcher.register_for('RIGHT', 'RIGHTB')
 @utils.propagate_errors()
 def RIGHT(text, num_chars=1):
+    if text is None:
+        text = ''
     if num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
     if num_chars == 0:
@@ -157,6 +161,8 @@ def RIGHT(text, num_chars=1):
 @dispatcher.register_for('MID', 'MIDB')
 @utils.propagate_errors()
 def MID(text, start_num, num_chars=1):
+    if text is None:
+        text = ''
     if start_num < 1 or num_chars < 0 or not isinstance(text, string_types):
         return error.VALUE
     return text[start_num - 1:][:num_chars]
