@@ -109,7 +109,13 @@ def SUBSTITUTE(text, old_text, new_text, instance_num=DEFAULT):
             return instance_num
         if instance_num <= 0:
             return error.VALUE
-    if not text or not old_text or not new_text:
+    if text is None:
+        text = ''
+    if old_text is None:
+        old_text = ''
+    if new_text is None:
+        new_text = ''
+    if not text or not old_text:
         return text
     if instance_num is DEFAULT:
         return text.replace(old_text, new_text)

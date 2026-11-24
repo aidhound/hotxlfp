@@ -186,6 +186,55 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_substitute_normalizes_blank_source_search_and_replacement(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for blank in ('NULL', 'BLANK()', '""'):
+            for args, expected in (
+                (blank + ',"a","b"', ''),
+                ('"aba",' + blank + ',"b"', 'aba'),
+                ('"aba",' + blank + ',' + blank, 'aba'),
+                (blank + ',' + blank + ',' + blank, ''),
+            ):
+                expression = 'SUBSTITUTE(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_substitute_empty_replacement_deletes_selected_occurrences(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for replacement in ('""', 'NULL', 'BLANK()'):
+            for occurrence, expected in (('', 'b'), (',1', 'ba'), (',2', 'ab'),
+                                         (',3', 'aba'), (',"2"', 'ab')):
+                expression = 'SUBSTITUTE("aba","a",' + replacement + occurrence + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(p.parse('SUBSTITUTE("aAa","a","")'), {'result': 'A', 'error': None})
+
+    def test_substitute_blanks_keep_occurrence_validation_and_errors(self):
+        p = Parser()
+        for args in ('NULL,"a","b"', '"aba",NULL,"b"', '"aba","a",NULL', 'NULL,NULL,NULL'):
+            for occurrence in ('0', '-1', '"bad"', 'NULL'):
+                expression = 'SUBSTITUTE(' + args + ',' + occurrence + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('FAIL', lambda value=source_error: value)
+            for position in range(4):
+                args = ['NULL', 'NULL', 'NULL', '1']
+                args[position] = 'FAIL()'
+                expression = 'SUBSTITUTE(' + ','.join(args) + ')'
+                with self.subTest(expression=expression, error=str(source_error)):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None} if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        for expression in ('SUBSTITUTE()', 'SUBSTITUTE(NULL,"a")'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#ERROR!'})
+
     def test_substitute(self):
         p = Parser(debug=True)
         ret = p.parse('SUBSTITUTE("ccc", "a", "b")')
@@ -216,7 +265,7 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#VALUE!')
         ret = p.parse('SUBSTITUTE(;;)')
-        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['result'], '')
         self.assertEqual(ret['error'], None)
         ret = p.parse('SUBSTITUTE(;;;)')
         self.assertEqual(ret['result'], None)
