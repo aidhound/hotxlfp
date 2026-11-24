@@ -22,6 +22,7 @@ supplied through callbacks retain their original shapes.
 * Treat blank source values as empty text in `LEFT`, `RIGHT` and `MID`, including their B aliases, while retaining position validation and error propagation.
 * Return empty text from `TRIM` for blank source values.
 * Normalize blank text arguments in `SUBSTITUTE` and allow empty replacements to delete matches, including explicit occurrence numbers.
+* Ignore blank elements in `CONCAT` and `CONCATENATE`, including nested arrays, while preserving zeroes, booleans and calculation errors.
 * Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
 * Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
 

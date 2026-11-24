@@ -107,6 +107,54 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], '223')
         self.assertEqual(ret['error'], None)
 
+    def test_concatenate_treats_blank_elements_as_empty_text(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        p.set_function('DATA', lambda: [None, ('x', [None, 'y']), None])
+        for name in ('CONCAT', 'CONCATENATE'):
+            for args, expected in (
+                ('NULL,"x"', 'x'), ('BLANK(),"x"', 'x'),
+                ('{BLANK(),"x";"y",BLANK()}', 'xy'), ('DATA()', 'xy'),
+                ('NULL,BLANK(),""', ''), ('{NULL,BLANK();BLANK(),NULL}', ''),
+                ('"None",NULL,"x"', 'Nonex'), ('', ''),
+            ):
+                expression = name + '(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_concatenate_keeps_zero_booleans_literal_text_and_order(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [None, (0, [False, True]), 2.5, 'None'])
+        for name in ('CONCAT', 'CONCATENATE'):
+            for args, expected in (
+                ('0,"x"', '0x'), ('FALSE(),TRUE(),0', 'FalseTrue0'),
+                ('{NULL,0;FALSE(),TRUE()}', '0FalseTrue'),
+                ('DATA()', '0FalseTrue2.5None'), ('"#DIV/0!",NULL,"x"', '#DIV/0!x'),
+                ('NULL," ","x"', ' x'),
+            ):
+                expression = name + '(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_concatenate_preserves_first_nested_error_among_blanks(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for first, second in ((error.DIV_ZERO, error.NOT_AVAILABLE),
+                               (error.NOT_AVAILABLE, error.DIV_ZERO)):
+            p.set_function('FAIL', lambda value=first: value)
+            p.set_function('DATA', lambda: [None, (0, [False, first]), None, second])
+            for name in ('CONCAT', 'CONCATENATE'):
+                for args in ('NULL,FAIL(),BLANK()', '{BLANK(),FAIL()}',
+                             'NULL,DATA(),BLANK()'):
+                    expression = name + '(' + args + ')'
+                    with self.subTest(expression=expression, error=str(first)):
+                        self.assertEqual(p.parse(expression), {'result': None, 'error': str(first)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 77, 'error': None} if first is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(first)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_concatenate(self):
         p = Parser(debug=True)
         ret = p.parse('CONCAT("The"," ","sun"," ","will"," ","come"," ","up"," ","tomorrow.")')
