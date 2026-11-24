@@ -254,6 +254,8 @@ def TEXT(value, format_text):
 
 @dispatcher.register_for('TRIM')
 def TRIM(value):
+    if value is None:
+        value = ''
     if not isinstance(value, string_types):
         return value
     return re.sub(' {2,}', ' ', value).strip()

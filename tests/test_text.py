@@ -585,6 +585,36 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], "5 1/4")
         self.assertEqual(ret['error'], None)
 
+    def test_trim_blank_source_returns_empty_text_for_enclosing_functions(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for expression, expected in (
+            ('TRIM(NULL)', ''), ('TRIM(BLANK())', ''), ('TRIM("")', ''),
+            ('AVERAGEA(TRIM(BLANK()),2)', 1), ('AVERAGEA(NULL,2)', 2),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_trim_keeps_errors_nonstring_values_and_argument_count_checks(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
+            p.set_function('FAIL', lambda value=source_error: value)
+            expression = 'TRIM(FAIL())'
+            with self.subTest(error=str(source_error)):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': str(source_error)})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if source_error is error.NOT_AVAILABLE
+                            else {'result': None, 'error': str(source_error)})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        for expression, expected in (('TRIM(0)', 0), ('TRIM(FALSE())', False),
+                                    ('TRIM(3.14)', 3.14)):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        for expression in ('TRIM()', 'TRIM(NULL,1)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#ERROR!'})
+
     def test_trim(self):
         p = Parser(debug=True)
         ret = p.parse('TRIM(" test ")')
