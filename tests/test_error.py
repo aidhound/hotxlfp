@@ -7,6 +7,25 @@ from hotxlfp.formulas import error, utils
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
+    def test_sumifs_and_averageifs_require_complete_criteria_pairs(self):
+        p = Parser()
+        for values in ([1, 2, 3], []):
+            p.set_function('DATA', lambda values=values: values)
+            for name in ('SUMIFS', 'AVERAGEIFS'):
+                for args in ('DATA()', 'DATA(),DATA()',
+                             'DATA(),DATA(),">0",DATA()'):
+                    expression = name + '(' + args + ')'
+                    with self.subTest(expression=expression, values=values):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': '#ERROR!'})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+        p.set_function('DATA', lambda: [1, 2, 3])
+        for name, expected in (('SUMIFS', 6), ('AVERAGEIFS', 2)):
+            with self.subTest(function=name):
+                self.assertEqual(p.parse(name + '(DATA(),DATA(),">0")'),
+                                 {'result': expected, 'error': None})
+
     def test_conditional_functions_match_excel_criteria_with_error_cells(self):
         p = Parser()
         criteria_values = [1, error.DIV_ZERO, error.NOT_AVAILABLE, 2]

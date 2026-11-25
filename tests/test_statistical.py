@@ -134,6 +134,41 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1.5)
         self.assertEqual(ret['error'], None)
 
+    def test_averageif_explicit_empty_and_short_ranges_return_value(self):
+        p = Parser()
+        p.set_function('COL', lambda: [1, 2, 3])
+        for values in ([], (), [10], (10,), [[10]]):
+            p.set_function('VALUES', lambda values=values: values)
+            for criterion in ('>0', '>99'):
+                expression = 'AVERAGEIF(COL(),"' + criterion + '",VALUES())'
+                with self.subTest(values=values, criterion=criterion):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': '#VALUE!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_averageif_omitted_range_keeps_irregular_single_range_flattening(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [[1, 2], [3]])
+        for expression in ('AVERAGEIF(DATA(),">1")',
+                           'AVERAGEIF(DATA(),">1",NULL)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': 2.5, 'error': None})
+
+    def test_averageif_separate_range_preserves_only_selected_errors(self):
+        p = Parser()
+        p.set_function('COL', lambda: [1, 2, 3])
+        p.set_function('VALUES', lambda: [10, error.NOT_AVAILABLE, 30])
+        for expression, result, code in (
+            ('AVERAGEIF(COL(),">0",VALUES())', None, '#N/A'),
+            ('IFERROR(AVERAGEIF(COL(),">0",VALUES()),99)', 99, None),
+            ('IFNA(AVERAGEIF(COL(),">0",VALUES()),77)', 77, None),
+            ('AVERAGEIF(COL(),"<>2",VALUES())', 20, None),
+            ('AVERAGEIF(COL(),">3",VALUES())', None, '#DIV/0!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': result, 'error': code})
+
     def test_count(self):
         p = Parser(debug=True)
         ret = p.parse('COUNT(1;"2")')

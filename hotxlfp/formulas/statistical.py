@@ -41,12 +41,15 @@ def AVERAGEA(*args):
 
 @dispatcher.register_for('AVERAGEIF')
 def AVERAGEIF(args, criteria, average_range=None):
-    average_range = average_range or args
+    if average_range is None:
+        average_range = args
     args = utils.flatten(args)
     average_range = utils.iparse_number_array(utils.flatten(average_range))
     if isinstance(average_range, error.XLError):
         return average_range
     average_range = list(average_range)
+    if len(average_range) < len(args):
+        return error.VALUE
     average_count = 0
     result = 0
     predicate = utils.parse_criteria(criteria)
@@ -177,7 +180,7 @@ def GEOMEAN(*args):
 
 @dispatcher.register_for('AVERAGEIFS')
 def AVERAGEIFS(average_range, *criteria):
-    if len(criteria) % 2 != 0:
+    if not criteria or len(criteria) % 2 != 0:
         return error.ERROR
 
     average_shape = utils.array_shape(average_range)

@@ -566,7 +566,7 @@ def INT(number):
 
 @dispatcher.register_for('SUMIFS')
 def SUMIFS(sum_args, *criteria):
-    if len(criteria) % 2 != 0:
+    if not criteria or len(criteria) % 2 != 0:
         return error.ERROR
 
     sum_shape = utils.array_shape(sum_args)
