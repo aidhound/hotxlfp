@@ -3,7 +3,9 @@ import datetime
 from . import error
 from ..helper.number import to_number, validate_number
 from ..helper.text import to_string
-from .utils import OPERATOR_DICT, serialize_date, parse_date, date_1900, array_shape
+from .utils import (
+    OPERATOR_DICT, serialize_date, parse_date, date_1900, array_shape, array_value
+)
 from .._compat import number_types, string_types
 
 
@@ -363,17 +365,6 @@ def evaluate_logic(op, lval, rval):
     if isinstance(rval, error.XLError):
         return rval
     return OPERATOR_DICT[op](ExcelComparator(lval), rval)
-
-
-def array_value(value, shape, row, column):
-    if not isinstance(value, (list, tuple)):
-        return value
-    row = 0 if shape[0] == 1 else row
-    column = 0 if shape[1] == 1 else column
-    if row >= shape[0] or column >= shape[1]:
-        return error.NOT_AVAILABLE
-    values = value[row]
-    return values[column] if isinstance(values, (list, tuple)) else values
 
 
 def evaluate_array_arithmetic(op, lval, rval):

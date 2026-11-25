@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import unittest
 from hotxlfp import Parser
 from hotxlfp.formulas import error
@@ -176,6 +177,61 @@ class TestLogic(unittest.TestCase):
                 self.assertEqual(p.parse('IFNA(DATA(),77)'),
                                  {'result': expected, 'error': None})
 
+    def test_array_error_handlers_use_corresponding_fallback_cells(self):
+        p = Parser()
+        for name, code in (('IFERROR', '#DIV/0!'), ('IFNA', '#N/A')):
+            for arguments, expected in (
+                ('{' + code + ',2},{8,9}', [[8, 2]]),
+                ('{1,' + code + '},{8,9}', [[1, 9]]),
+                ('{' + code + ',2;3,' + code + '},{8,9;10,11}',
+                 [[8, 2], [3, 11]]),
+                ('{' + code + ',2},{8;9}', [[8, 2], [9, 2]]),
+                ('{' + code + ',2;3,' + code + '},{8,9}', [[8, 2], [3, 9]]),
+                ('{' + code + ';' + code + '},{8,9}', [[8, 9], [8, 9]]),
+                ('{' + code + ',' + code + '},{8}', [[8, 8]]),
+                ('{1,2},{8,9,10}', [[1, 2, 10]]),
+                ('{' + code + ',' + code + ',' + code + '},{8,9}',
+                 [[8, 9, error.NOT_AVAILABLE]]),
+                ('{1,2},{#N/A,#DIV/0!}', [[1, 2]]),
+                ('{NULL,"",FALSE(),0},{8,9,10,11}', [[None, '', False, 0]]),
+                ('5,{8,9}', 5),
+                (code + ',{8,9}', [[8, 9]]),
+            ):
+                expression = name + '(' + arguments + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': expected, 'error': None})
+            expression = name + '({' + code + ',2},{8,9})'
+            self.assertEqual(p.parse('SUM(' + expression + ')'),
+                             {'result': 10, 'error': None})
+            self.assertEqual(p.parse(expression + '+1'),
+                             {'result': [[9, 3]], 'error': None})
+        self.assertEqual(p.parse('IFNA({#DIV/0!,#N/A},{8,9})'),
+                         {'result': [[error.DIV_ZERO, 9]], 'error': None})
+        self.assertEqual(p.parse('IFNA(#DIV/0!,{8,9})'),
+                         {'result': None, 'error': '#DIV/0!'})
+
+    def test_array_error_fallbacks_preserve_callback_containers_and_inputs(self):
+        p = Parser()
+        for name, code in (('IFERROR', error.DIV_ZERO),
+                           ('IFNA', error.NOT_AVAILABLE)):
+            for values, fallback, expected in (
+                ([code, 2], [8, 9], [8, 2]),
+                ((code, 2), (8, 9), (8, 2)),
+                ([[code, 2], (3, code)], [[8, 9], [10, 11]],
+                 [[8, 2], (3, 11)]),
+                (((code, 2), (3, code)), ((8, 9),), ((8, 2), (3, 9))),
+            ):
+                original_values, original_fallback = copy.deepcopy(
+                    (values, fallback), {id(code): code})
+                p.set_function('DATA', lambda values=values: values)
+                p.set_function('FALLBACK', lambda fallback=fallback: fallback)
+                with self.subTest(function=name, values=values):
+                    self.assertEqual(p.parse(name + '(DATA(),FALLBACK())'),
+                                     {'result': expected, 'error': None})
+                    self.assertEqual(values, original_values)
+                    self.assertEqual(fallback, original_fallback)
+
     def test_array_error_handlers_do_not_modify_input(self):
         p = Parser()
         values = [[5, error.DIV_ZERO], [error.NOT_AVAILABLE, None]]
@@ -191,9 +247,10 @@ class TestLogic(unittest.TestCase):
         for values in ([], (), [[], ()]):
             p.set_function('DATA', lambda values=values: values)
             for name in ('IFERROR', 'IFNA'):
-                with self.subTest(function=name, values=values):
-                    self.assertEqual(p.parse(name + '(DATA(),0)'),
-                                     {'result': values, 'error': None})
+                for fallback in ('0', 'DATA()'):
+                    with self.subTest(function=name, values=values, fallback=fallback):
+                        self.assertEqual(p.parse(name + '(DATA(),' + fallback + ')'),
+                                         {'result': values, 'error': None})
 
     def test_aggregates_consume_arrays_after_error_substitution(self):
         p = Parser()

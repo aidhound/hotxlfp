@@ -79,6 +79,63 @@ def array_shape(array):
     return len(array), columns
 
 
+def array_value(value, shape, row, column):
+    """Read a broadcast cell, using #N/A outside non-singleton dimensions."""
+    if not isinstance(value, (list, tuple)):
+        return value
+    row = 0 if shape[0] == 1 else row
+    column = 0 if shape[1] == 1 else column
+    if row >= shape[0] or column >= shape[1]:
+        return error.NOT_AVAILABLE
+    values = value[row]
+    return values[column] if isinstance(values, (list, tuple)) else values
+
+
+def map_arrays(function, left, right):
+    """Map a function over corresponding cells of two broadcast arrays.
+
+    Flat vectors are columns. Singleton dimensions repeat; unmatched cells
+    supply #N/A to the function, which decides how to handle error values.
+    """
+    left_shape = array_shape(left)
+    if isinstance(left_shape, error.XLError):
+        return left_shape
+    right_shape = array_shape(right)
+    if isinstance(right_shape, error.XLError):
+        return right_shape
+
+    shape = []
+    for left_size, right_size in zip(left_shape, right_shape):
+        if left_size == 0 or right_size == 0:
+            if max(left_size, right_size) > 1:
+                return error.VALUE
+            shape.append(0)
+        else:
+            shape.append(max(left_size, right_size))
+
+    # Retain the left array's containers; a right-hand matrix supplies row
+    # containers when broadcasting a flat left vector into a matrix.
+    row_templates = None
+    for array in (left, right):
+        if array and isinstance(array[0], (list, tuple)):
+            row_templates = array
+            break
+
+    result = []
+    for row in range(shape[0]):
+        values = [
+            function(array_value(left, left_shape, row, column),
+                     array_value(right, right_shape, row, column))
+            for column in range(shape[1])
+        ]
+        if row_templates is not None:
+            row_type = type(row_templates[min(row, len(row_templates) - 1)])
+            result.append(row_type(values))
+        else:
+            result.append(values[0])
+    return type(left)(result)
+
+
 def inumbers(l, try_parse=False, text_is_zero=False):
     """Yield numeric values, raising XLError to abort on an Excel error.
 

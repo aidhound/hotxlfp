@@ -25,6 +25,8 @@ def IF(test, then, otherwise):
 def IFERROR(value, value_if_error):
     value_type = type(value)
     if value_type in (list, tuple):
+        if isinstance(value_if_error, (list, tuple)):
+            return utils.map_arrays(IFERROR, value, value_if_error)
         return value_type(
             IFERROR(item, value_if_error) for item in value
         )
@@ -35,6 +37,8 @@ def IFERROR(value, value_if_error):
 def IFNA(value, value_if_na):
     value_type = type(value)
     if value_type in (list, tuple):
+        if isinstance(value_if_na, (list, tuple)):
+            return utils.map_arrays(IFNA, value, value_if_na)
         return value_type(
             IFNA(item, value_if_na) for item in value
         )
