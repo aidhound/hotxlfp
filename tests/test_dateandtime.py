@@ -7,6 +7,21 @@ import datetime
 
 class TestDateAndTime(unittest.TestCase):
 
+    def test_time_functions_preserve_fractional_serials_below_one(self):
+        p = Parser()
+        for expression, expected in (
+            ('HOUR(0)', 0), ('HOUR(0.25)', 6), ('HOUR(0.5)', 12),
+            ('HOUR(0.75)', 18), ('HOUR("0.5")', 12),
+            ('MINUTE(1/96)', 15), ('SECOND(1/86400)', 1),
+            ('TIMEVALUE(0.5)', 0.5),
+            ('EDATE(0,0)', datetime.datetime(1900, 1, 1)),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        for expression in ('HOUR(-0.5)', 'MINUTE(-0.5)', 'SECOND(-0.5)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+
     def test_datevalue_uses_excel_serials_at_1900_boundaries(self):
         p = Parser()
         for expression, expected in (

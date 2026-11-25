@@ -266,7 +266,8 @@ def parse_date(date):
         if date < 0:
             return error.NUM
         if date < 1:
-            return date_1900
+            # Excel's day zero has no native datetime; retain January 1 as a placeholder.
+            return date_1900 + datetime.timedelta(days=date)
         if date <= 60:
             return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 1) * 86400))
         return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 2) * 86400))

@@ -739,7 +739,8 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Bool divided by date
         ret = p.parse('TRUE / DATE(2019;11;20)')
-        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))
+        # 1 / 43789 of a day retains its fractional seconds on the placeholder.
+        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1, 0, 0, 1, 973098))
         self.assertEqual(ret['error'], None)
         # Bool divided by number
         ret = p.parse('TRUE / 2')

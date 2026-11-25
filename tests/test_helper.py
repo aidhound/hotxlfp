@@ -8,6 +8,22 @@ from hotxlfp.formulas import error, utils
 
 class TestHelper(unittest.TestCase):
 
+    def test_parse_date_preserves_time_fractions_on_the_zero_day_placeholder(self):
+        for value, expected in (
+            (0, datetime.datetime(1900, 1, 1)),
+            (0.25, datetime.datetime(1900, 1, 1, 6)),
+            (0.5, datetime.datetime(1900, 1, 1, 12)),
+            (0.75, datetime.datetime(1900, 1, 1, 18)),
+            (1 / 86400, datetime.datetime(1900, 1, 1, 0, 0, 1)),
+            ('0.5', datetime.datetime(1900, 1, 1, 12)),
+            (1, datetime.datetime(1900, 1, 1)),
+            (1.5, datetime.datetime(1900, 1, 1, 12)),
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(utils.parse_date(value), expected)
+        # The placeholder is a real January 1 datetime, so its serial is 1.5.
+        self.assertEqual(utils.serialize_date(utils.parse_date(0.5)), 1.5)
+
     def test_date_serialization_preserves_1900_boundaries_and_time_fractions(self):
         for value, expected in (
             (datetime.datetime(1900, 1, 1), 1),
