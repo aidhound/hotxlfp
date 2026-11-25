@@ -8,6 +8,42 @@ from hotxlfp.formulas import error
 
 class TestDateAndTime(unittest.TestCase):
 
+    def test_time_keeps_datetime_results_and_fractional_day_identity(self):
+        p = Parser()
+        for expression, expected in (
+            ('TIME(0,0,0)', datetime.datetime(1899, 12, 31)),
+            ('TIME(12,0,0)', datetime.datetime(1899, 12, 31, 12)),
+            ('TIME(0,0,0)=0', True), ('TIME(12,0,0)=0.5', True),
+            ('TIME(0,0,1)=1/86400', True),
+            ('TIME(12,0,0)-TIME(0,0,0)', 0.5),
+            ('TIME(12,0,0)+1', datetime.datetime(1900, 1, 1, 12)),
+            ('HOUR(TIME(12,0,0))', 12), ('HOUR(0.5)', 12),
+            ('MINUTE(TIME(0,15,0))', 15), ('SECOND(TIME(0,0,1))', 1),
+            ('DAYS(TIME(12,0,0),TIME(0,0,0))', 0),
+            ('TIMEVALUE(TIME(12,0,0))', 0.5),
+            ('DATEVALUE(TIME(12,0,0))', 0.5),
+            ('DATE(1900,1,1)=1', True), ('DATE(1900,1,1)=0', False),
+            ('DATEVALUE(DATE(1900,1,1))', 1),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_edate_keeps_zero_day_identity_across_datetime_inputs(self):
+        p = Parser()
+        p.set_function('ZERO', lambda: datetime.datetime(1899, 12, 31))
+        p.set_function('NOON', lambda: datetime.datetime(1899, 12, 31, 12))
+        p.set_function('DATEONLY', lambda: datetime.date(1899, 12, 31))
+        for source in ('ZERO()', 'NOON()', 'DATEONLY()', 'TIME(12,0,0)', 'EDATE(0,0)'):
+            for months, expected in (
+                ('0', datetime.datetime(1899, 12, 31)),
+                ('1', datetime.datetime(1900, 1, 31)),
+                ('12', datetime.datetime(1900, 12, 31)),
+            ):
+                expression = 'EDATE(' + source + ',' + months + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(p.parse('EDATE(0,0)=0'), {'result': True, 'error': None})
+
     def test_date_consumers_preserve_errors_in_every_argument(self):
         p = Parser()
         for name, valid_args in (
@@ -122,8 +158,8 @@ class TestDateAndTime(unittest.TestCase):
         p.set_function('BLANK', lambda: None)
         for source in ('NULL', 'BLANK()', '0', '0.5', '"0.5"'):
             for months, expected in (
-                ('0', datetime.datetime(1900, 1, 1)),
-                ('NULL', datetime.datetime(1900, 1, 1)),
+                ('0', datetime.datetime(1899, 12, 31)),
+                ('NULL', datetime.datetime(1899, 12, 31)),
                 ('1', datetime.datetime(1900, 1, 31)),
                 ('3', datetime.datetime(1900, 3, 31)),
                 ('4', datetime.datetime(1900, 4, 30)),
@@ -131,7 +167,7 @@ class TestDateAndTime(unittest.TestCase):
                 ('13', datetime.datetime(1901, 1, 31)),
                 ('1.9', datetime.datetime(1900, 1, 31)),
                 ('"1.9"', datetime.datetime(1900, 1, 31)),
-                ('-0.9', datetime.datetime(1900, 1, 1)),
+                ('-0.9', datetime.datetime(1899, 12, 31)),
             ):
                 expression = 'EDATE(' + source + ',' + months + ')'
                 with self.subTest(expression=expression):
@@ -187,7 +223,7 @@ class TestDateAndTime(unittest.TestCase):
             ('HOUR(0.75)', 18), ('HOUR("0.5")', 12),
             ('MINUTE(1/96)', 15), ('SECOND(1/86400)', 1),
             ('TIMEVALUE(0.5)', 0.5),
-            ('EDATE(0,0)', datetime.datetime(1900, 1, 1)),
+            ('EDATE(0,0)', datetime.datetime(1899, 12, 31)),
         ):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
@@ -395,7 +431,7 @@ class TestDateAndTime(unittest.TestCase):
         self.assertEqual(ret['result'], datetime.datetime(2019,10,6))
         self.assertEqual(ret['error'], None)
         ret = p.parse('EDATE(0,0)')
-        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))
+        self.assertEqual(ret['result'], datetime.datetime(1899, 12, 31))
         self.assertEqual(ret['error'], None)
         ret = p.parse('EDATE(DATE(1999,7,8), 404)')
         self.assertEqual(ret['result'], datetime.datetime(2033, 3, 8))

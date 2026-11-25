@@ -255,7 +255,8 @@ def propagate_errors(*, nested=False):
     return decorate
 
 
-date_1900 = datetime.datetime(1900, 1, 1)
+# Serial-zero baseline for Excel's 1900 date system.
+date_1900 = datetime.datetime(1899, 12, 31)
 epoch = datetime.datetime(1970, 1, 1)
 
 
@@ -277,11 +278,11 @@ def parse_date(date):
         if date < 0:
             return error.NUM
         if date < 1:
-            # Excel's day zero has no native datetime; retain January 1 as a placeholder.
+            # Represent Excel's January 0 using the preceding real calendar day.
             return date_1900 + datetime.timedelta(days=date)
         if date <= 60:
-            return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 1) * 86400))
-        return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 2) * 86400))
+            return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + date * 86400))
+        return epoch + datetime.timedelta(seconds=(epoch_seconds(date_1900) + (date - 1) * 86400))
     if isinstance(date, string_types):
         try:
             return to_date(date)
@@ -300,4 +301,4 @@ def serialize_date(date):
     days = (date - date_1900).total_seconds() / 86400
     # For Lotus 1-2-3 compatibility, Excel treats 1900 as a leap year.
     # Reserve serial 60 for the fictitious February 29, which datetime cannot represent.
-    return days + (1 if date < datetime.datetime(1900, 3, 1) else 2)
+    return days + (0 if date < datetime.datetime(1900, 3, 1) else 1)

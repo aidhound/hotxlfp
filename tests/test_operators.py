@@ -593,11 +593,11 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['result'], datetime.datetime(2019, 11, 20))
         self.assertEqual(ret['error'], None)
         ret = p.parse('DATE(2019,11,20) * FALSE')
-        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))
+        self.assertEqual(ret['result'], datetime.datetime(1899, 12, 31))
         self.assertEqual(ret['error'], None)
         # Date times blank
         ret = p.parse('DATE(2019,11,20) * B3')
-        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))  # excel actualy return 1900/1/0 but that's no good in python
+        self.assertEqual(ret['result'], datetime.datetime(1899, 12, 31))
         self.assertEqual(ret['error'], None)
         # Date divided by date
         ret = p.parse('DATE(2019,11,20) / DATE(2019,11,20)')
@@ -740,7 +740,7 @@ class TestOperators(unittest.TestCase):
         # Bool divided by date
         ret = p.parse('TRUE / DATE(2019;11;20)')
         # 1 / 43789 of a day retains its fractional seconds on the placeholder.
-        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1, 0, 0, 1, 973098))
+        self.assertEqual(ret['result'], datetime.datetime(1899, 12, 31, 0, 0, 1, 973098))
         self.assertEqual(ret['error'], None)
         # Bool divided by number
         ret = p.parse('TRUE / 2')
@@ -814,7 +814,7 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Blank times date
         ret = p.parse('B3 * DATE(2019;11;20)')
-        self.assertEqual(ret['result'], datetime.datetime(1900, 1, 1))  # excel actualy return 1900/1/0 but that's no good in python
+        self.assertEqual(ret['result'], datetime.datetime(1899, 12, 31))
         self.assertEqual(ret['error'], None)
         # Blank times number
         ret = p.parse('B3 * 1')

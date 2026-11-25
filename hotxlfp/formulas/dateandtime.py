@@ -25,12 +25,12 @@ def DATE(year, month, day):
 
 @dispatcher.register_for('TIME')
 def TIME(hour, minute, second):
-    year = utils.parse_number(hour)
+    hour = utils.parse_number(hour)
     minute = utils.parse_number(minute)
     second = utils.parse_number(second)
-    if utils.any_is_error((year, minute, second)):
+    if utils.any_is_error((hour, minute, second)):
         return error.VALUE
-    return datetime.datetime(1900, 1, 1, hour, minute, second)
+    return utils.date_1900.replace(hour=hour, minute=minute, second=second)
 
 
 @dispatcher.register_for('DATEVALUE')
@@ -44,8 +44,7 @@ def TIMEVALUE(time):
     time = utils.parse_date(time)
     if isinstance(time, error.XLError):
         return time
-    # -1 is because excel has epoch starting on day 0 of 1900 and datetime starts at 1
-    return utils.serialize_date(datetime.datetime.combine(utils.date_1900, time.time())) - 1
+    return utils.serialize_date(datetime.datetime.combine(utils.date_1900, time.time()))
 
 
 @dispatcher.register_for('YEAR')
@@ -175,11 +174,10 @@ def DATEDIF(start_date, end_date, unit):
 def EDATE(start_date, month):
     if isinstance(start_date, bool) or isinstance(month, bool):
         return error.VALUE
-    start_date = to_number(0 if start_date is None else start_date)
-    zero_day = isinstance(start_date, (int, float)) and 0 <= start_date < 1
-    start_date = utils.parse_date(start_date)
+    start_date = utils.parse_date(0 if start_date is None else start_date)
     if isinstance(start_date, error.XLError):
         return start_date
+    zero_day = start_date.date() == utils.date_1900.date()
     month = utils.parse_number(0 if month is None else month)
     if isinstance(month, error.XLError):
         return month
@@ -189,8 +187,6 @@ def EDATE(start_date, month):
             return error.NUM
         if month == 0:
             return utils.date_1900
-        # Day zero of the shifted month is the previous month's final day.
-        month -= 1
     year = start_date.year + (month // 12)
     month = start_date.month + (month % 12)
     if month > 12:
@@ -202,7 +198,7 @@ def EDATE(start_date, month):
     if year > 9999 or year < 1900:
         return error.NUM
     last_day = calendar.monthrange(year, month)[1]
-    day = last_day if zero_day else min(start_date.day, last_day)
+    day = min(start_date.day, last_day)
     return datetime.datetime(year, month, day)
 
 

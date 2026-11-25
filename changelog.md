@@ -33,6 +33,7 @@ supplied through callbacks retain their original shapes.
 * Make `DAYS` discard each operand's time before subtraction, preserve numeric zero and return original calculation errors to enclosing handlers.
 * Normalize numeric arguments in `LEFT`, `RIGHT`, `MID` and their B aliases: accept numeric text, truncate fractions and treat explicit blank counts as zero while preserving defaults and validation.
 * Preserve incoming and conversion errors in `TIMEVALUE`, `WEEKDAY` and `DATEDIF`, allowing enclosing `IFERROR` and `IFNA` calls to handle them.
+* Preserve zero/time-only serial identity while retaining datetime results, so `TIME(0,0,0)=0` and `EDATE(0,0)=0` evaluate correctly.
 * Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
 * Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
 
