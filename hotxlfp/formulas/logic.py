@@ -70,6 +70,8 @@ def SWITCH(target_value, *args):
     argc = len(args)
     default_clause = utils.DEFAULT if (argc % 2 == 0) else args[-1]
     for value, result in zip(args[::2], args[1::2]):
+        if isinstance(value, error.XLError):
+            return value
         if target_value == value:
             return result
     if default_clause is not utils.DEFAULT:

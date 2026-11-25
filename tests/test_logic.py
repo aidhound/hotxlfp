@@ -302,6 +302,29 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(p.parse('SWITCH(missing_target,1,5,99)'),
                          {'result': None, 'error': '#NAME?'})
 
+    def test_switch_preserves_errors_in_cases_before_a_match(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('ERR', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error: [5, value])
+            for source in (str(source_error), 'ERR()', 'SUM(DATA())'):
+                for arguments in (source + ',10,1,20,99',
+                                  '2,10,' + source + ',20,1,30'):
+                    expression = 'SWITCH(1,' + arguments + ')'
+                    with self.subTest(expression=expression, error=str(source_error)):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',77)'),
+                                         {'result': 77, 'error': None})
+                        expected = ({'result': 88, 'error': None}
+                                    if source_error is error.NOT_AVAILABLE
+                                    else {'result': None, 'error': str(source_error)})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',88)'), expected)
+                self.assertEqual(p.parse('SWITCH(1,1,5,' + source + ',10,99)'),
+                                 {'result': 5, 'error': None})
+        self.assertEqual(p.parse('SWITCH(1,missing_case,10,1,20,99)'),
+                         {'result': None, 'error': '#NAME?'})
+
     def test_switch_preserves_errors_only_in_selected_results_and_defaults(self):
         p = Parser()
         for expression, result, code in [
