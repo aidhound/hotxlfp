@@ -47,6 +47,8 @@ class TestDateAndTime(unittest.TestCase):
     def test_date_consumers_preserve_errors_in_every_argument(self):
         p = Parser()
         for name, valid_args in (
+            ('DATE', ['2025', '1', '1']),
+            ('TIME', ['12', '30', '45']),
             ('TIMEVALUE', ['"12:00"']),
             ('WEEKDAY', ['DATE(2025,1,1)', '2']),
             ('DATEDIF', ['DATE(2024,1,1)', 'DATE(2025,1,1)', '"d"']),
@@ -93,6 +95,12 @@ class TestDateAndTime(unittest.TestCase):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
         for expression, code in (
+            ('DATE(#N/A,#DIV/0!,1)', '#N/A'),
+            ('DATE(#DIV/0!,1,#N/A)', '#DIV/0!'),
+            ('TIME(#N/A,#DIV/0!,0)', '#N/A'),
+            ('TIME(#DIV/0!,0,#N/A)', '#DIV/0!'),
+            ('DATE("bad",1,1)', '#VALUE!'),
+            ('TIME(12,"bad",0)', '#VALUE!'),
             ('WEEKDAY(#DIV/0!,#N/A)', '#DIV/0!'),
             ('DATEDIF(#N/A,#DIV/0!,"d")', '#N/A'),
             ('DATEDIF(#DIV/0!,#N/A,#NUM!)', '#DIV/0!'),

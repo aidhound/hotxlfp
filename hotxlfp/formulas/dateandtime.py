@@ -12,6 +12,7 @@ from ..helper.number import to_number
 
 
 @dispatcher.register_for('DATE')
+@utils.propagate_errors()
 def DATE(year, month, day):
     year = utils.parse_number(year)
     month = utils.parse_number(month)
@@ -24,6 +25,7 @@ def DATE(year, month, day):
 
 
 @dispatcher.register_for('TIME')
+@utils.propagate_errors()
 def TIME(hour, minute, second):
     hour = utils.parse_number(hour)
     minute = utils.parse_number(minute)

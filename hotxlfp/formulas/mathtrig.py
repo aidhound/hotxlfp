@@ -574,6 +574,7 @@ def SUMIFS(sum_args, *criteria):
 
 
 @dispatcher.register_for('SIGN')
+@utils.propagate_errors()
 def SIGN(number):
     if not isinstance(number, (int, float)):
         return error.VALUE

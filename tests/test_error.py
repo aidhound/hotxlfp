@@ -126,6 +126,13 @@ class TestError(unittest.TestCase):
     def test_numeric_consumers_preserve_errors_in_every_argument(self):
         p = Parser()
         for name, valid_args in (
+            ('SLOPE', ['6', '1', '2', '4']),
+            ('HEX2DEC', ['"A5"']),
+            ('COMPLEX', ['3', '5']),
+            ('DELTA', ['5', '5']),
+            ('SIGN', ['2']),
+            ('ISEVEN', ['2']),
+            ('ISODD', ['3']),
             ('ROUND', ['23.7825', '2']),
             ('ROUNDUP', ['23.7825', '2']),
             ('ROUNDDOWN', ['23.7825', '2']),
@@ -175,7 +182,8 @@ class TestError(unittest.TestCase):
         for name in ('ROUND', 'ROUNDUP', 'ROUNDDOWN', 'POWER', 'PV', 'LOG',
                      'CEILING', 'CEILING.MATH', 'CEILING.PRECISE',
                      'FLOOR', 'FLOOR.MATH', 'FLOOR.PRECISE',
-                     'QUOTIENT', 'RANDBETWEEN', 'ROMAN'):
+                     'QUOTIENT', 'RANDBETWEEN', 'ROMAN', 'COMPLEX', 'DELTA',
+                     'SLOPE'):
             for first, second in ((error.NOT_AVAILABLE, error.DIV_ZERO),
                                    (error.DIV_ZERO, error.NOT_AVAILABLE)):
                 args = [str(first), str(second)]
@@ -188,6 +196,9 @@ class TestError(unittest.TestCase):
     def test_numeric_consumers_keep_conversion_checks_and_valid_results(self):
         p = Parser()
         for expression, expected in (
+            ('HEX2DEC("A5")', 165),
+            ('COMPLEX("3","5")', complex(3, 5)),
+            ('DELTA("5","5")', 1),
             ('ROUND(23.7825,2)', 23.78),
             ('ROUNDUP(23.7825,2)', 23.79),
             ('ROUNDDOWN(-23.7895,2)', -23.78),
@@ -208,6 +219,9 @@ class TestError(unittest.TestCase):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
         for name, valid_args in (
+            ('HEX2DEC', ['"A5"']),
+            ('COMPLEX', ['3', '5']), ('DELTA', ['5', '5']),
+            ('SIGN', ['2']), ('ISEVEN', ['2']), ('ISODD', ['3']),
             ('ROUND', ['2', '1']), ('ROUNDUP', ['2', '1']),
             ('ROUNDDOWN', ['2', '1']), ('POWER', ['2', '3']),
             ('PV', ['0', '2', '10', '5', '1']),

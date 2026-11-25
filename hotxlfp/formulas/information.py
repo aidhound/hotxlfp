@@ -42,6 +42,7 @@ def ISERROR(value):
 
 
 @dispatcher.register_for('ISEVEN')
+@utils.propagate_errors()
 def ISEVEN(number):
     if not isinstance(number, number_types):
         return error.VALUE
@@ -49,6 +50,7 @@ def ISEVEN(number):
 
 
 @dispatcher.register_for('ISODD')
+@utils.propagate_errors()
 def ISODD(number):
     if not isinstance(number, number_types):
         return error.VALUE

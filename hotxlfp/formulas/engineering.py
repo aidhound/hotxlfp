@@ -6,6 +6,7 @@ from .utils import DEFAULT
 
 
 @dispatcher.register_for('HEX2DEC')
+@utils.propagate_errors()
 def HEX2DEC(hex):
     try:
         dec = int(hex, 16)
@@ -42,6 +43,7 @@ def DEC2HEX(dec, places=DEFAULT):
 
 
 @dispatcher.register_for('COMPLEX')
+@utils.propagate_errors()
 def COMPLEX(real, imaginary):
     real = utils.parse_number(real)
     imaginary = utils.parse_number(imaginary)
@@ -51,6 +53,7 @@ def COMPLEX(real, imaginary):
 
 
 @dispatcher.register_for('DELTA')
+@utils.propagate_errors()
 def DELTA(number1, number2):
     number1 = utils.parse_number(number1)
     number2 = utils.parse_number(number2)

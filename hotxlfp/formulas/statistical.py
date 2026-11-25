@@ -238,6 +238,7 @@ def MAXIFS(sum_args, *criteria):
 
 
 @dispatcher.register_for('SLOPE')
+@utils.propagate_errors()
 def SLOPE(*yx):
     if len(yx) % 2 != 0:
         return error.DIV_ZERO
