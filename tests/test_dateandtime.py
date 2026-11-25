@@ -8,6 +8,64 @@ from hotxlfp.formulas import error
 
 class TestDateAndTime(unittest.TestCase):
 
+    def test_date_consumers_preserve_errors_in_every_argument(self):
+        p = Parser()
+        for name, valid_args in (
+            ('TIMEVALUE', ['"12:00"']),
+            ('WEEKDAY', ['DATE(2025,1,1)', '2']),
+            ('DATEDIF', ['DATE(2024,1,1)', 'DATE(2025,1,1)', '"d"']),
+        ):
+            for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM):
+                p.set_function('FAIL', lambda value=source_error: value)
+                for position in range(len(valid_args)):
+                    for source in ('FAIL()', str(source_error)):
+                        args = valid_args.copy()
+                        args[position] = source
+                        expression = name + '(' + ','.join(args) + ')'
+                        with self.subTest(expression=expression, error=str(source_error)):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+                            expected = ({'result': 77, 'error': None}
+                                        if source_error is error.NOT_AVAILABLE
+                                        else {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_date_consumers_preserve_conversion_error_codes(self):
+        p = Parser()
+        for source, code in (('"bad"', '#VALUE!'), ('"NaN"', '#NUM!'), ('-1', '#NUM!')):
+            for expression in (
+                'TIMEVALUE(' + source + ')', 'WEEKDAY(' + source + ')',
+                'DATEDIF(' + source + ',DATE(2025,1,1),"d")',
+                'DATEDIF(DATE(2024,1,1),' + source + ',"d")',
+            ):
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_date_error_propagation_keeps_precedence_and_valid_results(self):
+        p = Parser()
+        for expression, expected in (
+            ('TIMEVALUE("12:00")', 0.5), ('TIMEVALUE(0.5)', 0.5),
+            ('WEEKDAY(DATE(2025,1,1))', 4),
+            ('WEEKDAY(DATE(2025,1,1),2)', 3),
+            ('WEEKDAY(DATE(2025,1,1),3)', 2),
+            ('DATEDIF(DATE(2024,1,1),DATE(2025,1,1),"d")', 366),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        for expression, code in (
+            ('WEEKDAY(#DIV/0!,#N/A)', '#DIV/0!'),
+            ('DATEDIF(#N/A,#DIV/0!,"d")', '#N/A'),
+            ('DATEDIF(#DIV/0!,#N/A,#NUM!)', '#DIV/0!'),
+            ('WEEKDAY(DATE(2025,1,1),0)', '#NUM!'),
+            ('DATEDIF(DATE(2025,1,1),DATE(2024,1,1),"d")', '#NUM!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+
     def test_days_discards_each_numeric_operands_time_before_subtraction(self):
         p = Parser()
         for expression, expected in (

@@ -32,6 +32,7 @@ supplied through callbacks retain their original shapes.
 * Fix `EDATE` month shifts from blank and zero-day inputs, including year crossings. Truncate fractional month counts and preserve calculation errors through enclosing handlers.
 * Make `DAYS` discard each operand's time before subtraction, preserve numeric zero and return original calculation errors to enclosing handlers.
 * Normalize numeric arguments in `LEFT`, `RIGHT`, `MID` and their B aliases: accept numeric text, truncate fractions and treat explicit blank counts as zero while preserving defaults and validation.
+* Preserve incoming and conversion errors in `TIMEVALUE`, `WEEKDAY` and `DATEDIF`, allowing enclosing `IFERROR` and `IFNA` calls to handle them.
 * Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
 * Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
 

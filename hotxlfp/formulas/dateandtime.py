@@ -39,9 +39,13 @@ def DATEVALUE(date):
 
 
 @dispatcher.register_for('TIMEVALUE')
+@utils.propagate_errors()
 def TIMEVALUE(time):
+    time = utils.parse_date(time)
+    if isinstance(time, error.XLError):
+        return time
     # -1 is because excel has epoch starting on day 0 of 1900 and datetime starts at 1
-    return utils.serialize_date(datetime.datetime.combine(utils.date_1900, utils.parse_date(time).time())) - 1
+    return utils.serialize_date(datetime.datetime.combine(utils.date_1900, time.time())) - 1
 
 
 @dispatcher.register_for('YEAR')
@@ -121,11 +125,14 @@ def NOW():
 
 
 @dispatcher.register_for('DATEDIF')
+@utils.propagate_errors()
 def DATEDIF(start_date, end_date, unit):
     start_date = utils.parse_date(start_date)
+    if isinstance(start_date, error.XLError):
+        return start_date
     end_date = utils.parse_date(end_date)
-    if utils.any_is_error((start_date, end_date)):
-        return error.NUM
+    if isinstance(end_date, error.XLError):
+        return end_date
     if type(unit) != str:
         return error.NAME
     unit = unit.lower()
@@ -200,8 +207,11 @@ def EDATE(start_date, month):
 
 
 @dispatcher.register_for('WEEKDAY')
+@utils.propagate_errors()
 def WEEKDAY(date, return_type=1):
     date = utils.parse_date(date)
+    if isinstance(date, error.XLError):
+        return date
     weekday = date.weekday()
     if return_type == 3:
         # Day of the week, with numbers 0 (Monday) through 6 (Sunday) (3)
