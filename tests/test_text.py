@@ -7,6 +7,58 @@ from hotxlfp.formulas import error
 
 class TestText(unittest.TestCase):
 
+    def test_slicing_converts_numeric_arguments_and_truncates_fractions(self):
+        p = Parser()
+        for name in ('LEFT', 'LEFTB', 'RIGHT', 'RIGHTB'):
+            expected = 'c' if name.startswith('RIGHT') else 'a'
+            for count in ('1.9', '"1"', '"1.9"', 'TRUE()'):
+                expression = name + '("abc",' + count + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+            self.assertEqual(p.parse(name + '("abc",0.9)'), {'result': '', 'error': None})
+        for name in ('MID', 'MIDB'):
+            for args, expected in (
+                ('"abc",2.9,1.9', 'b'), ('"abc","2","1"', 'b'),
+                ('"abc","2.9","1.9"', 'b'), ('"abc",1.9,0.9', ''),
+            ):
+                expression = name + '(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_slicing_keeps_defaults_and_treats_explicit_blank_counts_as_zero(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for name in ('LEFT', 'LEFTB', 'RIGHT', 'RIGHTB', 'MID', 'MIDB'):
+            prefix = ',2' if name.startswith('MID') else ''
+            default = 'b' if name.startswith('MID') else ('c' if name.startswith('RIGHT') else 'a')
+            self.assertEqual(p.parse(name + '("abc"' + prefix + ')'),
+                             {'result': default, 'error': None})
+            for count in ('NULL', 'BLANK()', ''):
+                expression = name + '("abc"' + prefix + ',' + count + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': '', 'error': None})
+            prefix = ',1.5' if name.startswith('MID') else ''
+            self.assertEqual(p.parse(name + '(BLANK()' + prefix + ',1.5)'),
+                             {'result': '', 'error': None})
+
+    def test_slicing_validates_numeric_arguments_before_truncation(self):
+        p = Parser()
+        p.set_function('COMPLEX', lambda: complex(1, 2))
+        for name in ('LEFT', 'LEFTB', 'RIGHT', 'RIGHTB', 'MID', 'MIDB'):
+            for source in ('"abc"', 'NULL'):
+                prefix = ',1' if name.startswith('MID') else ''
+                for count in ('-0.5', '"-0.5"', '"bad"', 'COMPLEX()'):
+                    expression = name + '(' + source + prefix + ',' + count + ')'
+                    with self.subTest(expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+            if name.startswith('MID'):
+                for start in ('0.9', '"0.9"', 'NULL', '"bad"', 'COMPLEX()'):
+                    expression = name + '("abc",' + start + ',0)'
+                    with self.subTest(expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+
     def test_text_arguments_coerce_numbers_and_booleans_like_excel(self):
         p = Parser()
         for source, text in (('123', '123'), ('0', '0'), ('1.0', '1'),

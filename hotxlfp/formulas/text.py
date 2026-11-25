@@ -118,8 +118,9 @@ def TEXTJOIN(delimiter, ignore_empty, *args):
 @utils.propagate_errors()
 def LEFT(text, num_chars=1):
     text = to_string(text)
-    if num_chars < 0:
-        return error.VALUE
+    num_chars = utils.parse_integer(num_chars)
+    if isinstance(num_chars, error.XLError):
+        return num_chars
     return text[:num_chars]
 
 
@@ -127,8 +128,9 @@ def LEFT(text, num_chars=1):
 @utils.propagate_errors()
 def RIGHT(text, num_chars=1):
     text = to_string(text)
-    if num_chars < 0:
-        return error.VALUE
+    num_chars = utils.parse_integer(num_chars)
+    if isinstance(num_chars, error.XLError):
+        return num_chars
     if num_chars == 0:
         return ''
     return text[-num_chars:]
@@ -138,8 +140,12 @@ def RIGHT(text, num_chars=1):
 @utils.propagate_errors()
 def MID(text, start_num, num_chars=1):
     text = to_string(text)
-    if start_num < 1 or num_chars < 0:
-        return error.VALUE
+    start_num = utils.parse_integer(start_num, minimum=1)
+    if isinstance(start_num, error.XLError):
+        return start_num
+    num_chars = utils.parse_integer(num_chars)
+    if isinstance(num_chars, error.XLError):
+        return num_chars
     return text[start_num - 1:][:num_chars]
 
 

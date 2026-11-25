@@ -109,6 +109,17 @@ def parse_number(string):
         return num
     return error.VALUE
 
+
+def parse_integer(value, minimum=0):
+    """Parse an integer argument, checking its minimum before truncation."""
+    value = parse_number(0 if value is None else value)
+    if isinstance(value, error.XLError):
+        return value
+    if isinstance(value, complex) or value < minimum:
+        return error.VALUE
+    return int(value)
+
+
 def parse_complex(string):
     if string is None:
         return 0
