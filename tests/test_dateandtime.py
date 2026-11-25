@@ -3,9 +3,73 @@ import unittest
 import math
 from hotxlfp import Parser
 import datetime
+from hotxlfp.formulas import error
 
 
 class TestDateAndTime(unittest.TestCase):
+
+    def test_edate_zero_day_inputs_shift_to_month_ends(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for source in ('NULL', 'BLANK()', '0', '0.5', '"0.5"'):
+            for months, expected in (
+                ('0', datetime.datetime(1900, 1, 1)),
+                ('NULL', datetime.datetime(1900, 1, 1)),
+                ('1', datetime.datetime(1900, 1, 31)),
+                ('3', datetime.datetime(1900, 3, 31)),
+                ('4', datetime.datetime(1900, 4, 30)),
+                ('12', datetime.datetime(1900, 12, 31)),
+                ('13', datetime.datetime(1901, 1, 31)),
+                ('1.9', datetime.datetime(1900, 1, 31)),
+                ('"1.9"', datetime.datetime(1900, 1, 31)),
+                ('-0.9', datetime.datetime(1900, 1, 1)),
+            ):
+                expression = 'EDATE(' + source + ',' + months + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+            self.assertEqual(p.parse('EDATE(' + source + ',-1)'),
+                             {'result': None, 'error': '#NUM!'})
+
+    def test_edate_keeps_real_dates_distinct_and_truncates_time_and_months(self):
+        p = Parser()
+        stamp = datetime.datetime(2025, 1, 31, 12)
+        p.set_function('STAMP', lambda: stamp)
+        p.set_function('FIRST', lambda: datetime.date(1900, 1, 1))
+        for expression, expected in (
+            ('EDATE(1,1)', datetime.datetime(1900, 2, 1)),
+            ('EDATE(FIRST(),1)', datetime.datetime(1900, 2, 1)),
+            ('EDATE(STAMP(),0)', datetime.datetime(2025, 1, 31)),
+            ('EDATE(STAMP(),NULL)', datetime.datetime(2025, 1, 31)),
+            ('EDATE(STAMP(),1)', datetime.datetime(2025, 2, 28)),
+            ('EDATE(STAMP(),-1.9)', datetime.datetime(2024, 12, 31)),
+            ('EDATE(DATE(2024,1,31),1)', datetime.datetime(2024, 2, 29)),
+            ('EDATE(DATE(2025,3,31),-1)', datetime.datetime(2025, 2, 28)),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(stamp, datetime.datetime(2025, 1, 31, 12))
+
+    def test_edate_preserves_errors_and_returns_handleable_validation_errors(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM):
+            p.set_function('FAIL', lambda value=source_error: value)
+            for expression in ('EDATE(FAIL(),1)', 'EDATE(0,FAIL())'):
+                with self.subTest(expression=expression, error=str(source_error)):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+        for expression, code in (
+            ('EDATE("bad",1)', '#VALUE!'), ('EDATE(0,"bad")', '#VALUE!'),
+            ('EDATE(TRUE(),1)', '#VALUE!'), ('EDATE(FALSE(),1)', '#VALUE!'),
+            ('EDATE(0,TRUE())', '#VALUE!'),
+            ('EDATE(-1,1)', '#NUM!'), ('EDATE(DATE(1900,1,1),-1)', '#NUM!'),
+            ('EDATE(DATE(9999,12,1),1)', '#NUM!'),
+            ('EDATE(#DIV/0!,#N/A)', '#DIV/0!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
 
     def test_time_functions_preserve_fractional_serials_below_one(self):
         p = Parser()

@@ -8,6 +8,7 @@ from . import error
 from . import utils
 import datetime
 import calendar
+from ..helper.number import to_number
 
 
 @dispatcher.register_for('DATE')
@@ -155,16 +156,26 @@ def DATEDIF(start_date, end_date, unit):
 
 
 @dispatcher.register_for('EDATE')
+@utils.propagate_errors()
 def EDATE(start_date, month):
-    if start_date == None:
-        default_date = True
-        start_date = datetime.datetime(1900, 1, 1)
-    else:
-        default_date = False
-        start_date = utils.parse_date(start_date)
-    if month == None:
+    if isinstance(start_date, bool) or isinstance(month, bool):
+        return error.VALUE
+    start_date = to_number(0 if start_date is None else start_date)
+    zero_day = isinstance(start_date, (int, float)) and 0 <= start_date < 1
+    start_date = utils.parse_date(start_date)
+    if isinstance(start_date, error.XLError):
         return start_date
-    month= int(month)
+    month = utils.parse_number(0 if month is None else month)
+    if isinstance(month, error.XLError):
+        return month
+    month = int(month)
+    if zero_day:
+        if month < 0:
+            return error.NUM
+        if month == 0:
+            return utils.date_1900
+        # Day zero of the shifted month is the previous month's final day.
+        month -= 1
     year = start_date.year + (month // 12)
     month = start_date.month + (month % 12)
     if month > 12:
@@ -173,19 +184,10 @@ def EDATE(start_date, month):
     elif month < 1:
         month += 12
         year -= 1
-    if default_date:
-        month -= 1
-        if month == 2:
-            day = 29 if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0) else 28
-        elif month in {4, 6, 9, 11}:
-            day = 30
-        else:
-            day = 31
-    else:
-        day = start_date.day
-        day = min(day, [31, 29 if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
     if year > 9999 or year < 1900:
         return error.NUM
+    last_day = calendar.monthrange(year, month)[1]
+    day = last_day if zero_day else min(start_date.day, last_day)
     return datetime.datetime(year, month, day)
 
 
