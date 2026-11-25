@@ -25,6 +25,7 @@ supplied through callbacks retain their original shapes.
 * Ignore blank elements in `CONCAT` and `CONCATENATE`, including nested arrays, while preserving zeroes, booleans and calculation errors.
 * Treat blank operands as empty text in `&`, including array cells, and concatenate arrays element by element using the existing broadcasting rules.
 * Share text coercion across text functions and `&`: blanks become empty text, booleans become `TRUE`/`FALSE`, and numeric inputs are accepted in text arguments. Format finite floats with Excel-style precision and notation, including `1.0` as `1`. Keep calculation errors and numeric argument validation. `TEXTJOIN` also converts delimiters and skips empty strings when requested; `CODE` uses the first converted character.
+* Evaluate arithmetic before `&` concatenation and concatenation before comparisons, following Excel's operator precedence.
 * Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
 * Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
 

@@ -17,10 +17,10 @@ class Parser(object):
         ('left', 'EQUAL'),
         ('left', 'LESSEQ', 'GREATEREQ', 'NOTEQUAL'),
         ('left', 'GREATER', 'LESS'),
+        ('left', 'AMP'),
         ('left', 'PLUS', 'MINUS'),
         ('left', 'MULT', 'DIV'),
         ('left', 'CARET'),
-        ('left', 'AMP'),
         ('left', 'PERCENT'),
         ('left', 'UMINUS')
     )

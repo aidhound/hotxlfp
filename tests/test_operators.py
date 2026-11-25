@@ -981,6 +981,42 @@ class TestOperators(unittest.TestCase):
                 self.assertEqual(p.parse(expression),
                                  {'result': expected, 'error': None})
 
+    def test_arithmetic_precedes_concatenation(self):
+        p = Parser()
+        for expression, expected in (
+            ('1/3&""', '0.333333333333333'),
+            ('1+2&"x"', '3x'), ('"x"&1+2', 'x3'),
+            ('3-1&"x"', '2x'), ('"x"&3-1', 'x2'),
+            ('2*3&"x"', '6x'), ('"x"&2*3', 'x6'),
+            ('8/2&"x"', '4x'), ('"x"&8/2', 'x4'),
+            ('2^3&"x"', '8x'), ('"x"&2%', 'x0.02'),
+            ('"a"&1+2&"b"', 'a3b'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_concatenation_precedes_comparisons_and_respects_parentheses(self):
+        p = Parser()
+        for expression, expected in (
+            ('1+2&"x"="3x"', True), ('"x"&1+2="x3"', True),
+            ('1&2<>"12"', False), ('"a"&1<"b"', True),
+            ('1&2&3', '123'), ('(1&2)+3', 15),
+            ('1&(2+3)', '15'), ('1/(3&"")', 1 / 3),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_concatenation_precedence_preserves_arrays_and_error_handling(self):
+        p = Parser()
+        for expression, expected in (
+            ('{1,2}+1&"x"', [['2x', '3x']]),
+            ('"x"&{2;4}/2', [['x1'], ['x2']]),
+            ('IFERROR(1/0&"x",99)', 99),
+            ('IFERROR("x"&1/0,99)', 99),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
     def test_concatenation_treats_blank_operands_as_empty_text(self):
         p = Parser()
         p.set_function('BLANK', lambda: None)
