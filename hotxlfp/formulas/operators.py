@@ -2,6 +2,7 @@
 import datetime
 from . import error
 from ..helper.number import to_number, validate_number
+from ..helper.text import to_string
 from .utils import OPERATOR_DICT, serialize_date, parse_date, date_1900, array_shape
 from .._compat import number_types, string_types
 
@@ -320,10 +321,10 @@ def evaluate_arithmetic(op, lval, rval):
         return lval
     if isinstance(rval, error.XLError):
         return rval
-    if op == '&':
-        return str(lval) + str(rval)
     if isinstance(lval, (list, tuple)) or isinstance(rval, (list, tuple)):
         return evaluate_array_arithmetic(op, lval, rval)
+    if op == '&':
+        return to_string(lval) + to_string(rval)
 
     lval, ltype = value_and_type(lval)
     if isinstance(lval, error.XLError):

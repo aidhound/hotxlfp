@@ -439,6 +439,17 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], 45745)
         self.assertEqual(ret['error'], None)
 
+    def test_numeric_text_consumers_use_shared_text_conversion(self):
+        p = Parser()
+        for expression, expected in (('DECIMAL(10.0,2)', 2), ('ARABIC(NULL)', 0)):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        for expression in ('DECIMAL(#N/A,2)', 'ARABIC(#N/A)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#N/A'})
+                self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
     def test_base(self):
         p = Parser(debug=True)
         ret = p.parse('BASE(7,2)')

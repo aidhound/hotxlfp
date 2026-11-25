@@ -1,11 +1,34 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from hotxlfp.helper import cell, number
+from hotxlfp.helper import cell, number, text
 from hotxlfp.formulas import error
 
 
 class TestHelper(unittest.TestCase):
+
+    def test_to_string_preserves_text_errors_and_converts_blanks_and_booleans(self):
+        for value, expected in ((None, ''), ('', ''), ('True', 'True'),
+                                ('None', 'None'), (True, 'TRUE'), (False, 'FALSE'),
+                                (0, '0'), (123, '123'), (10 ** 400, str(10 ** 400))):
+            with self.subTest(value=value):
+                self.assertEqual(text.to_string(value), expected)
+        for value in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            self.assertIs(text.to_string(value), value)
+
+    def test_to_string_formats_floats_like_measured_excel_values(self):
+        for value, expected in (
+            (1.0, '1'), (-0.0, '0'), (1.25, '1.25'),
+            (1 / 3, '0.333333333333333'), (2 / 3, '0.666666666666667'),
+            (1.234567890123456, '1.23456789012346'),
+            (1e-10, '0.0000000001'), (1e-18, '0.000000000000000001'),
+            (1e-19, '1E-19'), (1.23456789e-10, '0.000000000123456789'),
+            (1.23456789012345e-5, '1.23456789012345E-05'),
+            (1e19, '10000000000000000000'), (1e20, '1E+20'),
+            (-1e19, '-10000000000000000000'), (-1e-18, '-0.000000000000000001'),
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(text.to_string(value), expected)
 
     def test_to_number_returns_num_for_nonfinite_values(self):
         for value in (

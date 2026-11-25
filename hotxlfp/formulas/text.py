@@ -13,8 +13,7 @@ from . import dispatcher
 from . import error
 from . import utils
 from .utils import DEFAULT
-from ..helper.number import to_number
-from .._compat import string_types
+from ..helper.text import to_string
 
 
 @dispatcher.register_for('CHAR')
@@ -28,71 +27,53 @@ def CHAR(number):
 @dispatcher.register_for('CODE')
 @utils.propagate_errors()
 def CODE(char):
-    return ord(char)
+    char = to_string(char)
+    return ord(char[0]) if char else error.VALUE
 
 
 @dispatcher.register_for('CLEAN')
 def CLEAN(text):
+    text = to_string(text)
     if isinstance(text, error.XLError):
         return text
-    if text is None:
-        text = ''
-    if not isinstance(text, string_types):
-        text = str(text)
     return ''.join(c for c in text if ord(c) > 31)
 
 
 @dispatcher.register_for('CONCAT', 'CONCATENATE')
 @utils.propagate_errors(nested=True)
 def CONCATENATE(*args):
-    return ''.join(
-        value if isinstance(value, string_types) else str(value)
-        for value in utils.iflatten(args)
-        if value is not None
-    )
+    return ''.join(to_string(value) for value in utils.iflatten(args))
 
 
 @dispatcher.register_for('LEN', 'LENB')
 def LEN(text):
+    text = to_string(text)
     if isinstance(text, error.XLError):
         return text
-    if text is None:
-        return 0
-    if not isinstance(text, string_types):
-        text = str(text)
     return len(text)
 
 
 @dispatcher.register_for('LOWER')
 def LOWER(text):
+    text = to_string(text)
     if isinstance(text, error.XLError):
         return text
-    if text is None:
-        text = ''
-    if not isinstance(text, string_types):
-        text = str(text)
     return text.lower()
 
 
 @dispatcher.register_for('UPPER')
 def UPPER(text):
+    text = to_string(text)
     if isinstance(text, error.XLError):
         return text
-    if text is None:
-        text = ''
-    if not isinstance(text, string_types):
-        text = str(text)
     return text.upper()
 
 
 @dispatcher.register_for('PROPER')
 def PROPER(text):
+    text = to_string(text)
     if isinstance(text, error.XLError):
         return text
-    if text is None:
-        text = ''
-    if not isinstance(text, string_types):
-        text = str(text)
     return text.title()
 
 
@@ -105,12 +86,9 @@ def SUBSTITUTE(text, old_text, new_text, instance_num=DEFAULT):
             return instance_num
         if instance_num <= 0:
             return error.VALUE
-    if text is None:
-        text = ''
-    if old_text is None:
-        old_text = ''
-    if new_text is None:
-        new_text = ''
+    text = to_string(text)
+    old_text = to_string(old_text)
+    new_text = to_string(new_text)
     if not text or not old_text:
         return text
     if instance_num is DEFAULT:
@@ -129,21 +107,18 @@ def SUBSTITUTE(text, old_text, new_text, instance_num=DEFAULT):
 @dispatcher.register_for('TEXTJOIN')
 @utils.propagate_errors(nested=True)
 def TEXTJOIN(delimiter, ignore_empty, *args):
-    if not isinstance(delimiter, string_types):
-        return error.VALUE
+    delimiter = to_string(delimiter)
+    words = (to_string(value) for value in utils.iflatten(args))
     if ignore_empty:
-        gen = (words for words in utils.iflatten(args) if words is not None)
-    else:
-        gen = (words if words is not None else '' for words in utils.iflatten(args))
-    return delimiter.join(gen)
+        words = (word for word in words if word != '')
+    return delimiter.join(words)
 
 
 @dispatcher.register_for('LEFT', 'LEFTB')
 @utils.propagate_errors()
 def LEFT(text, num_chars=1):
-    if text is None:
-        text = ''
-    if num_chars < 0 or not isinstance(text, string_types):
+    text = to_string(text)
+    if num_chars < 0:
         return error.VALUE
     return text[:num_chars]
 
@@ -151,9 +126,8 @@ def LEFT(text, num_chars=1):
 @dispatcher.register_for('RIGHT', 'RIGHTB')
 @utils.propagate_errors()
 def RIGHT(text, num_chars=1):
-    if text is None:
-        text = ''
-    if num_chars < 0 or not isinstance(text, string_types):
+    text = to_string(text)
+    if num_chars < 0:
         return error.VALUE
     if num_chars == 0:
         return ''
@@ -163,9 +137,8 @@ def RIGHT(text, num_chars=1):
 @dispatcher.register_for('MID', 'MIDB')
 @utils.propagate_errors()
 def MID(text, start_num, num_chars=1):
-    if text is None:
-        text = ''
-    if start_num < 1 or num_chars < 0 or not isinstance(text, string_types):
+    text = to_string(text)
+    if start_num < 1 or num_chars < 0:
         return error.VALUE
     return text[start_num - 1:][:num_chars]
 
@@ -173,8 +146,14 @@ def MID(text, start_num, num_chars=1):
 @dispatcher.register_for('TEXT')
 @utils.propagate_errors()
 def TEXT(value, format_text):
-    if not isinstance(format_text, string_types):
-        return error.NAME
+    if isinstance(format_text, bool):
+        return error.VALUE
+    format_text = to_string(format_text)
+    if isinstance(value, bool):
+        return to_string(value)
+    # Digits 1-9 are literal format characters; only 0 is a digit placeholder.
+    if not format_text or re.fullmatch(r'[1-9]+', format_text):
+        return format_text
     if isinstance(value, (datetime.datetime, datetime.date)):
         value = datetime.datetime(year=value.year, month=value.month, day=value.day)
 
@@ -256,8 +235,7 @@ def TEXT(value, format_text):
 
 @dispatcher.register_for('TRIM')
 def TRIM(value):
-    if value is None:
-        value = ''
-    if not isinstance(value, string_types):
+    value = to_string(value)
+    if isinstance(value, error.XLError):
         return value
     return re.sub(' {2,}', ' ', value).strip()

@@ -7,6 +7,76 @@ from hotxlfp.formulas import error
 
 class TestText(unittest.TestCase):
 
+    def test_text_arguments_coerce_numbers_and_booleans_like_excel(self):
+        p = Parser()
+        for source, text in (('123', '123'), ('0', '0'), ('1.0', '1'),
+                             ('2.5', '2.5'), ('TRUE()', 'TRUE'), ('FALSE()', 'FALSE')):
+            for expression, expected in (
+                (source + '&"x"', text + 'x'),
+                ('"x"&' + source, 'x' + text),
+                ('CLEAN(' + source + ')', text),
+                ('TRIM(' + source + ')', text),
+                ('LOWER(' + source + ')', text.lower()),
+                ('UPPER(' + source + ')', text.upper()),
+                ('PROPER(' + source + ')', text.title()),
+                ('CODE(' + source + ')', ord(text[0])),
+                ('TEXTJOIN("|",TRUE(),' + source + ',"x")', text + '|x'),
+            ):
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+            for name, suffix, expected in (
+                ('LEN', '', len(text)), ('LENB', '', len(text)),
+                ('LEFT', ',2', text[:2]), ('LEFTB', ',2', text[:2]),
+                ('RIGHT', ',2', text[-2:]), ('RIGHTB', ',2', text[-2:]),
+                ('MID', ',2,2', text[1:3]), ('MIDB', ',2,2', text[1:3]),
+                ('CONCAT', ',"x"', text + 'x'), ('CONCATENATE', ',"x"', text + 'x'),
+            ):
+                expression = name + '(' + source + suffix + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_substitute_converts_every_text_argument(self):
+        p = Parser()
+        for expression, expected in (
+            ('SUBSTITUTE(123,2,9)', '193'),
+            ('SUBSTITUTE(TRUE(),"R","x")', 'TxUE'),
+            ('SUBSTITUTE("x0x",0,FALSE())', 'xFALSEx'),
+            ('SUBSTITUTE("aba","a",0,2)', 'ab0'),
+            ('SUBSTITUTE("aba","a",FALSE())', 'FALSEbFALSE'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_textjoin_converts_delimiters_and_keeps_zeroes_and_booleans(self):
+        p = Parser()
+        for expression, expected in (
+            ('TEXTJOIN(1,TRUE(),"a","b")', 'a1b'),
+            ('TEXTJOIN(TRUE(),TRUE(),"a","b")', 'aTRUEb'),
+            ('TEXTJOIN(NULL,FALSE(),"a","b")', 'ab'),
+            ('TEXTJOIN("|",TRUE(),{"",NULL;0,FALSE()})', '0|FALSE'),
+            ('TEXTJOIN("|",FALSE(),{"",NULL;0,FALSE()})', '||0|FALSE'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_code_uses_the_first_converted_character_and_rejects_empty_text(self):
+        p = Parser()
+        self.assertEqual(p.parse('CODE("ABC")'), {'result': 65, 'error': None})
+        for source in ('""', 'NULL'):
+            self.assertEqual(p.parse('CODE(' + source + ')'),
+                             {'result': None, 'error': '#VALUE!'})
+
+    def test_text_format_arguments_keep_excel_validation(self):
+        p = Parser()
+        for expression, expected in (
+            ('TEXT(12,1)', '1'), ('TEXT(12,NULL)', ''),
+            ('TEXT(TRUE(),"0")', 'TRUE'), ('TEXT(FALSE(),"0")', 'FALSE'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(p.parse('TEXT(12,TRUE())'),
+                         {'result': None, 'error': '#VALUE!'})
+
     def test_text_consumers_preserve_errors_in_every_argument(self):
         p = Parser()
         for name, valid_args in (
@@ -64,9 +134,9 @@ class TestText(unittest.TestCase):
             ('SUBSTITUTE("abc","a","x",0)', None, '#VALUE!'),
             ('TEXTJOIN(",",TRUE(),{"a",,"#N/A"})', 'a,#N/A', None),
             ('TEXTJOIN(",",FALSE(),{"a",,"b"})', 'a,,b', None),
-            ('TEXTJOIN(1,TRUE(),"a")', None, '#VALUE!'),
+            ('TEXTJOIN(1,TRUE(),"a")', 'a', None),
             ('TEXT(12,"0.00")', '12.00', None),
-            ('TEXT(12,1)', None, '#NAME?'),
+            ('TEXT(12,1)', '1', None),
         ):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': result, 'error': code})
@@ -127,9 +197,9 @@ class TestText(unittest.TestCase):
         p.set_function('DATA', lambda: [None, (0, [False, True]), 2.5, 'None'])
         for name in ('CONCAT', 'CONCATENATE'):
             for args, expected in (
-                ('0,"x"', '0x'), ('FALSE(),TRUE(),0', 'FalseTrue0'),
-                ('{NULL,0;FALSE(),TRUE()}', '0FalseTrue'),
-                ('DATA()', '0FalseTrue2.5None'), ('"#DIV/0!",NULL,"x"', '#DIV/0!x'),
+                ('0,"x"', '0x'), ('FALSE(),TRUE(),0', 'FALSETRUE0'),
+                ('{NULL,0;FALSE(),TRUE()}', '0FALSETRUE'),
+                ('DATA()', '0FALSETRUE2.5None'), ('"#DIV/0!",NULL,"x"', '#DIV/0!x'),
                 ('NULL," ","x"', ' x'),
             ):
                 expression = name + '(' + args + ')'
@@ -330,8 +400,8 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], '1;;2;3')
         self.assertEqual(ret['error'], None)
         ret = p.parse('TEXTJOIN(1, FALSE, {"1",,"2","3"})')
-        self.assertEqual(ret['result'], None)
-        self.assertEqual(ret['error'], '#VALUE!')
+        self.assertEqual(ret['result'], '111213')
+        self.assertEqual(ret['error'], None)
 
     def test_slicing_functions_treat_blank_sources_as_empty_text(self):
         p = Parser()
@@ -354,10 +424,11 @@ class TestText(unittest.TestCase):
                     expression = name + '(' + source + tail + ')'
                     with self.subTest(expression=expression):
                         self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
-            for source in ('0', 'FALSE()'):
+            for source, expected in (('0', '0'),
+                                     ('FALSE()', 'E' if name.startswith('RIGHT') else 'F')):
                 expression = name + '(' + source + ',1)'
                 with self.subTest(expression=expression):
-                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
             with self.subTest(name=name, missing_arguments=True):
                 self.assertEqual(p.parse(name + '()'), {'result': None, 'error': '#ERROR!'})
             if name.startswith('MID'):
@@ -475,7 +546,7 @@ class TestText(unittest.TestCase):
                 ('"abc",0', '', None),
                 ('"ㅍa",0', '', None),
                 ('"",0', '', None),
-                ('123,0', None, '#VALUE!'),
+                ('123,0', '', None),
                 ('#N/A,0', None, '#N/A'),
                 ('#DIV/0!,0', None, '#DIV/0!'),
             ):
@@ -692,7 +763,7 @@ class TestText(unittest.TestCase):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
 
-    def test_trim_keeps_errors_nonstring_values_and_argument_count_checks(self):
+    def test_trim_converts_nonstring_values_and_keeps_errors_and_argument_count_checks(self):
         p = Parser()
         for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE):
             p.set_function('FAIL', lambda value=source_error: value)
@@ -704,8 +775,8 @@ class TestText(unittest.TestCase):
                 expected = ({'result': 77, 'error': None} if source_error is error.NOT_AVAILABLE
                             else {'result': None, 'error': str(source_error)})
                 self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
-        for expression, expected in (('TRIM(0)', 0), ('TRIM(FALSE())', False),
-                                    ('TRIM(3.14)', 3.14)):
+        for expression, expected in (('TRIM(0)', '0'), ('TRIM(FALSE())', 'FALSE'),
+                                    ('TRIM(3.14)', '3.14')):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
         for expression in ('TRIM()', 'TRIM(NULL,1)'):
@@ -724,5 +795,5 @@ class TestText(unittest.TestCase):
         self.assertEqual(ret['result'], '')
         self.assertEqual(ret['error'], None)
         ret = p.parse('TRIM(3.14)')
-        self.assertEqual(ret['result'], 3.14)
+        self.assertEqual(ret['result'], '3.14')
         self.assertEqual(ret['error'], None)

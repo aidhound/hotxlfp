@@ -981,6 +981,59 @@ class TestOperators(unittest.TestCase):
                 self.assertEqual(p.parse(expression),
                                  {'result': expected, 'error': None})
 
+    def test_concatenation_treats_blank_operands_as_empty_text(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for expression, expected in [
+            ('BLANK()&"x"', 'x'),
+            ('"x"&BLANK()', 'x'),
+            ('BLANK()&BLANK()', ''),
+            ('0&BLANK()', '0'),
+            ('BLANK()&0', '0'),
+            ('FALSE()&BLANK()', 'FALSE'),
+            ('BLANK()&TRUE()', 'TRUE'),
+            ('"None"&BLANK()', 'None'),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
+
+    def test_concatenation_formats_native_numeric_and_boolean_array_values(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [[1.0, True], [1 / 3, False]])
+        self.assertEqual(p.parse('DATA()&"x"'),
+                         {'result': [['1x', 'TRUEx'], ['0.333333333333333x', 'FALSEx']],
+                          'error': None})
+
+    def test_concatenation_treats_blank_array_cells_as_empty_text(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        for expression, expected in [
+            ('{BLANK(),"a"}&"x"', [['x', 'ax']]),
+            ('"x"&{BLANK();"a"}', [['x'], ['xa']]),
+            ('{BLANK(),0;FALSE(),"a"}&BLANK()', [['', '0'], ['FALSE', 'a']]),
+            ('{BLANK(),"a"}&{BLANK(),"b"}', [['', 'ab']]),
+            ('{BLANK();"a"}&{"x","y"}', [['x', 'y'], ['ax', 'ay']]),
+        ]:
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': expected, 'error': None})
+
+    def test_concatenation_preserves_errors_with_blank_operands(self):
+        p = Parser()
+        p.set_function('BLANK', lambda: None)
+        p.set_function('FAIL', lambda: error.DIV_ZERO)
+        for expression in ('BLANK()&FAIL()', 'FAIL()&BLANK()'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#DIV/0!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+        self.assertEqual(p.parse('IFERROR({BLANK(),FAIL()}&"x",99)'),
+                         {'result': [['x', 99]], 'error': None})
+        self.assertEqual(p.parse('IFERROR("x"&{FAIL(),BLANK()},99)'),
+                         {'result': [[99, 'x']], 'error': None})
+
     def test_concatenation_preserves_errors_for_enclosing_handlers(self):
         p = Parser()
         for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):

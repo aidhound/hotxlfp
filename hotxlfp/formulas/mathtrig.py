@@ -15,6 +15,7 @@ from . import utils
 from .utils import DEFAULT
 from ..helper.number import to_number
 from .._compat import string_types
+from ..helper.text import to_string
 
 
 @dispatcher.register_for('ABS')
@@ -377,8 +378,9 @@ def EVEN(number):
 
 
 @dispatcher.register_for('DECIMAL')
+@utils.propagate_errors()
 def DECIMAL(text, base):
-    text = str(text)
+    text = to_string(text)
     base = utils.parse_number(base)
     if isinstance(base, error.XLError):
         return base
@@ -487,7 +489,7 @@ def ROMAN(number, form=0):
 @dispatcher.register_for('ARABIC')
 @utils.propagate_errors()
 def ARABIC(text):
-    text = str(text).upper()
+    text = to_string(text).upper()
     roman_numeral_regex = '^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$'
 
     if re.search(roman_numeral_regex, text) is None:
