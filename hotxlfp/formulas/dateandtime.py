@@ -99,12 +99,20 @@ def TODAY():
 
 
 @dispatcher.register_for('DAYS')
+@utils.propagate_errors()
 def DAYS(end_date, start_date):
-    end_date = utils.parse_date(end_date)
-    start_date = utils.parse_date(start_date)
-    if utils.any_is_error((end_date, start_date)):
-        return error.VALUE
-    return utils.serialize_date(end_date) - utils.serialize_date(start_date)
+    days = []
+    for value in (end_date, start_date):
+        value = to_number(0 if value is None else value)
+        if not isinstance(value, (int, float)):
+            value = utils.serialize_date(value)
+        if isinstance(value, error.XLError):
+            return value
+        # Serials must be before January 1, 10000, including fractional times.
+        if not 0 <= value < 2958466:
+            return error.NUM
+        days.append(int(value))
+    return days[0] - days[1]
 
 
 @dispatcher.register_for('NOW')

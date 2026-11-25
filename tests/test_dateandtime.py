@@ -8,6 +8,57 @@ from hotxlfp.formulas import error
 
 class TestDateAndTime(unittest.TestCase):
 
+    def test_days_discards_each_numeric_operands_time_before_subtraction(self):
+        p = Parser()
+        for expression, expected in (
+            ('DAYS(0.5,0)', 0), ('DAYS(1.5,1)', 0),
+            ('DAYS(2.1,1.9)', 1), ('DAYS(1.9,2.1)', -1),
+            ('DAYS(0.5,NULL)', 0), ('DAYS(NULL,1.5)', -1),
+            ('DAYS("1.9",0)', 1), ('DAYS(TRUE(),0)', 1),
+            ('DAYS(FALSE(),0)', 0), ('DAYS(61,60)', 1),
+            ('DAYS(2958465.9,2958465)', 0),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_days_discards_native_and_text_date_times_without_changing_arithmetic(self):
+        p = Parser()
+        day = datetime.datetime(2025, 1, 1)
+        p.set_function('DAY', lambda: day)
+        p.set_function('NOON', lambda: datetime.datetime(2025, 1, 1, 12))
+        p.set_function('DATEONLY', lambda: datetime.date(2025, 1, 2))
+        for expression, expected in (
+            ('DAYS(NOON(),DAY())', 0), ('DAYS(DAY(),NOON())', 0),
+            ('DAYS(DATEONLY(),NOON())', 1),
+            ('DAYS("2025-01-01 12:00",DAY())', 0),
+            ('DAYS(NOON(),"2025-01-02 01:00")', -1),
+            ('NOON()-DAY()', 0.5), ('HOUR(0.5)', 12),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(day, datetime.datetime(2025, 1, 1))
+
+    def test_days_returns_handleable_original_errors_and_validates_ranges(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO, error.NUM):
+            p.set_function('FAIL', lambda value=source_error: value)
+            for expression in ('DAYS(FAIL(),1)', 'DAYS(1,FAIL())'):
+                with self.subTest(expression=expression, error=str(source_error)):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+        p.set_function('FAIL', lambda: error.NOT_AVAILABLE)
+        self.assertEqual(p.parse('IFNA(DAYS(FAIL(),1),99)'), {'result': 99, 'error': None})
+        for expression, code in (
+            ('DAYS(-0.5,0)', '#NUM!'), ('DAYS(0,-1)', '#NUM!'),
+            ('DAYS(2958466,0)', '#NUM!'), ('DAYS("bad",1)', '#VALUE!'),
+            ('DAYS(1,"bad")', '#VALUE!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+
     def test_edate_zero_day_inputs_shift_to_month_ends(self):
         p = Parser()
         p.set_function('BLANK', lambda: None)
