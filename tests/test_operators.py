@@ -7,6 +7,20 @@ from hotxlfp.formulas import error
 
 class TestOperators(unittest.TestCase):
 
+    def test_date_arithmetic_uses_correct_1900_serial_boundaries(self):
+        p = Parser()
+        for expression, expected in (
+            ('DATE(1900,1,1)+1', datetime.datetime(1900, 1, 2)),
+            ('DATE(1900,1,1)+0.5', datetime.datetime(1900, 1, 1, 12)),
+            ('DATE(1900,3,1)+1', datetime.datetime(1900, 3, 2)),
+            ('DATE(1900,3,1)-DATE(1900,2,28)', 2),
+            ('DATE(1900,1,1)=1', True),
+            ('DATE(1900,3,1)=61', True),
+            ('DATE(1900,1,1)=NULL', False),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
     def test_nonfinite_arithmetic_results_return_numeric_errors(self):
         p = Parser()
         p.set_function('BIG', lambda: 1e308)
@@ -316,9 +330,9 @@ class TestOperators(unittest.TestCase):
         ret = p.parse('-1<B3')
         self.assertEqual(ret['result'], True)
         self.assertEqual(ret['error'], None)
-        # Blanks are considered epoch with dates
+        # Blanks compare as zero; January 1, 1900 has serial 1.
         ret = p.parse('DATE(1900, 1, 1)=B3')
-        self.assertEqual(ret['result'], True)
+        self.assertEqual(ret['result'], False)
         self.assertEqual(ret['error'], None)
         ret = p.parse('DATE(2019,11,27)>B3')
         self.assertEqual(ret['result'], True)

@@ -7,6 +7,19 @@ import datetime
 
 class TestDateAndTime(unittest.TestCase):
 
+    def test_datevalue_uses_excel_serials_at_1900_boundaries(self):
+        p = Parser()
+        for expression, expected in (
+            ('DATEVALUE("1900-01-01")', 1),
+            ('DATEVALUE("1900-02-28")', 59),
+            ('DATEVALUE("1900-03-01")', 61),
+            ('DAYS(DATE(1900,3,1),DATE(1900,2,28))', 2),
+            ('TIMEVALUE("00:00:00")', 0),
+            ('TIMEVALUE("12:00:00")', 0.5),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
     def test_date_conversion_preserves_nonfinite_numeric_errors(self):
         p = Parser()
         for value in (float('nan'), float('inf'), 'NaN', '1e309'):

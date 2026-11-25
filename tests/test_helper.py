@@ -1,11 +1,32 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+import datetime
 from hotxlfp.helper import cell, number, text
-from hotxlfp.formulas import error
+from hotxlfp.formulas import error, utils
 
 
 class TestHelper(unittest.TestCase):
+
+    def test_date_serialization_preserves_1900_boundaries_and_time_fractions(self):
+        for value, expected in (
+            (datetime.datetime(1900, 1, 1), 1),
+            (datetime.datetime(1900, 1, 1, 12), 1.5),
+            (datetime.datetime(1900, 2, 28), 59),
+            (datetime.datetime(1900, 2, 28, 12), 59.5),
+            (datetime.datetime(1900, 3, 1), 61),
+            (datetime.datetime(1900, 3, 1, 12), 61.5),
+            (datetime.datetime(2025, 1, 1, 12), 45658.5),
+            (datetime.date(1900, 1, 1), 1),
+            (datetime.date(1900, 3, 1), 61),
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(utils.serialize_date(value), expected)
+                expected_date = (value if isinstance(value, datetime.datetime)
+                                 else datetime.datetime.combine(value, datetime.time()))
+                self.assertEqual(utils.parse_date(expected), expected_date)
+        for value in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            self.assertIs(utils.serialize_date(value), value)
 
     def test_to_string_preserves_text_errors_and_converts_blanks_and_booleans(self):
         for value, expected in ((None, ''), ('', ''), ('True', 'True'),

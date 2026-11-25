@@ -279,15 +279,13 @@ def parse_date(date):
 
 
 def serialize_date(date):
+    """Return a 1900-system serial, reserving 60 for Excel's fictitious date."""
     date = parse_date(date)
     if isinstance(date, error.XLError):
         return date
     if not isinstance(date, datetime.datetime):
         return error.VALUE
-    if date == date_1900:
-        return 0
-    date = epoch_seconds(date) * 1000
-    d1900 = epoch_seconds(date_1900) * 1000
-    if date <= -2203891200000:
-        return (date - d1900) / 86400000 + 1
-    return (date - d1900) / 86400000 + 2
+    days = (date - date_1900).total_seconds() / 86400
+    # For Lotus 1-2-3 compatibility, Excel treats 1900 as a leap year.
+    # Reserve serial 60 for the fictitious February 29, which datetime cannot represent.
+    return days + (1 if date < datetime.datetime(1900, 3, 1) else 2)
