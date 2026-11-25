@@ -7,6 +7,73 @@ from hotxlfp.formulas import error
 
 class TestOperators(unittest.TestCase):
 
+    def test_number_minus_date_returns_a_numeric_difference(self):
+        p = Parser()
+        day = datetime.datetime(2025, 1, 1)
+        p.set_function('D', lambda: day)
+        p.set_function('NOON', lambda: datetime.datetime(2025, 1, 1, 12))
+        p.set_function('DATEONLY', lambda: datetime.date(2025, 1, 1))
+        p.set_function('BLANK', lambda: None)
+        for expression, expected in (
+            ('NULL-D()', -45658), ('BLANK()-D()', -45658),
+            ('0-D()', -45658), ('1-D()', -45657), ('-1-D()', -45659),
+            ('45658-D()', 0), ('45659-D()', 1),
+            ('45658.5-D()', 0.5), ('0-NOON()', -45658.5),
+            ('0-DATEONLY()', -45658), ('"45658"-D()', 0),
+            ('TRUE()-D()', -45657), ('FALSE()-D()', -45658),
+            ('IFERROR(NULL-D(),99)', -45658),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(day, datetime.datetime(2025, 1, 1))
+
+    def test_numeric_date_subtraction_preserves_date_shifts_and_error_inputs(self):
+        p = Parser()
+        day = datetime.datetime(2025, 1, 1)
+        noon = datetime.datetime(2025, 1, 1, 12)
+        p.set_function('D', lambda: day)
+        p.set_function('NOON', lambda: noon)
+        p.set_function('FAIL', lambda: error.DIV_ZERO)
+        for expression, expected in (
+            ('D()-D()', 0), ('D()-NULL', day), ('D()-0', day),
+            ('D()+NULL', day), ('NULL+D()', day),
+            ('D()-1', datetime.datetime(2024, 12, 31)),
+            ('D()+1', datetime.datetime(2025, 1, 2)),
+            ('1+D()', datetime.datetime(2025, 1, 2)),
+            ('D()+0.5', noon), ('NOON()-0.5', day),
+            ('NOON()-D()', 0.5), ('D()-NOON()', -0.5), ('NULL-NULL', 0),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        for expression in ('D()-FAIL()', '0-FAIL()', 'FAIL()-D()'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#DIV/0!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+        for expression in ('D()-""', '""-D()'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+
+    def test_numeric_date_subtraction_handles_array_cells_in_both_orders(self):
+        p = Parser()
+        day = datetime.datetime(2025, 1, 1)
+        noon = datetime.datetime(2025, 1, 1, 12)
+        p.set_function('D', lambda: day)
+        p.set_function('NOON', lambda: noon)
+        p.set_function('FAIL', lambda: error.DIV_ZERO)
+        for expression, expected in (
+            ('{NULL,45659}-D()', [[-45658, 1]]),
+            ('0-{D(),NOON()}', [[-45658, -45658.5]]),
+            ('{NULL;1}-{D(),NOON()}', [[-45658, -45658.5], [-45657, -45657.5]]),
+            ('{D(),NOON()}-NULL', [[day, noon]]),
+            ('{D(),NOON()}-0.5', [[datetime.datetime(2024, 12, 31, 12), day]]),
+            ('{D();NOON()}-{D(),NOON()}', [[0, -0.5], [0.5, 0]]),
+            ('IFERROR({NULL,FAIL()}-D(),99)', [[-45658, 99]]),
+            ('IFERROR(0-{D(),FAIL()},99)', [[-45658, 99]]),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
     def test_date_arithmetic_uses_correct_1900_serial_boundaries(self):
         p = Parser()
         for expression, expected in (
@@ -404,8 +471,8 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Number minus date
         ret = p.parse('2 - DATE(2019,11,20)')
-        self.assertEqual(ret['result'], None)
-        self.assertEqual(ret['error'], '#NUM!')
+        self.assertEqual(ret['result'], -43787)
+        self.assertEqual(ret['error'], None)
         # Number minus number
         ret = p.parse('2 - 2')
         self.assertEqual(ret['result'], 0)
@@ -610,8 +677,8 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Bool minus date
         ret = p.parse('TRUE - DATE(2019;11;20)')
-        self.assertEqual(ret['result'], None)
-        self.assertEqual(ret['error'], '#NUM!')
+        self.assertEqual(ret['result'], -43788)
+        self.assertEqual(ret['error'], None)
         # Bool minus number
         ret = p.parse('TRUE - 1')
         self.assertEqual(ret['result'], 0)
@@ -727,8 +794,8 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(ret['error'], None)
         # Blank minus date
         ret = p.parse('B3 - DATE(2019;11;20)')
-        self.assertEqual(ret['result'], None)
-        self.assertEqual(ret['error'], '#NUM!')
+        self.assertEqual(ret['result'], -43789)
+        self.assertEqual(ret['error'], None)
         # Blank minus number
         ret = p.parse('B3 - 1')
         self.assertEqual(ret['result'], -1)

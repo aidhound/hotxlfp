@@ -174,8 +174,7 @@ IMPLICIT_DATA_TYPE_CONVERSIONS = {
         number_types: {
             datetime.datetime: {
                 'left': None,
-                'right': serialize_date,
-                'result': parse_date
+                'right': serialize_date
             },
             number_types: {
                 'left': None,
@@ -205,8 +204,7 @@ IMPLICIT_DATA_TYPE_CONVERSIONS = {
         NoneType: {
             datetime.datetime: {
                 'left': lambda x: 0,
-                'right': serialize_date,
-                'result': parse_date
+                'right': serialize_date
             },
             number_types: {
                 'left': lambda x: 0,
