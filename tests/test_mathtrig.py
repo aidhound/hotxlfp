@@ -174,6 +174,38 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_inverse_trig_domain_errors_remain_handleable(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**1000)
+        for name, inputs in (
+            ('ACOS', ('-2', '2', '-1.0001', '1.0001', '"2"', 'HUGE()')),
+            ('ASIN', ('-2', '2', '-1.0001', '1.0001', '"2"', 'HUGE()')),
+            ('ATANH', ('-2', '2', '-1', '1', '"1"', 'HUGE()')),
+        ):
+            for source in inputs:
+                expression = name + '(' + source + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': '#NUM!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': None, 'error': '#NUM!'})
+
+    def test_inverse_trig_keeps_valid_boundary_results(self):
+        p = Parser()
+        for expression, expected in (
+            ('ACOS(-1)', math.pi), ('ACOS(1)', 0),
+            ('ASIN(-1)', -math.pi / 2), ('ASIN(1)', math.pi / 2),
+            ('ASIN(0)', 0), ('ATANH(0)', 0),
+            ('ATANH(-0.5)', -0.5493061443340549),
+            ('ATANH("0.5")', 0.5493061443340549),
+        ):
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertEqual(result['error'], None)
+                self.assertAlmostEqual(result['result'], expected)
+
     def test_sqrt(self):
         p = Parser(debug=True)
         ret = p.parse('SQRT(16)')
@@ -182,6 +214,29 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('SQRT(1/0)')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_sqrt_and_exp_return_handleable_numeric_errors(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**1000)
+        for expression in ('SQRT(-1)', 'SQRT("-1")', 'SQRT(HUGE())',
+                           'EXP(1000)', 'EXP("1000")', 'EXP(HUGE())'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': '#NUM!'})
+
+    def test_sqrt_and_exp_keep_valid_results(self):
+        p = Parser()
+        for expression, expected in (('SQRT(0)', 0), ('SQRT("16")', 4),
+                                     ('EXP(0)', 1), ('EXP("1")', math.e),
+                                     ('EXP(-1)', 1 / math.e)):
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertEqual(result['error'], None)
+                self.assertAlmostEqual(result['result'], expected)
 
     def test_round(self):
         p = Parser(debug=True)
@@ -213,6 +268,23 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
 
+    def test_logarithm_domain_errors_remain_handleable(self):
+        p = Parser()
+        for expression, code in (
+            ('LN(0)', '#NUM!'), ('LN(-1)', '#NUM!'), ('LN("-1")', '#NUM!'),
+            ('LOG(0)', '#NUM!'), ('LOG(-1,2)', '#NUM!'),
+            ('LOG(8,0)', '#NUM!'), ('LOG(8,-1)', '#NUM!'),
+            ('LOG(8,1)', '#DIV/0!'), ('LOG(1,1)', '#DIV/0!'),
+            ('LOG(0,1)', '#NUM!'), ('LOG(-1,0)', '#NUM!'),
+            ('LOG10(0)', '#NUM!'), ('LOG10(-1)', '#NUM!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': code})
+
     def test_log(self):
         p = Parser(debug=True)
         ret = p.parse('LOG(10)')
@@ -221,6 +293,10 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('LOG(8, 2)')
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
+        for expression, expected in (('LN(1)', 0), ('LOG(0.5,0.5)', 1),
+                                     ('LOG(8,0.5)', -3), ('LOG("8","2")', 3)):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
 
     def test_log10(self):
         p = Parser(debug=True)

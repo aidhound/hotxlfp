@@ -126,6 +126,9 @@ class TestError(unittest.TestCase):
     def test_numeric_consumers_preserve_errors_in_every_argument(self):
         p = Parser()
         for name, valid_args in (
+            ('ACOS', ['0']), ('ASIN', ['0']), ('ATANH', ['0.5']),
+            ('LN', ['1']), ('LOG10', ['10']),
+            ('SQRT', ['16']), ('EXP', ['1']),
             ('SLOPE', ['6', '1', '2', '4']),
             ('HEX2DEC', ['"A5"']),
             ('COMPLEX', ['3', '5']),
@@ -219,6 +222,9 @@ class TestError(unittest.TestCase):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
         for name, valid_args in (
+            ('ACOS', ['0']), ('ASIN', ['0']), ('ATANH', ['0.5']),
+            ('LN', ['1']), ('LOG10', ['10']),
+            ('SQRT', ['16']), ('EXP', ['1']),
             ('HEX2DEC', ['"A5"']),
             ('COMPLEX', ['3', '5']), ('DELTA', ['5', '5']),
             ('SIGN', ['2']), ('ISEVEN', ['2']), ('ISODD', ['3']),

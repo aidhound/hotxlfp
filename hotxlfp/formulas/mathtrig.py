@@ -31,6 +31,8 @@ def ACOS(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
+    if not -1 <= number <= 1:
+        return error.NUM
     return math.acos(number)
 
 
@@ -79,6 +81,8 @@ def ASIN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
+    if not -1 <= number <= 1:
+        return error.NUM
     return math.asin(number)
 
 
@@ -156,6 +160,8 @@ def ATANH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
+    if not -1 < number < 1:
+        return error.NUM
     return math.atanh(number)
 
 
@@ -164,7 +170,10 @@ def SQRT(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.sqrt(number)
+    try:
+        return math.sqrt(number)
+    except (ValueError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('EXP')
@@ -172,7 +181,10 @@ def EXP(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.e**number
+    try:
+        return math.e**number
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('LN')
@@ -180,7 +192,10 @@ def LN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.log(number)
+    try:
+        return math.log(number)
+    except (ValueError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('LOG')
@@ -190,7 +205,12 @@ def LOG(number, base=10):
     base = utils.parse_number(base)
     if utils.any_is_error((number, base)):
         return error.VALUE
-    return math.log(number, base)
+    try:
+        return math.log(number, base)
+    except ZeroDivisionError:
+        return error.DIV_ZERO
+    except (ValueError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('LOG10')
