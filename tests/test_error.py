@@ -125,6 +125,54 @@ class TestError(unittest.TestCase):
                             else {'result': result, 'error': None})
                 self.assertEqual(p.parse(expression), expected)
 
+    def test_conditional_sums_and_averages_use_selected_value_conversion(self):
+        p = Parser()
+        for values, sum_result, average_result in (
+            (['1'], 1, 1), ([None, 7], 7, 7), (['', 7], 7, 7),
+            (['text', '7', None, 0], 7, 3.5),
+            ([None, '', 'text'], 0, error.DIV_ZERO),
+            ([0, None], 0, 0), ([], 0, error.DIV_ZERO),
+            (['NaN', error.NOT_AVAILABLE], error.NUM, error.NUM),
+            ([error.NOT_AVAILABLE, 'NaN'], error.NOT_AVAILABLE, error.NOT_AVAILABLE),
+            (['7', error.DIV_ZERO], error.DIV_ZERO, error.DIV_ZERO),
+        ):
+            original_values = values.copy()
+            p.set_function('VALUES', lambda values=values: values)
+            p.set_function('FLAGS', lambda values=values: [1] * len(values))
+            for expression, expected in (
+                ('SUMIF(VALUES(),"<>-999")', sum_result),
+                ('SUMIFS(VALUES(),FLAGS(),1)', sum_result),
+                ('AVERAGEIF(VALUES(),"<>-999")', average_result),
+                ('AVERAGEIF(FLAGS(),1,VALUES())', average_result),
+                ('AVERAGEIFS(VALUES(),FLAGS(),1)', average_result),
+            ):
+                result = ({'result': None, 'error': str(expected)}
+                          if isinstance(expected, error.XLError)
+                          else {'result': expected, 'error': None})
+                with self.subTest(expression=expression, values=values):
+                    self.assertEqual(p.parse(expression), result)
+                    fallback = 99 if isinstance(expected, error.XLError) else expected
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': fallback, 'error': None})
+                    na_result = ({'result': 77, 'error': None}
+                                 if expected is error.NOT_AVAILABLE else result)
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), na_result)
+                    self.assertEqual(values, original_values)
+
+    def test_conditional_aggregates_ignore_excluded_conversion_and_typed_errors(self):
+        p = Parser()
+        p.set_function('VALUES', lambda: [error.NOT_AVAILABLE, '5', 'NaN'])
+        p.set_function('FLAGS', lambda: [0, 1, 0])
+        for expression in (
+            'SUMIF(VALUES(),5)', 'SUMIFS(VALUES(),FLAGS(),1)',
+            'AVERAGEIF(VALUES(),5)', 'AVERAGEIF(FLAGS(),1,VALUES())',
+            'AVERAGEIFS(VALUES(),FLAGS(),1)',
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': 5, 'error': None})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 5, 'error': None})
+
     def test_averageif_preserves_only_selected_aggregate_errors(self):
         p = Parser()
         for expression, expected in (

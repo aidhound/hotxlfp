@@ -44,25 +44,12 @@ def AVERAGEIF(args, criteria, average_range=None):
     if average_range is None:
         average_range = args
     args = utils.flatten(args)
-    average_range = utils.iparse_number_array(utils.flatten(average_range))
-    if isinstance(average_range, error.XLError):
-        return average_range
-    average_range = list(average_range)
+    average_range = utils.flatten(average_range)
     if len(average_range) < len(args):
         return error.VALUE
-    average_count = 0
-    result = 0
     predicate = utils.parse_criteria(criteria)
-
-    for i, arg_i in enumerate(args):
-        if (predicate(args[i])):
-            if isinstance(average_range[i], error.XLError):
-                return average_range[i]
-            result += average_range[i]
-            average_count += 1
-    if average_count == 0:
-        return error.DIV_ZERO
-    return result / average_count
+    values = [average_range[i] for i, value in enumerate(args) if predicate(value)]
+    return AVERAGE(values)
 
 
 @dispatcher.register_for('COUNT')
@@ -196,17 +183,11 @@ def AVERAGEIFS(average_range, *criteria):
             return error.VALUE
         range_and_preds.append((utils.flatten(criteria_range), utils.parse_criteria(criterion)))
 
-    sum_value = 0
-    count_value = 0
-    for i, a in enumerate(utils.iflatten(average_range)):
-        if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds):
-            if isinstance(a, error.XLError):
-                return a
-            sum_value += a
-            count_value += 1
-    if count_value == 0:
-        return error.DIV_ZERO
-    return sum_value / count_value
+    values = [
+        value for i, value in enumerate(utils.iflatten(average_range))
+        if all(pred(criteria_range[i]) for criteria_range, pred in range_and_preds)
+    ]
+    return AVERAGE(values)
 
 
 @dispatcher.register_for('MAXIFS')
