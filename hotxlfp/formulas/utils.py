@@ -232,9 +232,12 @@ def parse_criteria(criteria):
         match = REGEX_CRITERIA.match(criteria)
         op = match.group('op') or '='
         val = match.group('val')
-        criterion_error = error.from_message(val.upper()) if val.startswith('#') else None
-        if criterion_error is not None and str(criterion_error) == val.upper():
+        criterion_text = val.upper()
+        criterion_error = error.from_message(criterion_text) if val.startswith('#') else None
+        if criterion_error is not None and str(criterion_error) == criterion_text:
             val = criterion_error
+        elif criterion_text in ('TRUE', 'FALSE'):
+            val = criterion_text == 'TRUE'
         else:
             val = to_number(val)
             if isinstance(val, error.XLError):
@@ -254,6 +257,11 @@ def parse_criteria(criteria):
             return (value_order is not None and criterion_order is not None
                     and compare(value_order, criterion_order))
         return match_error
+
+    if isinstance(val, bool):
+        if op == '<>':
+            return lambda value: not isinstance(value, bool) or compare(value, val)
+        return lambda value: isinstance(value, bool) and compare(value, val)
 
     if isinstance(val, string_types) and op in ('=', '<>'):
         if any(c in val for c in ('?', '*')):
@@ -277,12 +285,23 @@ def parse_criteria(criteria):
             return compare(value.lower(), val)
         return match_text
 
+    if isinstance(val, number_types) and not isinstance(val, bool):
+        if op == '=':
+            def match_number(value):
+                if isinstance(value, string_types):
+                    value = to_number(value)
+                return not isinstance(value, bool) and compare(value, val)
+            return match_number
+        if op == '<>':
+            return lambda value: isinstance(value, bool) or compare(value, val)
+
     if op in ('=', '<>'):
         return lambda value: compare(value, val)
 
     # Choose the ordering category once, rather than checking the criterion per cell.
     value_types = number_types if isinstance(val, number_types) else string_types
-    return lambda value: isinstance(value, value_types) and compare(value, val)
+    return lambda value: (isinstance(value, value_types)
+                          and not isinstance(value, bool) and compare(value, val))
 
 
 def any_is_error(iterable):
