@@ -7,35 +7,15 @@ returns `[[1, 2]]` and `{1;2}` returns `[[1], [2]]`, rather than flat lists.
 Applications that consume literal results directly may need to adjust. Arrays
 supplied through callbacks retain their original shapes.
 
-* Preserve array-literal orientation: commas or backslashes separate columns, semicolons separate rows, and omitted entries are `None`. Arrays must be rectangular.
-* Broadcast array arithmetic across rows, columns and scalars, preserving row alignment and returning `#N/A` for unmatched cells.
-* Keep typed Excel errors available to enclosing functions such as `IFERROR` and `IFNA`. Fix error propagation in logical, comparison, concatenation, text, lookup and numeric functions. `IFERROR` and `IFNA` also handle nested arrays while preserving their shapes.
-* Make function names and custom function registration case-insensitive. Unknown functions and variables produce handleable `#NAME?` errors. Callback setters can explicitly override results with `None`.
-* Update `COUNT` to recognize numeric and date strings directly and inside arrays and references. Array booleans, blanks, unrecognized text and typed errors are excluded; direct booleans and native dates still count. Counting numeric and date strings in arrays is an intentional difference from Excel.
-* Align `ISBLANK` with the existing blank policy in `COUNTA` and `COUNTBLANK`: both `None` and `""` are blank. Document the intentional differences from Excel in the README.
-* Add `ROWS`, and support both row and column vectors in `MATCH` and `INDEX`. `MATCH` skips error cells while preserving their positions in the vector.
-* Support nested matching range shapes in `SUMIFS`, `AVERAGEIFS` and `MAXIFS`, preserving selected aggregate errors. Return `#DIV/0!` when `AVERAGEIFS` has no matches, and handle negative maxima in `MAXIFS` correctly.
-* Match error criteria and error cells using Excel's criteria rules in `SUMIF`, `COUNTIF`, `AVERAGEIF`, `SUMIFS`, `AVERAGEIFS` and `MAXIFS`. Error criteria can select matching error cells; selected aggregate errors remain handleable by enclosing functions. Return `#DIV/0!` when `AVERAGEIF` has no matches.
-* Compile wildcard criteria once for reuse. Wildcard matching is case-insensitive on every platform and treats forward slashes and backslashes as distinct literal characters.
-* Make ordinary text criteria case-insensitive for equality, inequality and ordering comparisons.
-* Follow Excel's tilde escapes in wildcard criteria and treat brackets as literal characters rather than shell-pattern groups.
-* Treat blank source values as empty text in `LEFT`, `RIGHT` and `MID`, including their B aliases, while retaining position validation and error propagation.
-* Return empty text from `TRIM` for blank source values.
-* Normalize blank text arguments in `SUBSTITUTE` and allow empty replacements to delete matches, including explicit occurrence numbers.
-* Ignore blank elements in `CONCAT` and `CONCATENATE`, including nested arrays, while preserving zeroes, booleans and calculation errors.
-* Treat blank operands as empty text in `&`, including array cells, and concatenate arrays element by element using the existing broadcasting rules.
-* Share text coercion across text functions and `&`: blanks become empty text, booleans become `TRUE`/`FALSE`, and numeric inputs are accepted in text arguments. Format finite floats with Excel-style precision and notation, including `1.0` as `1`. Keep calculation errors and numeric argument validation. `TEXTJOIN` also converts delimiters and skips empty strings when requested; `CODE` uses the first converted character.
-* Evaluate arithmetic before `&` concatenation and concatenation before comparisons, following Excel's operator precedence.
-* Correct 1900 date serialization: January 1 is serial 1 and March 1 is serial 61, preserving time fractions and Excel's leap-year compatibility gap.
-* Return numeric differences for number/blank-minus-date subtraction, including negative values and array cells, while preserving date results for date-minus-number day shifts.
-* Preserve time fractions in date serials below 1, so `HOUR(0.5)` correctly returns 12 and minute/second extraction retains the time.
-* Fix `EDATE` month shifts from blank and zero-day inputs, including year crossings. Truncate fractional month counts and preserve calculation errors through enclosing handlers.
-* Make `DAYS` discard each operand's time before subtraction, preserve numeric zero and return original calculation errors to enclosing handlers.
-* Normalize numeric arguments in `LEFT`, `RIGHT`, `MID` and their B aliases: accept numeric text, truncate fractions and treat explicit blank counts as zero while preserving defaults and validation.
-* Preserve incoming and conversion errors in `TIMEVALUE`, `WEEKDAY` and `DATEDIF`, allowing enclosing `IFERROR` and `IFNA` calls to handle them.
-* Preserve zero/time-only serial identity while retaining datetime results, so `TIME(0,0,0)=0` and `EDATE(0,0)=0` evaluate correctly.
-* Return `#DIV/0!` for empty `AVERAGE` and `AVERAGEA` calculations, and preserve errors through `AVEDEV`. Validate `LARGE` ranks against the flattened numeric values. Return empty text for zero-length `RIGHT` and `RIGHTB` calls.
-* Return `#NUM!` for nonfinite numeric inputs, conversions and arithmetic overflow, while retaining support for arbitrarily large integers.
+* Support rectangular array literals with omitted cells and scalar expressions/function calls. Broadcast array arithmetic across rows, columns and scalars, returning `#N/A` for unmatched cells.
+* Preserve calculation errors for enclosing handlers. `IFERROR` and `IFNA` handle nested arrays and broadcast array-valued fallbacks; fix numeric domain, overflow and nonfinite-value errors in math functions.
+* Make function calls and custom registration case-insensitive. Unknown names return catchable `#NAME?` errors, and callbacks can explicitly return `None`.
+* Update `COUNT` to recognize numeric/date strings and exclude blanks, nonnumeric text, errors and array booleans. Align `ISBLANK` with the existing `None`/empty-string blank policy. Intentional Excel differences are documented in the [README](README.md).
+* Add `ROWS` and support row/column vectors in `MATCH` and `INDEX`, preserving lookup positions around error cells.
+* Correct numeric-text, logical and error criteria matching. Compile wildcard patterns once, with case-insensitive matching, Excel tilde escapes and literal brackets/path separators.
+* Fix conditional aggregation of numeric text and blanks, selected-error handling, range/argument validation, empty averages and `LARGE` rank validation.
+* Standardize blank, boolean and numeric text conversion across text functions and `&`. Fix slicing arguments, `SUBSTITUTE` deletion and concatenation precedence; add value-preserving unary plus.
+* Correct 1900 date serialization, fractional times, zero/time identity, `EDATE` month shifts and `DAYS` truncation. Preserve date results for day shifts and numeric results for date differences.
 
 ## 1.0.3
 
