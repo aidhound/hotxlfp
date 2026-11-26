@@ -41,7 +41,10 @@ def ACOSH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.log(number + math.sqrt(number * number - 1))
+    try:
+        return math.acosh(number)
+    except (ValueError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('ACOT')
@@ -49,7 +52,10 @@ def ACOT(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.atan(1 / number)
+    try:
+        return math.atan2(1, number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('ACOTH')
@@ -57,7 +63,9 @@ def ACOTH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return 0.5 * math.log((number + 1) / (number - 1))
+    if -1 <= number <= 1:
+        return error.NUM
+    return math.atanh(1 / number)
 
 
 @dispatcher.register_for('SIN')
@@ -65,7 +73,10 @@ def SIN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.sin(number)
+    try:
+        return math.sin(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('SINH')
@@ -73,7 +84,10 @@ def SINH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.sinh(number)
+    try:
+        return math.sinh(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('ASIN')
@@ -91,7 +105,10 @@ def ASINH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.asinh(number)
+    try:
+        return math.asinh(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('COS')
@@ -99,7 +116,10 @@ def COS(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.cos(number)
+    try:
+        return math.cos(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('COSH')
@@ -107,7 +127,10 @@ def COSH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.cosh(number)
+    try:
+        return math.cosh(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('COT')
@@ -115,6 +138,10 @@ def COT(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
+    if abs(number) >= 2**27:
+        return error.NUM
+    if number == 0:
+        return error.DIV_ZERO
     return math.cos(number)/math.sin(number)
 
 
@@ -123,7 +150,10 @@ def TAN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.tan(number)
+    try:
+        return math.tan(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('TANH')
@@ -131,7 +161,10 @@ def TANH(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.tanh(number)
+    try:
+        return math.tanh(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('ATAN')
@@ -139,7 +172,10 @@ def ATAN(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return math.atan(number)
+    try:
+        return math.atan(number)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('ATAN2')
@@ -151,8 +187,13 @@ def ATAN2(x_num, y_num):
     if isinstance(y_num, error.XLError):
         return y_num
     if y_num == 0:
-        return error.DIV_ZERO
-    return math.atan2(y_num, x_num)
+        if x_num == 0:
+            return error.DIV_ZERO
+        return 0 if x_num > 0 else math.pi
+    try:
+        return math.atan2(y_num, x_num)
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('ATANH')

@@ -42,6 +42,44 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_acosh_domain_and_overflow_errors_are_handleable(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**400)
+        for source in ('0', '-2', '0.5', '"0.5"', 'HUGE()'):
+            expression = 'ACOSH(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                 {'result': None, 'error': '#NUM!'})
+
+    def test_acosh_keeps_large_valid_results_and_original_errors(self):
+        p = Parser()
+        p.set_function('LARGE', lambda: 1e200)
+        for source, expected in (
+            ('1', 0), ('"10"', math.acosh(10)),
+            ('1.0000000000000002', math.acosh(1.0000000000000002)),
+            ('LARGE()', math.acosh(1e200)),
+            ('"1e200"', math.acosh(1e200)), ('"1e308"', math.acosh(1e308)),
+        ):
+            with self.subTest(source=source):
+                result = p.parse('ACOSH(' + source + ')')
+                self.assertIsNone(result['error'])
+                self.assertAlmostEqual(result['result'], expected, delta=1e-14)
+        for source, code in (
+            ('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+            ('"bad"', '#VALUE!'), ('"NaN"', '#NUM!'),
+        ):
+            expression = 'ACOSH(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_acot(self):
         p = Parser(debug=True)
         ret = p.parse('ACOT(2)')
@@ -51,6 +89,39 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_acot_zero_and_negative_inputs_use_excels_angle_range(self):
+        p = Parser()
+        p.set_function('ZERO', lambda: -0.0)
+        for source, expected in (
+            ('0', math.pi / 2), ('ZERO()', math.pi / 2),
+            ('-1', 3 * math.pi / 4), ('"-2"', math.pi - math.atan(0.5)),
+            ('1', math.pi / 4), ('2', math.atan(0.5)),
+            ('"1e308"', 1e-308), ('"-1e308"', math.pi),
+            ('"1e-308"', math.pi / 2), ('"-1e-308"', math.pi / 2),
+        ):
+            expression = 'ACOT(' + source + ')'
+            with self.subTest(expression=expression):
+                for wrapped in (expression, 'IFERROR(' + expression + ',99)'):
+                    result = p.parse(wrapped)
+                    self.assertIsNone(result['error'])
+                    self.assertTrue(math.isclose(result['result'], expected, rel_tol=1e-14))
+
+    def test_acot_preserves_errors_and_handles_numeric_overflow(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**400)
+        for source, code in (
+            ('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+            ('"bad"', '#VALUE!'), ('"NaN"', '#NUM!'), ('HUGE()', '#NUM!'),
+        ):
+            expression = 'ACOT(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_acoth(self):
         p = Parser(debug=True)
         ret = p.parse('ACOTH(6)')
@@ -59,6 +130,45 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('ACOTH(1/0)')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_acoth_invalid_domains_return_handleable_numeric_errors(self):
+        p = Parser()
+        for source in ('-1', '-0.5', '0', '0.5', '1', '"1"'):
+            expression = 'ACOTH(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                 {'result': None, 'error': '#NUM!'})
+
+    def test_acoth_valid_inputs_keep_precision_and_original_errors(self):
+        p = Parser()
+        p.set_function('LARGE', lambda: 1e20)
+        for source, expected in (
+            ('2', math.log(3) / 2), ('-2', -math.log(3) / 2),
+            ('"6"', 0.16823611831060645),
+            ('LARGE()', 1e-20), ('"-1e20"', -1e-20),
+            ('1.000001', math.log(2000001) / 2),
+            ('-1.000001', -math.log(2000001) / 2),
+        ):
+            expression = 'ACOTH(' + source + ')'
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertIsNone(result['error'])
+                self.assertTrue(math.isclose(result['result'], expected, rel_tol=1e-10))
+        for source, code in (
+            ('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+            ('"bad"', '#VALUE!'), ('"NaN"', '#NUM!'),
+        ):
+            expression = 'ACOTH(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
 
     def test_sin(self):
         p = Parser(debug=True)
@@ -114,6 +224,43 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_sinh_and_cosh_overflow_errors_are_handleable(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**400)
+        for name in ('SINH', 'COSH'):
+            for source in ('1000', '-1000', '"1000"', '"-1000"', 'HUGE()'):
+                expression = name + '(' + source + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                     {'result': None, 'error': '#NUM!'})
+
+    def test_sinh_and_cosh_keep_valid_results_and_original_errors(self):
+        p = Parser()
+        p.set_function('DATA', lambda: -4)
+        for name, function in (('SINH', math.sinh), ('COSH', math.cosh)):
+            for source, value in (('0', 0), ('4', 4), ('"-4"', -4),
+                                  ('DATA()', -4), ('700', 700), ('-700', -700)):
+                expression = name + '(' + source + ')'
+                with self.subTest(expression=expression):
+                    result = p.parse(expression)
+                    self.assertIsNone(result['error'])
+                    self.assertTrue(math.isclose(result['result'], function(value), rel_tol=1e-14))
+            for source, code in (
+                ('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+                ('"bad"', '#VALUE!'), ('"NaN"', '#NUM!'),
+            ):
+                expression = name + '(' + source + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None} if code == '#N/A'
+                                else {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_cot(self):
         p = Parser(debug=True)
         ret = p.parse('COT(30)')
@@ -125,6 +272,44 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('COT(1/0)')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_cot_zero_and_range_errors_are_handleable(self):
+        p = Parser()
+        p.set_function('ZERO', lambda: -0.0)
+        p.set_function('HUGE', lambda: 10**400)
+        for source, code in (
+            ('0', '#DIV/0!'), ('"0"', '#DIV/0!'), ('ZERO()', '#DIV/0!'),
+            ('2^27', '#NUM!'), ('-(2^27)', '#NUM!'),
+            ('2^27+1', '#NUM!'), ('"-134217729"', '#NUM!'),
+            ('HUGE()', '#NUM!'),
+        ):
+            expression = 'COT(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': code})
+
+    def test_cot_keeps_valid_results_and_original_errors(self):
+        p = Parser()
+        for source, value in (('1', 1), ('"-1"', -1),
+                              ('2^27-1', 2**27 - 1), ('-(2^27-1)', -(2**27 - 1))):
+            with self.subTest(source=source):
+                result = p.parse('COT(' + source + ')')
+                self.assertIsNone(result['error'])
+                self.assertTrue(math.isclose(result['result'], math.cos(value) / math.sin(value),
+                                             rel_tol=1e-14))
+        for source, code in (('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+                             ('"bad"', '#VALUE!'), ('"NaN"', '#NUM!')):
+            expression = 'COT(' + source + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
 
     def test_tan(self):
         p = Parser(debug=True)
@@ -164,6 +349,80 @@ class TestMathTrig(unittest.TestCase):
         ret = p.parse('ATAN2(0, 0)')
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
+
+    def test_atan2_axes_and_quadrants(self):
+        p = Parser()
+        p.set_function('ZERO', lambda: -0.0)
+        for args, expected in (
+            ('1,0', 0), ('-1,0', math.pi),
+            ('1,ZERO()', 0), ('-1,ZERO()', math.pi),
+            ('0,1', math.pi / 2), ('0,-1', -math.pi / 2),
+            ('1,1', math.pi / 4), ('-1,1', 3 * math.pi / 4),
+            ('-1,-1', -3 * math.pi / 4), ('1,-1', -math.pi / 4),
+            ('"-1","0"', math.pi),
+        ):
+            expression = 'ATAN2(' + args + ')'
+            with self.subTest(expression=expression):
+                for wrapped in (expression, 'IFERROR(' + expression + ',99)'):
+                    result = p.parse(wrapped)
+                    self.assertIsNone(result['error'])
+                    self.assertAlmostEqual(result['result'], expected)
+
+    def test_atan2_errors_remain_handleable_in_each_coordinate(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**400)
+        for args, code in (
+            ('0,0', '#DIV/0!'), ('"0","0"', '#DIV/0!'),
+            ('#N/A,1', '#N/A'), ('1,#N/A', '#N/A'),
+            ('#DIV/0!,1', '#DIV/0!'), ('1,#DIV/0!', '#DIV/0!'),
+            ('"bad",1', '#VALUE!'), ('1,"bad"', '#VALUE!'),
+            ('"NaN",1', '#NUM!'), ('1,"NaN"', '#NUM!'),
+            ('HUGE(),1', '#NUM!'), ('1,HUGE()', '#NUM!'),
+        ):
+            expression = 'ATAN2(' + args + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_remaining_trig_functions_return_handleable_conversion_overflow(self):
+        p = Parser()
+        for value in (10**400, -(10**400)):
+            p.set_function('HUGE', lambda value=value: value)
+            for name in ('SIN', 'COS', 'TAN', 'ASINH', 'TANH', 'ATAN'):
+                expression = name + '(HUGE())'
+                with self.subTest(function=name, negative=value < 0):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': None, 'error': '#NUM!'})
+
+    def test_remaining_trig_functions_keep_valid_inputs_and_original_errors(self):
+        p = Parser()
+        for name, function in (
+            ('SIN', math.sin), ('COS', math.cos), ('TAN', math.tan),
+            ('ASINH', math.asinh), ('TANH', math.tanh), ('ATAN', math.atan),
+        ):
+            for source, value in (('0', 0), ('"-0.5"', -0.5), ('"1e308"', 1e308)):
+                expression = name + '(' + source + ')'
+                with self.subTest(expression=expression):
+                    result = p.parse(expression)
+                    self.assertIsNone(result['error'])
+                    self.assertTrue(math.isclose(result['result'], function(value), rel_tol=1e-14))
+            for source, code in (('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+                                 ('"bad"', '#VALUE!'), ('"NaN"', '#NUM!')):
+                expression = name + '(' + source + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None} if code == '#N/A'
+                                else {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
 
     def test_atanh(self):
         p = Parser(debug=True)
