@@ -7,11 +7,11 @@ from hotxlfp.formulas import error, utils
 class TestError(unittest.TestCase):
     """ Stuff that should cause errors """
 
-    def test_sumifs_and_averageifs_require_complete_criteria_pairs(self):
+    def test_conditional_aggregates_require_complete_criteria_pairs(self):
         p = Parser()
         for values in ([1, 2, 3], []):
             p.set_function('DATA', lambda values=values: values)
-            for name in ('SUMIFS', 'AVERAGEIFS'):
+            for name in ('SUMIFS', 'AVERAGEIFS', 'MAXIFS'):
                 for args in ('DATA()', 'DATA(),DATA()',
                              'DATA(),DATA(),">0",DATA()'):
                     expression = name + '(' + args + ')'
@@ -21,7 +21,7 @@ class TestError(unittest.TestCase):
                         self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
                                          {'result': 99, 'error': None})
         p.set_function('DATA', lambda: [1, 2, 3])
-        for name, expected in (('SUMIFS', 6), ('AVERAGEIFS', 2)):
+        for name, expected in (('SUMIFS', 6), ('AVERAGEIFS', 2), ('MAXIFS', 3)):
             with self.subTest(function=name):
                 self.assertEqual(p.parse(name + '(DATA(),DATA(),">0")'),
                                  {'result': expected, 'error': None})

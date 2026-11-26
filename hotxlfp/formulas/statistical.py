@@ -201,7 +201,7 @@ def AVERAGEIFS(average_range, *criteria):
 
 @dispatcher.register_for('MAXIFS')
 def MAXIFS(sum_args, *criteria):
-    if len(criteria) % 2 != 0:
+    if not criteria or len(criteria) % 2 != 0:
         return error.ERROR
 
     max_shape = utils.array_shape(sum_args)
@@ -225,6 +225,8 @@ def MAXIFS(sum_args, *criteria):
     for value in values:
         if isinstance(value, error.XLError):
             return value
+        if not isinstance(value, number_types):
+            continue
         if max_value is utils.DEFAULT or value > max_value:
             max_value = value
     return 0 if max_value is utils.DEFAULT else max_value

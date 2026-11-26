@@ -788,6 +788,44 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(p.parse('MAXIFS({-5,0,-9},{-5,0,-9},"<=0")'),
                          {'result': 0, 'error': None})
 
+    def test_maxifs_ignores_selected_blanks_and_text(self):
+        p = Parser()
+        for vector, expected in (
+            ([None, 5], 5), ([5, None], 5),
+            (['text', 5], 5), ([5, 'text'], 5),
+            ([None], 0), (['text'], 0), (['20', 5], 5),
+            (['', None, -5, -2], -2), ([0, None, -5], 0), ([], 0),
+        ):
+            for shape in (lambda values: values, lambda values: [values],
+                          lambda values: [[value] for value in values],
+                          lambda values: tuple((value,) for value in values)):
+                values = shape(vector)
+                criteria = shape([1] * len(vector))
+                p.set_function('DATA', lambda values=values: values)
+                p.set_function('CRITERIA', lambda values=criteria: values)
+                expression = 'MAXIFS(DATA(),CRITERIA(),1)'
+                with self.subTest(values=values):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': expected, 'error': None})
+
+    def test_maxifs_preserves_selected_errors_among_blanks_and_text(self):
+        p = Parser()
+        p.set_function('CRITERIA', lambda: [1, 1, 2, 2])
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('DATA', lambda value=source_error: [None, 'text', value, 5])
+            expression = 'MAXIFS(DATA(),CRITERIA(),2)'
+            with self.subTest(error=source_error):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': str(source_error)})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if source_error is error.NOT_AVAILABLE
+                            else {'result': None, 'error': str(source_error)})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+                self.assertEqual(p.parse('MAXIFS(DATA(),CRITERIA(),1)'),
+                                 {'result': 0, 'error': None})
+
     def test_slope(self):
         p = Parser(debug=True)
         ret = p.parse('SLOPE(1;2;3;4;1;2;3;4)')
