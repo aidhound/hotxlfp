@@ -21,7 +21,10 @@ def ERROR_TYPE(error_val):
         error.NAME: 5,
         error.NUM: 6,
         error.NOT_AVAILABLE: 7,
-        error.DATA: 8
+        error.DATA: 8,
+        error.SPILL: 9,
+        error.FIELD: 13,
+        error.CALC: 14
     }
     return errdict.get(error_val, error.NOT_AVAILABLE)
 

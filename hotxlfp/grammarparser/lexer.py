@@ -58,7 +58,7 @@ def t_FUNCTION(t):
 
 
 def t_XLERROR(t):
-    r'\#[A-Z0-9\/]+(\!|\?)?'
+    r'\#[A-Z0-9\/_]+(\!|\?)?'
     return t
 
 

@@ -34,6 +34,39 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 2)
         self.assertEqual(ret['error'], None)
 
+    def test_error_type_recognizes_calc_from_literals_callbacks_and_arrays(self):
+        p = Parser()
+        p.set_function('FAIL', lambda: error.CALC)
+        for expression in (
+            '#CALC!', 'FAIL()', 'UNIQUE({1;1},FALSE(),TRUE())',
+            'TOCOL({NULL},1)', 'TOROW({NULL},1)',
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse('ERROR.TYPE(' + expression + ')'),
+                                 {'result': 14, 'error': None})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': '#CALC!'})
+
+    def test_modern_error_codes_are_classified_and_handleable(self):
+        p = Parser()
+        for code, error_type in (
+            ('#GETTING_DATA', 8), ('#SPILL!', 9), ('#FIELD!', 13), ('#CALC!', 14),
+        ):
+            p.set_function('FAIL', lambda code=code: error.from_message(code))
+            for expression in (code, 'FAIL()'):
+                with self.subTest(code=code, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('ERROR.TYPE(' + expression + ')'),
+                                     {'result': error_type, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR({' + expression + ',1},99)'),
+                                     {'result': [[99, 1]], 'error': None})
+
     def test_iserr(self):
         p = Parser(debug=True)
         ret = p.parse('ISERR(1/0)')

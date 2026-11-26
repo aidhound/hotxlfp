@@ -20,6 +20,8 @@ NULL = XLError('#NULL!')
 NUM = XLError('#NUM!')
 REF = XLError('#REF!')
 VALUE = XLError('#VALUE!')
+SPILL = XLError('#SPILL!')
+FIELD = XLError('#FIELD!')
 CALC = XLError('#CALC!')
 DATA = XLError('#GETTING_DATA')
 
@@ -34,6 +36,8 @@ def from_message(message):
         '#NUM!': NUM,
         '#REF!': REF,
         '#VALUE!': VALUE,
+        '#SPILL!': SPILL,
+        '#FIELD!': FIELD,
         '#CALC!': CALC,
         '#GETTING_DATA': DATA
     }
