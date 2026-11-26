@@ -43,6 +43,15 @@ def AVERAGEA(*args):
 def AVERAGEIF(args, criteria, average_range=None):
     if average_range is None:
         average_range = args
+    elif isinstance(args, (list, tuple)) and isinstance(average_range, (list, tuple)):
+        criteria_shape = utils.array_shape(args)
+        if isinstance(criteria_shape, error.XLError):
+            return criteria_shape
+        average_shape = utils.array_shape(average_range)
+        if isinstance(average_shape, error.XLError):
+            return average_shape
+        if criteria_shape != average_shape:
+            return error.VALUE
     args = utils.flatten(args)
     average_range = utils.flatten(average_range)
     if len(average_range) < len(args):

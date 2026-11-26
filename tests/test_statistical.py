@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import copy
 import unittest
 from hotxlfp import Parser
 from hotxlfp.formulas import error
@@ -133,6 +134,96 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('AVERAGEIF({1;2;3;4};">2";{4;3;2;1})')
         self.assertEqual(ret['result'], 1.5)
         self.assertEqual(ret['error'], None)
+
+    def test_averageif_separate_arrays_require_matching_rectangular_shapes(self):
+        p = Parser()
+        for criteria_values, average_values in (
+            ([1, 2, 3], [[10, 20, 30]]),
+            ([1, 2, 3], [10, 20, 30, 40]),
+            ([1, 2, 3], [[1], [2, 3]]),
+            ([[1], [2, 3]], [[1], [2, 3]]),
+            ([1, [2, [3]]], [1, [2, [3]]]),
+            ([[[1]]], [[[10]]]),
+            (((1, 2, 3),), ((10,), (20,), (30,))),
+            ([], [10]), ([], [[]]),
+        ):
+            original = copy.deepcopy((criteria_values, average_values))
+            p.set_function('CRITERIA', lambda values=criteria_values: values)
+            p.set_function('VALUES', lambda values=average_values: values)
+            for criterion in ('>0', '>99'):
+                expression = 'AVERAGEIF(CRITERIA(),"' + criterion + '",VALUES())'
+                with self.subTest(criteria_values=criteria_values, average_values=average_values,
+                                  criterion=criterion):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#VALUE!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': None, 'error': '#VALUE!'})
+                    self.assertEqual((criteria_values, average_values), original)
+
+    def test_averageif_matching_arrays_keep_orientation_conversion_and_inputs(self):
+        p = Parser()
+        for criteria_values, average_values, expected in (
+            ([1, 2, 3], [[10], [20], [30]], 20),
+            ([[1], [2], [3]], [10, 20, 30], 20),
+            ([[10, 20, 30]], [[10, 20, 30]], 20),
+            ([[1, 0], [1, 0]], [[10, 20], [30, 40]], 20),
+            ((1, 2, 3), ((10,), (20,), (30,)), 20),
+            (((1, 2, 3),), ((10, 20, 30),), 20),
+            ([[1, 0], [1, 0]], ((10, 20), (30, 40)), 20),
+            ([[1, 1], [1, 1]], [[None, '10'], ['text', 0]], 5),
+        ):
+            original = copy.deepcopy((criteria_values, average_values))
+            p.set_function('CRITERIA', lambda values=criteria_values: values)
+            p.set_function('VALUES', lambda values=average_values: values)
+            expression = 'AVERAGEIF(CRITERIA(),">0",VALUES())'
+            with self.subTest(criteria_values=criteria_values, average_values=average_values):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                self.assertEqual((criteria_values, average_values), original)
+
+    def test_averageif_matching_empty_or_nonnumeric_selections_return_div_zero(self):
+        p = Parser()
+        for criteria_values, average_values in (
+            ([], []), ((), ()), ([[]], [[]]),
+            ([[1, 0]], [[None, 10]]), ([[1, 0]], [['text', 10]]),
+        ):
+            p.set_function('CRITERIA', lambda values=criteria_values: values)
+            p.set_function('VALUES', lambda values=average_values: values)
+            for criterion in ('>0', '>99'):
+                expression = 'AVERAGEIF(CRITERIA(),"' + criterion + '",VALUES())'
+                with self.subTest(criteria_values=criteria_values, average_values=average_values,
+                                  criterion=criterion):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#DIV/0!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_averageif_keeps_omitted_null_and_scalar_boundaries(self):
+        p = Parser()
+        for values in ([[1], [2, 3]], [1, [2, [3]]]):
+            p.set_function('DATA', lambda values=values: values)
+            for suffix in ('', ',NULL'):
+                expression = 'AVERAGEIF(DATA(),">0"' + suffix + ')'
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': 2, 'error': None})
+        for expression in ('AVERAGEIF({1},">0",10)', 'AVERAGEIF(1,">0",10)',
+                           'AVERAGEIF(1,">0",{10,20})'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': 10, 'error': None})
+
+    def test_averageif_matching_nested_arrays_preserve_selected_errors(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('VALUES', lambda value=source_error: [[10, value], [30, 'NaN']])
+            for criterion, expected in (('=1', {'result': None, 'error': str(source_error)}),
+                                        ('<>1', {'result': 20, 'error': None})):
+                expression = 'AVERAGEIF({0,1;0,1},"' + criterion + '",VALUES())'
+                with self.subTest(criterion=criterion, source_error=source_error):
+                    self.assertEqual(p.parse(expression), expected)
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99 if criterion == '=1' else 20, 'error': None})
+                    na_result = ({'result': 77, 'error': None}
+                                 if criterion == '=1' and source_error is error.NOT_AVAILABLE else expected)
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), na_result)
 
     def test_averageif_explicit_empty_and_short_ranges_return_value(self):
         p = Parser()
