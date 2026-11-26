@@ -7,6 +7,59 @@ from hotxlfp.formulas import error
 
 class TestOperators(unittest.TestCase):
 
+    def test_unary_plus_preserves_operand_values_and_types(self):
+        p = Parser()
+        for expression, expected in (
+            ('+1', 1), ('+1.5', 1.5), ('+"1"', '1'),
+            ('+"text"', 'text'), ('+""', ''),
+            ('+TRUE()', True), ('+FALSE()', False), ('+NULL', None),
+            ('ISTEXT(+"1")', True), ('ISNUMBER(+"1")', False),
+            ('ISLOGICAL(+TRUE())', True), ('ISBLANK(+NULL)', True),
+            ('IFERROR(+"text",99)', 'text'),
+            ('IFERROR(+NULL,99)', None),
+            ('+{1,"2";TRUE(),NULL}', [[1, '2'], [True, None]]),
+        ):
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertEqual(result, {'result': expected, 'error': None})
+                self.assertIs(type(result['result']), type(expected))
+        for value in ([1, '2', True, None], (1, '2', True, None),
+                      datetime.date(2025, 1, 1), datetime.datetime(2025, 1, 1, 12)):
+            p.set_function('DATA', lambda value=value: value)
+            with self.subTest(value=value):
+                result = p.parse('+DATA()')
+                self.assertEqual(result, {'result': value, 'error': None})
+                self.assertIs(type(result['result']), type(value))
+
+    def test_unary_plus_precedence(self):
+        p = Parser()
+        for expression, expected in (
+            ('+1&2', '12'), ('1&+2', '12'), ('+"1"&2', '12'),
+            ('++1', 1), ('+-2', -2), ('-+2', -2),
+            ('1++2', 3), ('1+-2', -1), ('2*+3', 6),
+            ('+(1+2)*3', 9), ('+1%', 0.01), ('+1=1', True),
+            ('SUM(+1,+2)', 3),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_unary_plus_preserves_calculation_errors(self):
+        p = Parser()
+        for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
+            p.set_function('FAIL', lambda value=source_error: value)
+            p.set_function('DATA', lambda value=source_error: [1, value])
+            for source in (str(source_error), 'FAIL()', 'SUM(DATA())'):
+                expression = '+' + source
+                with self.subTest(expression=expression, error=str(source_error)):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 77, 'error': None}
+                                if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_number_minus_date_returns_a_numeric_difference(self):
         p = Parser()
         day = datetime.datetime(2025, 1, 1)

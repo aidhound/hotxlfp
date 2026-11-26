@@ -92,6 +92,11 @@ class FormulaParser(Parser):
         'expression : MINUS expression %prec UMINUS'
         p[0] = p[2] if isinstance(p[2], error.XLError) else -p[2]
 
+    def p_expression_uplus(self, p):
+        'expression : PLUS expression %prec UMINUS'
+        # Excel's unary plus preserves values without numeric coercion.
+        p[0] = p[2]
+
     def p_expression_number(self, p):
         """
         expression : NUMBER
