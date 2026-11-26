@@ -7,6 +7,54 @@ from hotxlfp.formulas import error
 
 class TestParser(unittest.TestCase):
 
+    def test_scalar_cell_callbacks_receive_parsed_coordinates(self):
+        parser = Parser()
+        calls = []
+        table = [[row * 100 + col for col in range(27)] for row in range(10)]
+
+        def cell_value(cell, set_value):
+            calls.append(cell)
+            set_value(table[cell.row.index][cell.col.index])
+
+        parser.on('callCellValue', cell_value)
+        for label, normalized, row, col, row_absolute, col_absolute in (
+            ('B1', 'B1', 0, 1, False, False),
+            ('a10', 'A10', 9, 0, False, False),
+            ('$AA$10', '$AA$10', 9, 26, True, True),
+            ('$B1', '$B1', 0, 1, False, True),
+            ('A$10', 'A$10', 9, 0, True, False),
+        ):
+            with self.subTest(label=label):
+                self.assertEqual(parser.parse(label),
+                                 {'result': table[row][col], 'error': None})
+                cell = calls[-1]
+                self.assertEqual(cell.label, normalized)
+                self.assertEqual((cell.row.index, cell.col.index), (row, col))
+                self.assertEqual((cell.row.is_absolute, cell.col.is_absolute),
+                                 (row_absolute, col_absolute))
+
+    def test_array_functions_accept_scalar_cell_and_range_callbacks(self):
+        parser = Parser()
+        table = [[10], [20]]
+
+        def cell_value(cell, set_value):
+            set_value(table[cell.row.index][cell.col.index])
+
+        def range_value(start, end, set_value):
+            set_value([row[start.col.index:end.col.index + 1]
+                       for row in table[start.row.index:end.row.index + 1]])
+
+        parser.on('callCellValue', cell_value)
+        parser.on('callRangeValue', range_value)
+        for name in ('TOCOL', 'TOROW', 'UNIQUE'):
+            for source, expected in (
+                ('$A$1', [[10]]),
+                ('A1:A2', [[10, 20]] if name == 'TOROW' else [[10], [20]]),
+            ):
+                with self.subTest(name=name, source=source):
+                    self.assertEqual(parser.parse(name + '(' + source + ')'),
+                                     {'result': expected, 'error': None})
+
     def test_builtin_function_names_are_case_insensitive(self):
         parser = Parser()
         for expression, expected in [('sum(1,2)', 3), ('aVeRaGe(5,10)', 7.5),

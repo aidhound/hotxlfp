@@ -101,6 +101,12 @@ direct arguments and arrays, including empty strings. `None` is excluded from
 the average. These are function-specific rules; input values are not globally
 replaced with zero.
 
+## UNIQUE text comparison
+
+UNIQUE uses Unicode case folding for case-insensitive text comparison and keeps
+the first original spelling. This can differ from Excel for some Unicode
+characters: hotxlfp treats `ſ` and `S` as duplicates, while Excel keeps them distinct.
+
 ## Array-literal orientation
 
 In array literals, commas or backslashes separate columns and semicolons

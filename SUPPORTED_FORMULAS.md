@@ -1,4 +1,4 @@
-# Supported Formulas - 157
+# Supported Formulas - 160
 
 * ABS
 * ACOS
@@ -145,9 +145,12 @@
 * TEXTJOIN
 * TIME
 * TIMEVALUE
+* TOCOL
 * TODAY
+* TOROW
 * TRIM
 * TRUE
+* UNIQUE
 * UPPER
 * VAR
 * VAR.P
@@ -159,7 +162,7 @@
 * YEAR
 
 
-# Not Yet Supported Formulas - 331
+# Not Yet Supported Formulas - 330
 
 * ACCRINT
 * ACCRINTM
@@ -470,7 +473,6 @@
 * TYPE
 * UNICHAR
 * UNICODE
-* UNIQUE
 * VALUE
 * VALUETOTEXT
 * VARPA

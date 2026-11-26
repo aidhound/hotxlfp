@@ -20,6 +20,7 @@ NULL = XLError('#NULL!')
 NUM = XLError('#NUM!')
 REF = XLError('#REF!')
 VALUE = XLError('#VALUE!')
+CALC = XLError('#CALC!')
 DATA = XLError('#GETTING_DATA')
 
 
@@ -33,6 +34,7 @@ def from_message(message):
         '#NUM!': NUM,
         '#REF!': REF,
         '#VALUE!': VALUE,
+        '#CALC!': CALC,
         '#GETTING_DATA': DATA
     }
     return errdict.get(str(message), ERROR)

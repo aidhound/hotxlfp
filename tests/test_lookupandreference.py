@@ -1,10 +1,187 @@
 # -*- coding: utf-8 -*-
 import unittest
+import copy
+import datetime
+from unittest import mock
 from hotxlfp import Parser, formulas
-from hotxlfp.formulas import error
+from hotxlfp.formulas import error, utils
 
 
 class TestLookupAndReference(unittest.TestCase):
+
+    def test_scan_array_reads_values_lazily(self):
+        data = [[1, None], [2, error.NOT_AVAILABLE]]
+        values = utils.scan_array(data, ignore=3)
+        self.assertIs(iter(values), values)
+        data[0][0] = 3
+        self.assertEqual(list(values), [3, 2])
+        self.assertEqual(list(values), [])
+
+    def test_to_vectors_preserve_shape_and_scan_order(self):
+        p = Parser()
+        for source, ordered, by_column in (
+            ('{1,2;3,4}', [1, 2, 3, 4], [1, 3, 2, 4]),
+            ('{1,2,3}', [1, 2, 3], [1, 2, 3]),
+            ('{1;2;3}', [1, 2, 3], [1, 2, 3]),
+            ('7', [7], [7]), ('{1.5,2.5}', [1.5, 2.5], [1.5, 2.5]),
+            ('{SUM(1,2),ABS(-4)}', [3, 4], [3, 4]),
+        ):
+            for name in ('TOCOL', 'TOROW'):
+                for suffix, values in (('', ordered), (',0,FALSE()', ordered), (',0,TRUE()', by_column)):
+                    expected = [[value] for value in values] if name == 'TOCOL' else [values]
+                    expression = name + '(' + source + suffix + ')'
+                    with self.subTest(expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertTrue(all(formulas.is_supported(name) for name in ('TOCOL', 'TOROW', 'UNIQUE')))
+
+    def test_to_vectors_ignore_blanks_and_errors_without_coercing_other_values(self):
+        p = Parser()
+        data = [[1, None, ''], [0, False, error.NOT_AVAILABLE]]
+        p.set_function('DATA', lambda: data)
+        for ignore, values in (
+            (0, [1, 0, '', 0, False, error.NOT_AVAILABLE]),
+            (1, [1, '', 0, False, error.NOT_AVAILABLE]),
+            (2, [1, 0, '', 0, False]), (3, [1, '', 0, False]),
+        ):
+            for name in ('TOCOL', 'TOROW'):
+                expected = [[value] for value in values] if name == 'TOCOL' else [values]
+                expression = name + '(DATA(),' + str(ignore) + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                    actual = p.parse(expression)['result']
+                    flat = [row[0] for row in actual] if name == 'TOCOL' else actual[0]
+                    self.assertIs(flat[-1] if ignore & 2 else flat[-2], False)
+        self.assertIsNone(data[0][1])
+        self.assertEqual(p.parse('IFERROR(TOROW(DATA()),99)'),
+                         {'result': [[1, 0, '', 0, False, 99]], 'error': None})
+
+    def test_vector_arguments_and_empty_results_are_handleable(self):
+        p = Parser()
+        for name in ('TOCOL', 'TOROW'):
+            for args, code in (
+                ('{1,2},4', '#VALUE!'), ('{1,2},-1', '#VALUE!'),
+                ('{1,2},"bad"', '#VALUE!'), ('{1,2},0,"1"', '#VALUE!'),
+                ('{1,2},0,""', '#VALUE!'), ('{1,2},0," true "', '#VALUE!'),
+                ('{1,2},#N/A', '#N/A'), ('{1,2},0,#DIV/0!', '#DIV/0!'),
+                ('#N/A,2', '#N/A'), ('{#N/A},2', '#CALC!'), ('NULL,1', '#CALC!'),
+            ):
+                expression = name + '(' + args + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = {'result': 77, 'error': None} if code == '#N/A' else {'result': None, 'error': code}
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+            for suffix in (',-0.5', ',3.9', ',"2"', ',NULL,NULL', ',TRUE()'):
+                expected = [[1], [2]] if name == 'TOCOL' else [[1, 2]]
+                self.assertEqual(p.parse(name + '({1,2}' + suffix + ')'),
+                                 {'result': expected, 'error': None})
+            for expression in (name + '()', name + '({1},0,FALSE(),1)'):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#ERROR!'})
+        self.assertEqual(p.parse('TOCOL({1,2;3,4},0,"TRUE")'),
+                         {'result': [[1], [3], [2], [4]], 'error': None})
+        self.assertIs(error.from_message('#CALC!'), error.CALC)
+        self.assertEqual(p.parse('IFERROR(#CALC!,99)'), {'result': 99, 'error': None})
+
+    def test_array_functions_handle_callbacks_tuples_ranges_and_invalid_shapes(self):
+        p = Parser()
+        for data in ([1, 2, 1], (1, 2, 1), [[1], [2], [1]], ((1,), (2,), (1,))):
+            original = copy.deepcopy(data)
+            p.set_function('DATA', lambda data=data: data)
+            for name, expected in (('TOCOL', [[1], [2], [1]]),
+                                   ('TOROW', [[1, 2, 1]]), ('UNIQUE', [[1], [2]])):
+                self.assertEqual(p.parse(name + '(DATA())'), {'result': expected, 'error': None})
+            self.assertEqual(data, original)
+        p.on('callRangeValue', lambda start, end, set_value: set_value([[1, 2], [3, 4]]))
+        self.assertEqual(p.parse('TOCOL(A1:B2)'), {'result': [[1], [2], [3], [4]], 'error': None})
+        for data in ([[1], [2, 3]], [1, [2]], [[[1]]]):
+            p.set_function('DATA', lambda data=data: data)
+            for name in ('TOCOL', 'TOROW', 'UNIQUE'):
+                self.assertEqual(p.parse(name + '(DATA())'), {'result': None, 'error': '#VALUE!'})
+        for data in ([], (), [[]]):
+            p.set_function('DATA', lambda data=data: data)
+            for name in ('TOCOL', 'TOROW', 'UNIQUE'):
+                self.assertEqual(p.parse(name + '(DATA())'), {'result': None, 'error': '#CALC!'})
+
+    def test_unique_rows_columns_and_exactly_once_preserve_first_occurrence(self):
+        p = Parser()
+        for expression, expected in (
+            ('UNIQUE({1;2;1;3})', [[1], [2], [3]]),
+            ('UNIQUE({1,2;1,2;3,4})', [[1, 2], [3, 4]]),
+            ('UNIQUE({1,1,2;3,3,4},TRUE())', [[1, 2], [3, 4]]),
+            ('UNIQUE({1;2;1;3},FALSE(),TRUE())', [[2], [3]]),
+            ('UNIQUE({1,1,2;3,3,4},TRUE(),TRUE())', [[2], [4]]),
+            ('UNIQUE({1;2;1},TRUE())', [[1], [2], [1]]),
+            ('UNIQUE({"a";"A";"b"})', [['a'], ['b']]),
+            ('UNIQUE(7)', [[7]]),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(p.parse('UNIQUE({1;1},FALSE(),TRUE())'),
+                         {'result': None, 'error': '#CALC!'})
+        for expression, code in (('UNIQUE(#N/A)', '#N/A'),
+                                  ('UNIQUE({1},"1")', '#VALUE!'),
+                                  ('UNIQUE({1},FALSE(),#DIV/0!)', '#DIV/0!')):
+            self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'), {'result': 99, 'error': None})
+
+    def test_unique_unicode_comparison_preserves_first_spelling(self):
+        p = Parser()
+        for left, right, equal in (
+            ('ß', 'SS', True), ('ß', 'ẞ', True), ('ﬀ', 'FF', True),
+            ('ı', 'I', False), ('K', 'K', True), ('é', 'É', True),
+            ('ſ', 'S', True),
+        ):
+            for by_col in (False, True):
+                values = [[left, right]] if by_col else [[left], [right]]
+                expected = [[left]] if equal else values
+                p.set_function('DATA', lambda values=values: values)
+                expression = 'UNIQUE(DATA(),' + ('TRUE()' if by_col else 'FALSE()')
+                with self.subTest(left=left, right=right, by_col=by_col):
+                    self.assertEqual(p.parse(expression + ')'), {'result': expected, 'error': None})
+                    once = ({'result': None, 'error': '#CALC!'} if equal
+                            else {'result': values, 'error': None})
+                    self.assertEqual(p.parse(expression + ',TRUE())'), once)
+
+    def test_unique_keeps_blank_number_text_boolean_and_error_categories(self):
+        p = Parser()
+        data = [None, 0, '', 1, True, '1', 'a', 'A', False,
+                error.NOT_AVAILABLE, error.NOT_AVAILABLE, error.DIV_ZERO, None, 0, ' ']
+        p.set_function('DATA', lambda: data)
+        expected = [[0], [0], [''], [1], [True], ['1'], ['a'], [False],
+                    [error.NOT_AVAILABLE], [error.DIV_ZERO], [' ']]
+        actual = p.parse('UNIQUE(DATA())')
+        self.assertEqual(actual, {'result': expected, 'error': None})
+        self.assertIs(actual['result'][4][0], True)
+        self.assertIs(actual['result'][7][0], False)
+        self.assertEqual(p.parse('UNIQUE(DATA(),FALSE(),TRUE())'),
+                         {'result': [[''], [1], [True], ['1'], [False], [error.DIV_ZERO], [' ']], 'error': None})
+        self.assertIsNone(data[0])
+        self.assertEqual(p.parse('IFNA(UNIQUE({#N/A;#N/A;#DIV/0!}),77)'),
+                         {'result': [[77], [error.DIV_ZERO]], 'error': None})
+
+    def test_array_functions_preserve_dates_and_normalize_averageif_inputs(self):
+        p = Parser()
+        day = datetime.datetime(2025, 1, 1)
+        p.set_function('DATES', lambda: [[day, day]])
+        self.assertEqual(p.parse('TOCOL(DATES())'), {'result': [[day], [day]], 'error': None})
+        self.assertEqual(p.parse('UNIQUE({DATE(2025,1,1),45658},TRUE())'),
+                         {'result': [[day]], 'error': None})
+        self.assertEqual(p.parse('AVERAGEIF(TOCOL({1,2,3}),">0",TOCOL({10;20;30}))'),
+                         {'result': 20, 'error': None})
+        self.assertEqual(p.parse('AVERAGEIF(TOROW({1;2;3}),">1",TOROW({10,20,30}))'),
+                         {'result': 25, 'error': None})
+
+    def test_array_functions_respect_vector_size_limits(self):
+        with mock.patch.object(utils, 'scan_array', side_effect=AssertionError('Should not scan')):
+            self.assertIs(formulas.get_for('TOCOL')([0] * 1048577), error.NUM)
+            self.assertIs(formulas.get_for('TOROW')([0] * 16385), error.NUM)
+        self.assertEqual(formulas.get_for('TOROW')([None] * 16385 + [7], ignore=1), [[7]])
+        p = Parser()
+        p.set_function('WIDE', lambda: [[0] * 16385])
+        self.assertEqual(p.parse('IFERROR(TOROW(WIDE()),99)'), {'result': 99, 'error': None})
+        self.assertEqual(p.parse('UNIQUE(WIDE())'), {'result': None, 'error': '#NUM!'})
+        self.assertEqual(p.parse('UNIQUE(WIDE(),TRUE())'), {'result': [[0]], 'error': None})
 
     def test_rows_counts_outer_entries(self):
         p = Parser()

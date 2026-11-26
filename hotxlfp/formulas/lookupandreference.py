@@ -1,10 +1,131 @@
 # -*- coding: utf-8 -*-
 import fnmatch
+import datetime
+from itertools import islice
 from . import dispatcher
 from . import error
 from . import utils
 from .utils import DEFAULT
-from .._compat import string_types
+from .._compat import number_types, string_types
+from ..helper.number import validate_number
+
+
+@dispatcher.register_for('TOCOL')
+@utils.propagate_errors()
+def TOCOL(array, ignore=0, scan_by_column=False):
+    return reshape_array(array, ignore, scan_by_column, as_column=True)
+
+
+@dispatcher.register_for('TOROW')
+@utils.propagate_errors()
+def TOROW(array, ignore=0, scan_by_column=False):
+    return reshape_array(array, ignore, scan_by_column, as_column=False)
+
+
+@dispatcher.register_for('UNIQUE')
+@utils.propagate_errors()
+def UNIQUE(array, by_col=False, exactly_once=False):
+    by_col = parse_array_flag(by_col)
+    exactly_once = parse_array_flag(exactly_once)
+    for value in (by_col, exactly_once):
+        if isinstance(value, error.XLError):
+            return value
+    if not isinstance(array, (list, tuple)):
+        array = [[array]]
+    shape = utils.array_shape(array)
+    if isinstance(shape, error.XLError):
+        return shape
+    if 0 in shape:
+        return error.CALC
+
+    def value_key(value):
+        """Keep Excel's value categories separate during duplicate comparisons."""
+        if isinstance(value, error.XLError):
+            return 'error', str(value)
+        if value is None or isinstance(value, bool):
+            return type(value), value
+        if isinstance(value, datetime.date):
+            try:
+                value = utils.serialize_date(value)
+            except (TypeError, ValueError, OverflowError):
+                return error.VALUE
+        if isinstance(value, number_types):
+            return 'number', value
+        if isinstance(value, string_types):
+            return 'text', value.casefold()
+        return error.VALUE
+
+    if any(isinstance(row, (list, tuple)) for row in array):
+        rows = array
+    else:
+        rows = ((value,) for value in array)
+    records = zip(*rows) if by_col else rows
+    distinct = {}
+    for record in records:
+        key = tuple(value_key(value) for value in record)
+        for value in key:
+            if isinstance(value, error.XLError):
+                return value
+        if key not in distinct:
+            distinct[key] = [record, 0]
+        distinct[key][1] += 1
+    selected = [list(record) for record, count in distinct.values()
+                if not exactly_once or count == 1]
+    if not selected:
+        return error.CALC
+    result = [list(row) for row in zip(*selected)] if by_col else selected
+    if len(result) > 1048576 or len(result[0]) > 16384:
+        return error.NUM
+    # Blank cells display as zero, but remain distinct from numeric zero while comparing.
+    return [[0 if value is None else value for value in row] for row in result]
+
+
+def parse_array_flag(value):
+    """Coerce a logical option, accepting TRUE/FALSE text but not numeric text."""
+    if value is None:
+        return False
+    if isinstance(value, error.XLError):
+        return value
+    if isinstance(value, number_types):
+        value = validate_number(value)
+        return value if isinstance(value, error.XLError) else bool(value)
+    if isinstance(value, string_types) and value.upper() in ('TRUE', 'FALSE'):
+        return value.upper() == 'TRUE'
+    return error.VALUE
+
+
+def reshape_array(array, ignore, scan_by_column, *, as_column):
+    """Validate an array and its options, then build one row or one column."""
+    ignore = utils.parse_number(0 if ignore is None else ignore)
+    scan_by_column = parse_array_flag(scan_by_column)
+    for value in (ignore, scan_by_column):
+        if isinstance(value, error.XLError):
+            return value
+    ignore = int(ignore)
+    if not 0 <= ignore <= 3:
+        return error.VALUE
+    if not isinstance(array, (list, tuple)):
+        array = [[array]]
+    shape = utils.array_shape(array)
+    if isinstance(shape, error.XLError):
+        return shape
+    limit = 1048576 if as_column else 16384
+    if ignore == 0 and shape[0] * shape[1] > limit:
+        return error.NUM
+    if not any(isinstance(row, (list, tuple)) for row in array):
+        array = ((value,) for value in array)
+    # A single column has the same scan order in either direction.
+    values = utils.scan_array(array, ignore, scan_by_column and shape[1] > 1)
+    if as_column:
+        result = [[value] for value in islice(values, limit + 1)]
+        count = len(result)
+    else:
+        row = list(islice(values, limit + 1))
+        result = [row]
+        count = len(row)
+    if count > limit:
+        return error.NUM
+    return result if count else error.CALC
 
 
 @dispatcher.register_for('ROWS')

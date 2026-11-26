@@ -57,6 +57,29 @@ def flatten(l):
     return list(iflatten(l))
 
 
+def scan_array(array, ignore=0, scan_by_column=False):
+    """Return a lazy iterator over a validated rectangular sequence of rows.
+
+    ignore controls which cells are skipped:
+        0: Keep all cells.
+        1: Skip blanks (None).
+        2: Skip XLError cells.
+        3: Skip both blanks and errors.
+    Retained blanks become 0; empty text stays unchanged.
+
+    scan_by_column controls traversal order:
+        False (default): Read each row left to right, then move down.
+        True: Read each column top to bottom, then move right.
+    For [[1, 2], [3, 4]], these produce 1, 2, 3, 4 and 1, 3, 2, 4.
+
+    The caller validates the array shape and normalizes these options.
+    """
+    rows = zip(*array) if scan_by_column else array
+    return (0 if value is None else value for row in rows for value in row
+            if not (ignore & 1 and value is None)
+            and not (ignore & 2 and isinstance(value, error.XLError)))
+
+
 def array_shape(array):
     """Return a two-dimensional shape, or an Excel error for an invalid array.
 
