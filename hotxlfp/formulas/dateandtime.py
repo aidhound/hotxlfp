@@ -37,7 +37,10 @@ def TIME(hour, minute, second):
 
 @dispatcher.register_for('DATEVALUE')
 def DATEVALUE(date):
-    return utils.serialize_date(date)
+    date = utils.parse_date(date)
+    if isinstance(date, error.XLError):
+        return date
+    return utils.serialize_date(date.date())
 
 
 @dispatcher.register_for('TIMEVALUE')

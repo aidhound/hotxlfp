@@ -4,6 +4,7 @@ import math
 from hotxlfp import Parser
 import datetime
 from hotxlfp.formulas import error
+from hotxlfp.formulas import utils
 
 
 class TestDateAndTime(unittest.TestCase):
@@ -21,7 +22,7 @@ class TestDateAndTime(unittest.TestCase):
             ('MINUTE(TIME(0,15,0))', 15), ('SECOND(TIME(0,0,1))', 1),
             ('DAYS(TIME(12,0,0),TIME(0,0,0))', 0),
             ('TIMEVALUE(TIME(12,0,0))', 0.5),
-            ('DATEVALUE(TIME(12,0,0))', 0.5),
+            ('DATEVALUE(TIME(12,0,0))', 0),
             ('DATE(1900,1,1)=1', True), ('DATE(1900,1,1)=0', False),
             ('DATEVALUE(DATE(1900,1,1))', 1),
         ):
@@ -49,6 +50,7 @@ class TestDateAndTime(unittest.TestCase):
         for name, valid_args in (
             ('DATE', ['2025', '1', '1']),
             ('TIME', ['12', '30', '45']),
+            ('DATEVALUE', ['"2025-01-01 12:00:00"']),
             ('TIMEVALUE', ['"12:00"']),
             ('WEEKDAY', ['DATE(2025,1,1)', '2']),
             ('DATEDIF', ['DATE(2024,1,1)', 'DATE(2025,1,1)', '"d"']),
@@ -74,6 +76,7 @@ class TestDateAndTime(unittest.TestCase):
         p = Parser()
         for source, code in (('"bad"', '#VALUE!'), ('"NaN"', '#NUM!'), ('-1', '#NUM!')):
             for expression in (
+                'DATEVALUE(' + source + ')',
                 'TIMEVALUE(' + source + ')', 'WEEKDAY(' + source + ')',
                 'DATEDIF(' + source + ',DATE(2025,1,1),"d")',
                 'DATEDIF(DATE(2024,1,1),' + source + ',"d")',
@@ -238,6 +241,39 @@ class TestDateAndTime(unittest.TestCase):
         for expression in ('HOUR(-0.5)', 'MINUTE(-0.5)', 'SECOND(-0.5)'):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+
+    def test_datevalue_discards_time_for_text_serials_and_native_dates(self):
+        p = Parser()
+        p.set_function('NOON', lambda: datetime.datetime(2025, 1, 1, 12))
+        p.set_function('DATEONLY', lambda: datetime.date(2025, 1, 1))
+        for expression, expected in (
+            ('DATEVALUE("2025-01-01 12:00:00")', 45658),
+            ('DATEVALUE("2025-01-01 23:59:59")', 45658),
+            ('DATEVALUE(NOON())', 45658),
+            ('DATEVALUE(DATEONLY())', 45658),
+            ('DATEVALUE(45658.5)', 45658),
+            ('DATEVALUE("45658.5")', 45658),
+            ('DATEVALUE(0.5)', 0),
+            ('DATEVALUE("1900-02-28 12:00:00")', 59),
+            ('DATEVALUE("1900-03-01 12:00:00")', 61),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_datevalue_keeps_fractional_serialization_and_arithmetic(self):
+        p = Parser()
+        noon = datetime.datetime(2025, 1, 1, 12)
+        p.set_function('NOON', lambda: noon)
+        self.assertEqual(utils.serialize_date(noon), 45658.5)
+        for expression, expected in (
+            ('NOON()-DATE(2025,1,1)', 0.5),
+            ('TIMEVALUE(NOON())', 0.5),
+            ('HOUR(NOON())', 12),
+            ('N(NOON())-DATEVALUE(NOON())', 0.5),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+        self.assertEqual(noon, datetime.datetime(2025, 1, 1, 12))
 
     def test_datevalue_uses_excel_serials_at_1900_boundaries(self):
         p = Parser()

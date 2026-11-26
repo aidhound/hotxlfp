@@ -15,7 +15,7 @@ supplied through callbacks retain their original shapes.
 * Correct numeric-text, logical and error criteria matching. Compile wildcard patterns once, with case-insensitive matching, Excel tilde escapes and literal brackets/path separators.
 * Fix conditional aggregation of numeric text and blanks, selected-error handling, range/argument validation, empty averages and `LARGE` rank validation.
 * Standardize blank, boolean and numeric text conversion across text functions and `&`. Fix slicing arguments, `SUBSTITUTE` deletion and concatenation precedence; add value-preserving unary plus.
-* Correct 1900 date serialization, fractional times, zero/time identity, `EDATE` month shifts and `DAYS` truncation. Preserve date results for day shifts and numeric results for date differences.
+* Correct 1900 date serialization, fractional times, zero/time identity, `EDATE` month shifts and time truncation in `DATEVALUE`/`DAYS`. Preserve date results for day shifts and numeric results for date differences.
 
 ## 1.0.3
 
