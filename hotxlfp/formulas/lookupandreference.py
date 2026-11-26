@@ -69,13 +69,15 @@ def UNIQUE(array, by_col=False, exactly_once=False):
         if key not in distinct:
             distinct[key] = [record, 0]
         distinct[key][1] += 1
-    selected = [list(record) for record, count in distinct.values()
+    selected = [record for record, count in distinct.values()
                 if not exactly_once or count == 1]
     if not selected:
         return error.CALC
-    result = [list(row) for row in zip(*selected)] if by_col else selected
-    if len(result) > 1048576 or len(result[0]) > 16384:
+    row_count = shape[0] if by_col else len(selected)
+    column_count = len(selected) if by_col else shape[1]
+    if row_count > 1048576 or column_count > 16384:
         return error.NUM
+    result = zip(*selected) if by_col else selected
     # Blank cells display as zero, but remain distinct from numeric zero while comparing.
     return [[0 if value is None else value for value in row] for row in result]
 
