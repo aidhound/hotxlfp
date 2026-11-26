@@ -6,6 +6,150 @@ from hotxlfp import Parser
 
 class TestMathTrig(unittest.TestCase):
 
+    def assert_formula_cases(self, cases, parser=None):
+        parser = parser or Parser()
+        for expression, expected in cases:
+            is_error = isinstance(expected, str) and expected.startswith('#')
+            result = ({'result': None, 'error': expected} if is_error
+                      else {'result': expected, 'error': None})
+            with self.subTest(expression=expression):
+                self.assertEqual(parser.parse(expression), result)
+                self.assertEqual(parser.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99 if is_error else expected, 'error': None})
+                na_result = {'result': 77, 'error': None} if expected == '#N/A' else result
+                self.assertEqual(parser.parse('IFNA(' + expression + ',77)'), na_result)
+
+    def test_rounding_uses_excel_ties_truncated_digits_and_extreme_scales(self):
+        self.assert_formula_cases((
+            ('ROUND(2.5,0)', 3), ('ROUND(-2.5,0)', -3), ('ROUND(1.005,2)', 1.01),
+            ('ROUND(12.345,1.9)', 12.3), ('ROUNDUP(12.345,1.9)', 12.4),
+            ('ROUNDDOWN(12.345,1.9)', 12.3), ('ROUND(125,-1)', 130),
+            ('ROUNDUP(-12.34,1)', -12.4), ('ROUNDDOWN(-12.34,1)', -12.3),
+            ('ROUNDUP(1.01,2)', 1.01), ('ROUNDDOWN(1.01,2)', 1.01),
+            ('ROUND(TRUE(),1)', 1), ('ROUNDUP(TRUE(),1)', 1),
+            ('ROUNDDOWN(FALSE(),0)', 0),
+            ('ROUND(1,1000)', 1), ('ROUNDUP(1,1000)', 1), ('ROUNDDOWN(1,1000)', 1),
+            ('ROUND(1,-1000)', 0), ('ROUNDUP(1,-1000)', '#NUM!'),
+            ('ROUNDDOWN(1,-1000)', 0), ('ROUNDUP(0,-1000)', 0),
+            ('ROUND("9e307",0)', 9e307), ('ROUNDUP("9e307",2)', 9e307),
+            ('ROUNDDOWN("9e307",2)', 9e307),
+        ))
+
+    def test_rounding_aliases_have_their_own_sign_and_mode_rules(self):
+        self.assert_formula_cases((
+            ('CEILING(-2.5,-2)', -4), ('FLOOR(-2.5,-2)', -2),
+            ('CEILING(2.5,-2)', '#NUM!'), ('FLOOR(5,0)', '#DIV/0!'),
+            ('FLOOR(0,0)', 0), ('FLOOR.MATH(0,0)', 0), ('CEILING(0,-1)', 0),
+            ('CEILING.MATH(-2.5,-2)', -2), ('CEILING.PRECISE(-2.5,-2)', -2),
+            ('FLOOR.MATH(-2.5,-2)', -4), ('FLOOR.PRECISE(-2.5,-2)', -4),
+            ('CEILING.MATH(-2.5,2,1)', -4), ('FLOOR.MATH(-2.5,2,1)', -2),
+            ('CEILING.MATH(2.5,-2,1)', 4), ('FLOOR.MATH(2.5,-2,1)', 2),
+            ('CEILING.PRECISE(5,0)', 0), ('FLOOR.PRECISE(5,0)', 0),
+            ('CEILING("9e307","1e-307")', '#NUM!'),
+            ('FLOOR("9e307","1e-307")', '#NUM!'),
+            ('QUOTIENT("9e307","1e-307")', '#NUM!'),
+            ('MOD("9e307","1e-307")', '#NUM!'),
+        ))
+
+    def test_base_conversions_validate_radices_digits_and_padding(self):
+        self.assert_formula_cases((
+            ('BASE(0,2,4)', '0000'), ('BASE(255,16)', 'FF'), ('BASE(35,36)', 'Z'),
+            ('BASE(7,2,1)', '111'), ('BASE(7.9,2.9,4.9)', '0111'),
+            ('BASE(-0.5,2)', '#NUM!'), ('BASE(1,0)', '#NUM!'),
+            ('BASE(1,1)', '#NUM!'), ('BASE(1,1.9)', '#NUM!'),
+            ('BASE(1,-2)', '#NUM!'), ('BASE(1,37)', '#NUM!'),
+            ('BASE(1,36.9)', '1'), ('BASE(1,2,-0.5)', '#NUM!'),
+            ('BASE(1,2,256)', '#NUM!'), ('BASE(2^53,2)', '#NUM!'),
+            ('DECIMAL("10000000000",16)', 1099511627776),
+            ('DECIMAL("FFFFFFFFFF",16)', 1099511627775),
+            ('DECIMAL("FF",16.9)', 255), ('DECIMAL("",10)', 0),
+            ('DECIMAL("10",1)', '#NUM!'), ('DECIMAL("10",37)', '#NUM!'),
+            ('DECIMAL("1_0",10)', '#NUM!'), ('DECIMAL("+10",10)', '#NUM!'),
+            ('DECIMAL("-10",10)', '#NUM!'), ('DECIMAL(" 10 ",10)', '#NUM!'),
+            ('DECIMAL("GG",16)', '#NUM!'),
+            ('DECIMAL("0x10",16)', 16), ('DECIMAL("0b10",2)', '#NUM!'),
+            ('DECIMAL("0o10",8)', '#NUM!'),
+            ('DECIMAL("0x",16)', 0),
+            ('DECIMAL("' + '1' * 256 + '",2)', '#NUM!'),
+            ('DECIMAL("' + 'Z' * 255 + '",36)', '#NUM!'),
+        ))
+
+    def test_factorial_limits_and_roman_conversions(self):
+        self.assert_formula_cases((
+            ('FACT(170)', math.factorial(170)), ('FACT(171)', '#NUM!'),
+            ('FACT(170.9)', math.factorial(170)), ('FACT(-0.5)', '#NUM!'),
+            ('FACTDOUBLE(300)', math.prod(range(300, 1, -2))),
+            ('FACTDOUBLE(301)', '#NUM!'), ('FACTDOUBLE(-0.5)', 1),
+            ('ROMAN(0)', ''), ('ROMAN(-0.5)', ''), ('ROMAN(4.9)', 'IV'),
+            ('ROMAN(4,-0.5)', 'IV'), ('ROMAN(499,1.9)', 'LDVLIV'),
+            ('ROMAN(499,4.9)', 'ID'), ('ARABIC("-IV")', -4),
+            ('ARABIC("ID")', 499), ('ARABIC("IIII")', 4), ('ARABIC("IIV")', 3),
+            ('ARABIC("VX")', 5), ('ARABIC("IL")', 49), ('ARABIC(" IV ")', 4),
+            ('ARABIC(" ")', 0), ('ARABIC("invalid")', '#VALUE!'),
+            ('ARABIC("-")', '#NUM!'), ('ARABIC("- ")', '#NUM!'),
+            ('ARABIC("- IV")', '#VALUE!'),
+            ('ARABIC("' + 'I' * 256 + '")', '#VALUE!'),
+        ))
+
+    def test_product_handles_empty_arrays_and_scalar_text(self):
+        p = Parser()
+        p.set_function('EMPTY', lambda: [])
+        self.assert_formula_cases((
+            ('PRODUCT()', '#ERROR!'), ('PRODUCT(EMPTY())', 0),
+            ('PRODUCT({"text",NULL})', 0), ('PRODUCT("2",3)', 6),
+            ('PRODUCT({"2",3})', 3), ('PRODUCT(1,2,"aa")', '#VALUE!'),
+            ('PRODUCT({1,#N/A})', '#N/A'), ('PRODUCT({1,#DIV/0!})', '#DIV/0!'),
+            ('ODD(0)', 1), ('EVEN(0)', 0), ('INT("-2.5")', -3), ('SIGN("-2.5")', -1),
+        ), p)
+
+    def test_random_bounds_and_numeric_overflow_remain_handleable(self):
+        p = Parser()
+        p.set_function('HUGE', lambda: 10**400)
+        for name in ('RADIANS', 'DEGREES'):
+            self.assert_formula_cases(((name + '(HUGE())', '#NUM!'),), p)
+        self.assert_formula_cases((
+            ('RANDBETWEEN(2,1)', '#NUM!'), ('RANDBETWEEN(1.2,1.9)', 2),
+            ('RANDBETWEEN(1.2,2.9)', 2), ('RANDBETWEEN(-1.9,-1.2)', -1),
+            ('RANDBETWEEN(1.2,1.2)', 2), ('RANDBETWEEN(1.9,2.1)', 2),
+            ('POWER(2,HUGE())', '#NUM!'), ('FACT(HUGE())', '#NUM!'),
+            ('FACTDOUBLE(HUGE())', '#NUM!'), ('BASE(HUGE(),2)', '#NUM!'),
+            ('SUM(HUGE(),0.5)', '#NUM!'), ('PRODUCT(HUGE(),0.5)', '#NUM!'),
+            ('DEGREES("9e307")', '#NUM!'),
+        ), p)
+        for expression, expected in (('RADIANS("9e307")', 1.5707963267948965e306),
+                                     ('DEGREES("1e306")', 5.729577951308232e307)):
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertIsNone(result['error'])
+                self.assertTrue(math.isclose(result['result'], expected, rel_tol=1e-14))
+        for unused in range(100):
+            result = p.parse('RANDBETWEEN(-2,2)')
+            self.assertIsNone(result['error'])
+            self.assertIn(result['result'], range(-2, 3))
+
+    def test_math_consumers_preserve_argument_and_conversion_errors(self):
+        p = Parser()
+        functions = (
+            ('LOG', ['8', '2']), ('ROUND', ['1', '0']), ('ROUNDUP', ['1', '0']),
+            ('ROUNDDOWN', ['1', '0']), ('CEILING', ['1', '1']), ('FLOOR', ['1', '1']),
+            ('CEILING.MATH', ['1', '1', '0']), ('FLOOR.MATH', ['1', '1', '0']),
+            ('CEILING.PRECISE', ['1', '1']), ('FLOOR.PRECISE', ['1', '1']),
+            ('POWER', ['2', '2']), ('QUOTIENT', ['4', '2']), ('MOD', ['4', '2']),
+            ('DECIMAL', ['"10"', '2']), ('BASE', ['7', '2', '4']),
+            ('ROMAN', ['4', '0']), ('RANDBETWEEN', ['1', '2']),
+            ('INT', ['1']), ('SIGN', ['1']),
+        )
+        for name, values in functions:
+            for position in range(len(values)):
+                for source, code in (('#N/A', '#N/A'), ('#DIV/0!', '#DIV/0!'),
+                                     ('"NaN"', '#NUM!')):
+                    # DECIMAL's first argument is text, not a numeric argument.
+                    if name == 'DECIMAL' and position == 0 and source == '"NaN"':
+                        continue
+                    args = values.copy()
+                    args[position] = source
+                    self.assert_formula_cases(((name + '(' + ','.join(args) + ')', code),), p)
+
     def test_abs(self):
         p = Parser(debug=True)
         ret = p.parse('ABS(1)')
@@ -708,6 +852,51 @@ class TestMathTrig(unittest.TestCase):
         self.assertTrue(str(ret['result']).startswith('5.656854249'))
         self.assertEqual(ret['error'], None)
 
+    def test_power_domain_and_overflow_errors_are_handleable(self):
+        p = Parser()
+        for args, code in (
+            ('0,0', '#NUM!'), ('0,-1', '#DIV/0!'), ('"0","-0.5"', '#DIV/0!'),
+            ('-4,0.5', '#NUM!'), ('-8,2/3', '#NUM!'), ('-32,3/5', '#NUM!'),
+            ('10,400', '#NUM!'), ('10.0,400', '#NUM!'), ('"1e308",2', '#NUM!'),
+        ):
+            expression = 'POWER(' + args + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': code})
+
+    def test_power_keeps_real_negative_roots_and_valid_powers(self):
+        p = Parser()
+        for args, expected in (
+            ('-8,1/3', -2), ('-8,-1/3', -0.5), ('-32,1/5', -2),
+            ('"-32","0.2"', -2), ('-2,3', -8), ('-2,2', 4),
+            ('-2,-3', -0.125), ('2,-3', 0.125), ('4,0.5', 2),
+            ('0,2', 0), ('5,0', 1), ('"5","2"', 25),
+        ):
+            expression = 'POWER(' + args + ')'
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertIsNone(result['error'])
+                self.assertAlmostEqual(result['result'], expected)
+
+    def test_power_preserves_input_errors_in_each_argument(self):
+        p = Parser()
+        for args, code in (
+            ('#N/A,2', '#N/A'), ('2,#N/A', '#N/A'),
+            ('#DIV/0!,2', '#DIV/0!'), ('2,#DIV/0!', '#DIV/0!'),
+            ('#N/A,#DIV/0!', '#N/A'), ('"bad",2', '#VALUE!'), ('2,"bad"', '#VALUE!'),
+        ):
+            expression = 'POWER(' + args + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
     def test_product(self):
         p = Parser(debug=True)
         ret = p.parse('PRODUCT(10)')
@@ -717,11 +906,11 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], 2)
         self.assertEqual(ret['error'], None)
         ret = p.parse('PRODUCT(1;2;"aa")')
-        self.assertEqual(ret['result'], 2)
-        self.assertEqual(ret['error'], None)
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')
         ret = p.parse('PRODUCT(1;2;{4;5};"aa")')
-        self.assertEqual(ret['result'], 40)
-        self.assertEqual(ret['error'], None)
+        self.assertEqual(ret['result'], None)
+        self.assertEqual(ret['error'], '#VALUE!')
 
     def test_odd(self):
         p = Parser(debug=True)
@@ -878,8 +1067,8 @@ class TestMathTrig(unittest.TestCase):
         self.assertEqual(ret['result'], 499)
         self.assertEqual(ret['error'], None)
         ret = p.parse('ARABIC(ROMAN(499, 4))')
-        self.assertEqual(ret['result'], None)
-        self.assertEqual(ret['error'], '#VALUE!')
+        self.assertEqual(ret['result'], 499)
+        self.assertEqual(ret['error'], None)
 
     def test_rand(self):
         p = Parser()

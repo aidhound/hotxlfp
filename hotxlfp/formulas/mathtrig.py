@@ -9,11 +9,12 @@ import re
 from functools import reduce
 import operator
 import collections
+import decimal
 from . import dispatcher
 from . import error
 from . import utils
 from .utils import DEFAULT
-from ..helper.number import to_number
+from ..helper.number import to_number, validate_number
 from .._compat import string_types
 from ..helper.text import to_string
 
@@ -244,8 +245,9 @@ def LN(number):
 def LOG(number, base=10):
     number = utils.parse_number(number)
     base = utils.parse_number(base)
-    if utils.any_is_error((number, base)):
-        return error.VALUE
+    for value in (number, base):
+        if isinstance(value, error.XLError):
+            return value
     try:
         return math.log(number, base)
     except ZeroDivisionError:
@@ -267,38 +269,52 @@ def PI():
 @dispatcher.register_for('ROUND')
 @utils.propagate_errors()
 def ROUND(number, digits):
-    number = utils.parse_number(number)
-    digits = utils.parse_number(digits)
-    if utils.any_is_error((number, digits)):
-        return error.VALUE
-    return round(number, digits)
+    return round_number(number, digits, decimal.ROUND_HALF_UP)
 
 
 @dispatcher.register_for('ROUNDUP')
 @utils.propagate_errors()
 def ROUNDUP(number, digits):
-    number = utils.parse_number(number)
-    digits = utils.parse_number(digits)
-    if utils.any_is_error((number, digits)):
-        return error.VALUE
-    sign = 1 if number > 0 else -1
-    return sign * (math.ceil(abs(number) * 10**digits)) / 10**digits
+    return round_number(number, digits, decimal.ROUND_UP)
 
 
 @dispatcher.register_for('ROUNDDOWN')
 @utils.propagate_errors()
 def ROUNDDOWN(number, digits):
+    return round_number(number, digits, decimal.ROUND_DOWN)
+
+
+def round_number(number, digits, rounding):
+    """Round decimal places without overflowing an intermediate power of ten."""
     number = utils.parse_number(number)
     digits = utils.parse_number(digits)
-    if utils.any_is_error((number, digits)):
-        return error.VALUE
-    sign = 1 if number > 0 else -1
-    return sign * (math.floor(abs(number) * 10**digits)) / 10**digits
+    for value in (number, digits):
+        if isinstance(value, error.XLError):
+            return value
+    if isinstance(number, bool):
+        number = int(number)
+    digits = int(digits)
+    # Avoid constructing decimal scales beyond the finite float range.
+    if number == 0 or digits > 323:
+        return number
+    if digits < -308:
+        return error.NUM if rounding == decimal.ROUND_UP else 0
+    try:
+        value = decimal.Decimal(number) if isinstance(number, int) else decimal.Decimal(str(number))
+        with decimal.localcontext() as context:
+            context.prec = max(28, len(value.as_tuple().digits), value.adjusted() + digits + 2)
+            result = value.quantize(decimal.Decimal(1).scaleb(-digits), rounding=rounding)
+        return validate_number(float(result))
+    except (decimal.InvalidOperation, OverflowError, ValueError):
+        return error.NUM
 
 
 @dispatcher.register_for('SUM')
 def SUM(*args):
-    return sum(utils.inumbers(args, try_parse=True))
+    try:
+        return sum(utils.inumbers(args, try_parse=True))
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('SUMIF')
@@ -308,49 +324,92 @@ def SUMIF(args, criteria):
     return SUM(values)
 
 
-@dispatcher.register_for('CEILING', 'CEILING.MATH', 'CEILING.PRECISE')
+@dispatcher.register_for('CEILING')
 @utils.propagate_errors()
 def CEILING(number, significance=1):
     number = utils.parse_number(number)
     significance = utils.parse_number(significance)
 
-    if utils.any_is_error((number, significance)):
-        return error.VALUE
+    for value in (number, significance):
+        if isinstance(value, error.XLError):
+            return value
     if significance == 0:
         return 0
+    if number > 0 and significance < 0:
+        return error.NUM
 
     positive_significance = significance > 0
     significance = abs(significance)
-    if number >= 0:
-        return math.ceil(number / significance) * significance
-    else:
+    try:
+        if number >= 0:
+            return math.ceil(number / significance) * significance
         if positive_significance:
             return -1 * math.floor(abs(number) / significance) * significance
-        else:
-            return -1 * math.ceil(abs(number) / significance) * significance
+        return -1 * math.ceil(abs(number) / significance) * significance
+    except (OverflowError, ValueError):
+        return error.NUM
 
 
-@dispatcher.register_for('FLOOR', 'FLOOR.MATH', 'FLOOR.PRECISE')
+@dispatcher.register_for('FLOOR')
 @utils.propagate_errors()
 def FLOOR(number, significance=1):
     number = utils.parse_number(number)
     significance = utils.parse_number(significance)
 
-    if utils.any_is_error((number, significance)):
-        return error.VALUE
+    for value in (number, significance):
+        if isinstance(value, error.XLError):
+            return value
     if significance == 0:
-        return 0
+        return 0 if number == 0 else error.DIV_ZERO
     if number > 0 and not significance > 0:
         return error.NUM
 
     abs_significance = abs(significance)
-    if number >= 0:
-        return math.floor(number / abs_significance) * abs_significance
-    else:
+    try:
+        if number >= 0:
+            return math.floor(number / abs_significance) * abs_significance
         func = math.floor
         if significance > 0:
             func = math.ceil
         return -1 * func(abs(number) / abs_significance) * abs_significance
+    except (OverflowError, ValueError):
+        return error.NUM
+
+
+@dispatcher.register_for('CEILING.MATH')
+@utils.propagate_errors()
+def CEILING_MATH(number, significance=1, mode=0):
+    number, significance, mode = map(utils.parse_number, (number, significance, mode))
+    for value in (number, significance, mode):
+        if isinstance(value, error.XLError):
+            return value
+    significance = abs(significance)
+    return CEILING(number, -significance if number < 0 and mode != 0 else significance)
+
+
+@dispatcher.register_for('CEILING.PRECISE')
+@utils.propagate_errors()
+def CEILING_PRECISE(number, significance=1):
+    return CEILING_MATH(number, significance)
+
+
+@dispatcher.register_for('FLOOR.MATH')
+@utils.propagate_errors()
+def FLOOR_MATH(number, significance=1, mode=0):
+    number, significance, mode = map(utils.parse_number, (number, significance, mode))
+    for value in (number, significance, mode):
+        if isinstance(value, error.XLError):
+            return value
+    significance = abs(significance)
+    if significance == 0:
+        return 0
+    return FLOOR(number, -significance if number < 0 and mode != 0 else significance)
+
+
+@dispatcher.register_for('FLOOR.PRECISE')
+@utils.propagate_errors()
+def FLOOR_PRECISE(number, significance=1):
+    return FLOOR_MATH(number, significance)
 
 
 @dispatcher.register_for('POWER')
@@ -358,12 +417,29 @@ def FLOOR(number, significance=1):
 def POWER(number, power):
     number = utils.parse_number(number)
     power = utils.parse_number(power)
-    if utils.any_is_error((number, power)):
-        return error.VALUE
-    result = number**power
-    if math.isnan(result):
+    for value in (number, power):
+        if isinstance(value, error.XLError):
+            return value
+    if number == 0 and power == 0:
         return error.NUM
-    return result
+    negative_root = number < 0 and power % 1 != 0
+    if negative_root:
+        # Excel accepts negative roots when 1/power is an odd integer.
+        if (1 / power) % 2 != 1:
+            return error.NUM
+        number = -number
+    # Even the smallest integer base above one overflows at 2**1024.
+    if isinstance(number, int) and isinstance(power, int) and abs(number) > 1 and power >= 1024:
+        return error.NUM
+    try:
+        result = number**power
+        if not math.isfinite(result):
+            return error.NUM
+    except ZeroDivisionError:
+        return error.DIV_ZERO
+    except (ValueError, OverflowError):
+        return error.NUM
+    return -result if negative_root else result
 
 
 @dispatcher.register_for('QUOTIENT')
@@ -371,14 +447,19 @@ def POWER(number, power):
 def QUOTIENT(numerator, denominator):
     numerator = utils.parse_number(numerator)
     denominator = utils.parse_number(denominator)
-    if utils.any_is_error((numerator, denominator)):
-        return error.VALUE
+    for value in (numerator, denominator):
+        if isinstance(value, error.XLError):
+            return value
     if denominator == 0:
         return error.DIV_ZERO
-    return int(numerator / denominator)
+    try:
+        return int(numerator / denominator)
+    except (OverflowError, ValueError):
+        return error.NUM
 
 
 @dispatcher.register_for('MOD')
+@utils.propagate_errors()
 def MOD(numerator, denominator):
     numerator = utils.parse_number(numerator)
     denominator = utils.parse_number(denominator)
@@ -388,8 +469,12 @@ def MOD(numerator, denominator):
         return denominator
     if denominator == 0:
         return error.DIV_ZERO
-    modulus = abs(numerator % denominator)
-    return modulus if denominator > 0 else -modulus
+    try:
+        if not math.isfinite(numerator / denominator):
+            return error.NUM
+        return numerator % denominator
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('RADIANS')
@@ -397,7 +482,10 @@ def RADIANS(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return number * math.pi / 180
+    try:
+        return validate_number(number * (math.pi / 180))
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('DEGREES')
@@ -405,12 +493,29 @@ def DEGREES(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    return number * 180 / math.pi
+    try:
+        return validate_number(number * (180 / math.pi))
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('PRODUCT')
 def PRODUCT(*args):
-    return reduce(operator.mul, utils.inumbers(args))
+    if not args:
+        return error.ERROR
+    values = []
+    for value in args:
+        if isinstance(value, (list, tuple)):
+            values.extend(utils.inumbers(value))
+        elif value is not None:
+            value = utils.parse_number(value)
+            if isinstance(value, error.XLError):
+                return value
+            values.append(value)
+    try:
+        return reduce(operator.mul, values) if values else 0
+    except OverflowError:
+        return error.NUM
 
 
 @dispatcher.register_for('ODD')
@@ -420,7 +525,7 @@ def ODD(number):
         return number
     tmp = math.ceil(abs(number))
     tmp = tmp if (tmp % 2) == 1 else tmp + 1
-    return tmp if number > 0 else -tmp
+    return tmp if number >= 0 else -tmp
 
 
 @dispatcher.register_for('EVEN')
@@ -436,18 +541,27 @@ def EVEN(number):
 @dispatcher.register_for('DECIMAL')
 @utils.propagate_errors()
 def DECIMAL(text, base):
-    text = to_string(text)
+    text = to_string(text).upper()
     base = utils.parse_number(base)
     if isinstance(base, error.XLError):
         return base
+    base = int(base)
+    if not 2 <= base <= 36 or len(text) > 255 or re.fullmatch('[0-9A-Z]*', text) is None:
+        return error.NUM
+    if base == 16 and text.startswith('0X'):
+        text = text[2:]
+    alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[:base]
+    if any(character not in alphabet for character in text):
+        return error.NUM
     try:
-        dec = int(text, base)
-        return (dec - 1099511627776) if (dec >= 549755813888) else dec
-    except ValueError:
-        return error.VALUE
+        result = int(text, base) if text else 0
+        return result if math.isfinite(result) else error.NUM
+    except (ValueError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('BASE')
+@utils.propagate_errors()
 def BASE(value, base, places=DEFAULT):
     value = utils.parse_number(value)
     if isinstance(value, error.XLError):
@@ -455,22 +569,23 @@ def BASE(value, base, places=DEFAULT):
     base = utils.parse_number(base)
     if isinstance(base, error.XLError):
         return base
+    base = int(base)
+    if not 0 <= value < 2**53 or not 2 <= base <= 36:
+        return error.NUM
+    value = int(value)
     if places is not DEFAULT:
         places = utils.parse_number(places)
         if isinstance(places, error.XLError):
             return places
-        if places < 0:
+        if places < 0 or int(places) > 255:
             return error.NUM
-    if value == 0:
-        return '0'
+        places = int(places)
     digits = []
     while value:
-        digits.append(int(value % base))
+        digits.append('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[value % base])
         value //= base
-    result = ''.join(str(n) for n in digits[::-1])
+    result = ''.join(digits[::-1]) or '0'
     if places is not DEFAULT:
-        if len(result) > places:
-            return error.NUM
         result = result.rjust(places, '0')
     return result
 
@@ -480,7 +595,7 @@ def FACT(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    if number < 0:
+    if number < 0 or int(number) > 170:
         return error.NUM
     return math.factorial(int(number))
 
@@ -490,9 +605,9 @@ def FACTDOUBLE(number):
     number = utils.parse_number(number)
     if isinstance(number, error.XLError):
         return number
-    if number < 0:
-        return error.NUM
     number = int(number)
+    if number < 0 or number > 300:
+        return error.NUM
     if number in (0, 1):
         return 1
     return reduce(operator.mul, range(number, 1, -2))
@@ -508,11 +623,13 @@ def ROMAN(number, form=0):
     elif form is False:
         form = 4
     
-    if utils.any_is_error((number, form)):
-        return error.VALUE
+    for value in (number, form):
+        if isinstance(value, error.XLError):
+            return value
+    number, form = int(number), int(form)
 
-    if not (0 < number < 4000 and 0 <= form <= 4):
-        return error.VALUE # number must be between 1 and 3999
+    if not (0 <= number < 4000 and 0 <= form <= 4):
+        return error.VALUE
 
     def numerals(compress):
         numeral_map = ((1000, 'M'), (500, 'D'), (100, 'C'), (50, 'L'), (10, 'X'), (5, 'V'), (1, 'I'))
@@ -546,28 +663,23 @@ def ROMAN(number, form=0):
 @utils.propagate_errors()
 def ARABIC(text):
     text = to_string(text).upper()
-    roman_numeral_regex = '^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$'
-
-    if re.search(roman_numeral_regex, text) is None:
+    if len(text) > 255:
         return error.VALUE
-
-    numeral_map = {
-        'M': 1000,
-        'CM': 900,
-        'D': 500,
-        'CD': 400,
-        'C': 100,
-        'XC': 90,
-        'L': 50,
-        'XL': 40,
-        'X': 10,
-        'IX': 9,
-        'V': 5,
-        'IV': 4,
-        'I': 1
-    }
-    result = 0
-    return sum(numeral_map[match.group()] for match in re.finditer('[MDLV]|C[MD]?|X[CL]?|I[XV]?', text))
+    text = text.strip()
+    sign = -1 if text.startswith('-') else 1
+    if sign < 0:
+        text = text[1:]
+        if not text.strip():
+            return error.NUM
+    if re.fullmatch('[MDCLXVI]*', text) is None:
+        return error.VALUE
+    numeral_map = dict(M=1000, D=500, C=100, L=50, X=10, V=5, I=1)
+    result, largest = 0, 0
+    for character in reversed(text):
+        value = numeral_map[character]
+        result += -value if value < largest else value
+        largest = max(largest, value)
+    return sign * result
 
 
 @dispatcher.register_for('RAND')
@@ -581,23 +693,22 @@ def RANDBETWEEN(bottom, top):
     bottom = utils.parse_number(bottom)
     top = utils.parse_number(top)
     
-    if utils.any_is_error((bottom, top)):
-        return error.VALUE
-
-    return random.randint(int(bottom), int(top))
+    for value in (bottom, top):
+        if isinstance(value, error.XLError):
+            return value
+    if bottom > top:
+        return error.NUM
+    bottom = math.ceil(bottom)
+    return random.randint(bottom, max(bottom, math.floor(top)))
 
 
 @dispatcher.register_for('INT')
 @utils.propagate_errors()
 def INT(number):
-    if not isinstance(number, (int, float)):
-        return error.VALUE
-    if number >= 0:
-        return int(number)
-    elif int(number) > number:
-        return int(number)-1
-    else:
-        return int(number)
+    number = utils.parse_number(number)
+    if isinstance(number, error.XLError):
+        return number
+    return math.floor(number)
 
 
 @dispatcher.register_for('SUMIFS')
@@ -630,8 +741,9 @@ def SUMIFS(sum_args, *criteria):
 @dispatcher.register_for('SIGN')
 @utils.propagate_errors()
 def SIGN(number):
-    if not isinstance(number, (int, float)):
-        return error.VALUE
+    number = utils.parse_number(number)
+    if isinstance(number, error.XLError):
+        return number
     if number == 0:
         return 0
     if number > 0:

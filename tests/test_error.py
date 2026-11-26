@@ -321,7 +321,9 @@ class TestError(unittest.TestCase):
                                ('FLOOR.MATH', 2), ('FLOOR.PRECISE', 2)):
             with self.subTest(name=name):
                 self.assertEqual(p.parse(name + '(2.5)'), {'result': expected, 'error': None})
-                self.assertEqual(p.parse(name + '(2.5,0)'), {'result': 0, 'error': None})
+                zero_result = ({'result': None, 'error': '#DIV/0!'} if name == 'FLOOR'
+                               else {'result': 0, 'error': None})
+                self.assertEqual(p.parse(name + '(2.5,0)'), zero_result)
         for expression, code in (('QUOTIENT(1,0)', '#DIV/0!'),
                                   ('FLOOR(2.5,-1)', '#NUM!'),
                                   ('ROMAN(4000)', '#VALUE!'),
