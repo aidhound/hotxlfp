@@ -8,7 +8,7 @@ Applications that consume literal results directly may need to adjust. Arrays
 supplied through callbacks retain their original shapes.
 
 * Support rectangular array literals with omitted cells and scalar expressions/function calls. Broadcast array arithmetic across rows, columns and scalars, returning `#N/A` for unmatched cells.
-* Preserve calculation errors for enclosing handlers. `IFERROR` and `IFNA` handle nested arrays and broadcast array-valued fallbacks; correct math domain/overflow errors, rounding and numeral conversions.
+* Preserve calculation errors for enclosing handlers. `IFERROR` and `IFNA` handle nested arrays and broadcast array-valued fallbacks; correct math domain/overflow errors, rounding and numeral conversions. The `^` operator accepts expressions and shares POWER's domain/error handling.
 * Make function calls and custom registration case-insensitive. Unknown names return catchable `#NAME?` errors, and callbacks can explicitly return `None`.
 * Update `COUNT` to recognize numeric/date strings and exclude blanks, nonnumeric text, errors and array booleans. Align `ISBLANK` with the existing `None`/empty-string blank policy. Intentional Excel differences are documented in the [README](README.md).
 * Add `ROWS`, `TOCOL`, `TOROW` and `UNIQUE`. Support row/column vectors in `MATCH` and `INDEX`, preserving lookup positions around error cells.

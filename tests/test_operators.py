@@ -166,7 +166,7 @@ class TestOperators(unittest.TestCase):
             ('HUGE()+1', 10 ** 400 + 1, None),
             ('HUGE()/HUGE()', 1.0, None),
             ('2^8', 256, None),
-            ('2^1024', 2 ** 1024, None),
+            ('2^1023', 2 ** 1023, None),
             ('50%', 0.5, None),
             ('1/0', None, '#DIV/0!'),
             ('0/0', None, '#DIV/0!'),
@@ -174,6 +174,72 @@ class TestOperators(unittest.TestCase):
             with self.subTest(expression=expression):
                 self.assertEqual(p.parse(expression),
                                  {'result': result, 'error': code})
+
+    def test_power_operator_matches_power_for_valid_numeric_expressions(self):
+        p = Parser()
+        for left, right, expected in (
+            ('2', '3', 8), ('4', '0.5', 2), ('-8', '1/3', -2),
+            ('-8', '-1/3', -0.5), ('-32', '1/5', -2),
+            ('-2', '3', -8), ('-2', '2', 4), ('-2', '-3', -0.125),
+            ('0', '2', 0), ('5', '0', 1), ('"5"', '"2"', 25),
+        ):
+            for expression in ('POWER(' + left + ',' + right + ')',
+                               '(' + left + ')^(' + right + ')'):
+                with self.subTest(expression=expression):
+                    result = p.parse(expression)
+                    self.assertIsNone(result['error'])
+                    self.assertAlmostEqual(result['result'], expected)
+
+    def test_power_operator_domain_and_overflow_errors_are_handleable(self):
+        p = Parser()
+        for left, right, code in (
+            ('0', '0', '#NUM!'), ('0', '-1', '#DIV/0!'),
+            ('0', '-0.5', '#DIV/0!'), ('-4', '0.5', '#NUM!'),
+            ('-8', '2/3', '#NUM!'), ('-32', '3/5', '#NUM!'),
+            ('10', '400', '#NUM!'), ('2', '1024', '#NUM!'),
+            ('"1e308"', '2', '#NUM!'),
+        ):
+            for expression in ('POWER(' + left + ',' + right + ')',
+                               '(' + left + ')^(' + right + ')'):
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': None, 'error': code})
+        self.assertEqual(p.parse('0^0'), {'result': None, 'error': '#NUM!'})
+        self.assertEqual(p.parse('2^1024'), {'result': None, 'error': '#NUM!'})
+
+    def test_power_operator_preserves_original_operand_errors(self):
+        p = Parser()
+        p.set_function('FAIL', lambda: error.NOT_AVAILABLE)
+        for left, right, code in (
+            ('FAIL()', '2', '#N/A'), ('2', 'FAIL()', '#N/A'),
+            ('#N/A', '2', '#N/A'), ('2', '#N/A', '#N/A'),
+            ('#DIV/0!', '2', '#DIV/0!'), ('2', '#DIV/0!', '#DIV/0!'),
+            ('#N/A', '#DIV/0!', '#N/A'),
+            ('"bad"', '2', '#VALUE!'), ('2', '"bad"', '#VALUE!'),
+        ):
+            expression = '(' + left + ')^(' + right + ')'
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+
+    def test_power_operator_precedence(self):
+        p = Parser()
+        for expression, expected in (
+            ('2^(3)', 8), ('2^(1+2)', 8), ('4^0.5', 2),
+            ('2^3^2', 64), ('-2^2', 4), ('2^-2', 0.25),
+            ('2*3^2', 18), ('2^3*2', 16), ('2^3%', 2 ** 0.03),
+        ):
+            with self.subTest(expression=expression):
+                result = p.parse(expression)
+                self.assertIsNone(result['error'])
+                self.assertAlmostEqual(result['result'], expected)
 
     def test_percentage_overflow_returns_a_handleable_numeric_error(self):
         p = Parser()

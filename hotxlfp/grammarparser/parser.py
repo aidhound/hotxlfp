@@ -4,7 +4,7 @@ import ply.lex as lex
 from . import lexer
 from ..helper.number import to_number
 from .._compat import number_types, string_types
-from ..formulas import error, operators, utils
+from ..formulas import error, mathtrig, operators, utils
 import math
 
 
@@ -88,6 +88,10 @@ class FormulaParser(Parser):
         """
         p[0] = operators.evaluate_logic(p[2], p[1], p[3])
 
+    def p_expression_power(self, p):
+        'expression : expression CARET expression'
+        p[0] = mathtrig.POWER(p[1], p[3])
+
     def p_expression_uminus(self, p):
         'expression : MINUS expression %prec UMINUS'
         p[0] = p[2] if isinstance(p[2], error.XLError) else -p[2]
@@ -102,7 +106,6 @@ class FormulaParser(Parser):
         expression : NUMBER
                    | DECIMAL NUMBER
                    | NUMBER DECIMAL NUMBER
-                   | NUMBER CARET NUMBER
                    | NUMBER PERCENT
         """
         if len(p) == 2:
@@ -111,8 +114,6 @@ class FormulaParser(Parser):
             p[0] = to_number('0.' + p[2])
         elif p[2] == '.':
             p[0] = to_number(p[1] + '.' + p[3])
-        elif p[2] == '^':
-            p[0] = to_number(p[1])**to_number(p[3])
         elif p[2] == '%':
             p[0] = operators.evaluate_arithmetic('*', p[1], 0.01)
 
