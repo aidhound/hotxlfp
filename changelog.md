@@ -8,12 +8,12 @@ Applications that consume literal results directly may need to adjust. Arrays
 supplied through callbacks retain their original shapes.
 
 * Support rectangular array literals with omitted cells and scalar expressions/function calls. Broadcast array arithmetic across rows, columns and scalars, returning `#N/A` for unmatched cells.
-* Preserve calculation errors for enclosing handlers. `IFERROR` and `IFNA` handle nested arrays and broadcast array-valued fallbacks; correct math domain/overflow errors, rounding and numeral conversions. The `^` operator accepts expressions and shares POWER's domain/error handling.
+* Preserve calculation errors, including `#SPILL!`, `#FIELD!` and `#CALC!`, for enclosing handlers. `IFERROR` and `IFNA` handle nested arrays and broadcast fallbacks. Correct math domains/overflow, rounding and numeral conversions; `^` accepts expressions and shares POWER's behavior.
 * Make function calls and custom registration case-insensitive. Unknown names return catchable `#NAME?` errors, and callbacks can explicitly return `None`.
 * Update `COUNT` to recognize numeric/date strings and exclude blanks, nonnumeric text, errors and array booleans. Align `ISBLANK` with the existing `None`/empty-string blank policy. Intentional Excel differences are documented in the [README](README.md).
-* Add `ROWS`, `TOCOL`, `TOROW` and `UNIQUE`. Support row/column vectors in `MATCH` and `INDEX`, preserving lookup positions around error cells.
+* Add `ROWS`, `TOCOL`, `TOROW` and `UNIQUE`. Support row/column vectors in `MATCH` and `INDEX`; exact MATCH lookups normalize numeric text and preserve original positions.
 * Correct numeric-text, logical and error criteria matching. Compile wildcard patterns once, with case-insensitive matching, Excel tilde escapes and literal brackets/path separators.
-* Fix conditional aggregation of numeric text and blanks, selected-error handling, range/argument validation, empty averages and `LARGE` rank validation. Separate `AVERAGEIF` arrays must have matching rectangular shapes.
+* Fix conditional aggregation of numeric text and blanks, selected-error handling, range/argument validation, empty averages and decimal ranks in `LARGE`. Separate `AVERAGEIF` arrays must have matching rectangular shapes.
 * Standardize blank, boolean and numeric text conversion across text functions and `&`. Fix slicing arguments, `SUBSTITUTE` deletion and concatenation precedence; add value-preserving unary plus.
 * Correct 1900 date serialization, fractional times, zero/time identity, `EDATE` month shifts and time truncation in `DATEVALUE`/`DAYS`. Preserve date results for day shifts and numeric results for date differences.
 
