@@ -887,6 +887,31 @@ class TestStatistical(unittest.TestCase):
                     self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
                                      {'result': 99, 'error': None})
 
+    def test_large_accepts_decimal_and_numeric_text_ranks(self):
+        p = Parser()
+        p.set_function('RANK', lambda: 2.0)
+        for rank, expected in (
+            ('1.0', 30), ('2.0', 20), ('3.0', 10),
+            ('1.5', 20), ('2.9', 10), ('"2.0"', 20), ('"1.5"', 20),
+            ('1+0.5', 20), ('RANK()', 20),
+        ):
+            expression = 'LARGE({10,20,30},' + rank + ')'
+            with self.subTest(rank=rank):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': expected, 'error': None})
+
+    def test_large_checks_bounds_before_rounding_fractional_ranks(self):
+        p = Parser()
+        for rank in ('0.5', '0.9', '0', '-1', '3.1', '"3.1"'):
+            expression = 'LARGE({10,20,30},' + rank + ')'
+            with self.subTest(rank=rank):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                 {'result': None, 'error': '#NUM!'})
+
     def test_large_preserves_errors_while_collecting_nested_values(self):
         p = Parser()
         for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):

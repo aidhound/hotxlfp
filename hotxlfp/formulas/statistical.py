@@ -4,6 +4,7 @@ inspired by:
 https://github.com/sutoiku/formula.js/blob/master/lib/statistical.js
 """
 import datetime
+import math
 import statistics
 from . import dispatcher
 from . import error
@@ -275,4 +276,4 @@ def LARGE(arr, n):
     values = utils.numbers(arr, try_parse=True, text_is_zero=True)
     if n > len(values):
         return error.NUM
-    return sorted(values)[-n]
+    return sorted(values)[-math.ceil(n)]
