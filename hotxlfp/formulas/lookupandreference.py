@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import fnmatch
 import datetime
+import re
 from itertools import islice
 from . import dispatcher
 from . import error
 from . import utils
 from .utils import DEFAULT
 from .._compat import number_types, string_types
-from ..helper.number import validate_number
+from ..helper.number import to_number, validate_number
 
 
 @dispatcher.register_for('TOCOL')
@@ -182,38 +183,50 @@ def MATCH(lookup_value, lookup_array, match_type=1):
     if any(isinstance(value, list) for value in lookup_array):
         return error.NOT_AVAILABLE
 
+    if match_type == 0:
+        lookup_number = to_number(lookup_value)
+        if isinstance(lookup_number, number_types):
+            lookup_value = lookup_number
+
+        if isinstance(lookup_value, string_types):
+            pattern = re.compile(fnmatch.translate(lookup_value), re.IGNORECASE)
+            for index, value in enumerate(lookup_array, 1):
+                if isinstance(value, string_types) and pattern.match(value) is not None:
+                    return index
+        else:
+            numeric_lookup = isinstance(lookup_value, number_types)
+            boolean_lookup = isinstance(lookup_value, bool)
+            for index, value in enumerate(lookup_array, 1):
+                if isinstance(value, error.XLError):
+                    continue
+                if numeric_lookup:
+                    value = to_number(value)
+                if isinstance(value, bool) != boolean_lookup:
+                    continue
+                if value == lookup_value:
+                    return index
+        return error.NOT_AVAILABLE
+
     index = None
     index_value = None
-    for idx in range(len(lookup_array)):
-        if isinstance(lookup_array[idx], error.XLError):
-            continue
-        if match_type == 1:
-            if lookup_array[idx] == lookup_value:
-                return idx + 1
-            elif lookup_array[idx] < lookup_value:
-                if not index_value:
-                    index = idx + 1
-                    index_value = lookup_array[idx]
-                elif lookup_array[idx] > index_value:
-                    index = idx + 1
-                    index_value = lookup_array[idx]
-        elif match_type == 0:
-            if isinstance(lookup_value, string_types):
-                if fnmatch.fnmatch(lookup_array[idx].lower(), lookup_value.lower()):
-                    return idx + 1
-            else:
-                if lookup_array[idx] == lookup_value:
-                    return idx + 1
-        elif match_type == -1:
-            if lookup_array[idx] == lookup_value:
-                return idx + 1
-            elif lookup_array[idx] > lookup_value:
-                if not index_value:
-                    index = idx + 1
-                    index_value = lookup_array[idx]
-                elif lookup_array[idx] < index_value:
-                    index = idx + 1
-                    index_value = lookup_array[idx]
+    if match_type == 1:
+        for idx, value in enumerate(lookup_array, 1):
+            if isinstance(value, error.XLError):
+                continue
+            if value == lookup_value:
+                return idx
+            if value < lookup_value and (not index_value or value > index_value):
+                index = idx
+                index_value = value
+    else:
+        for idx, value in enumerate(lookup_array, 1):
+            if isinstance(value, error.XLError):
+                continue
+            if value == lookup_value:
+                return idx
+            if value > lookup_value and (not index_value or value < index_value):
+                index = idx
+                index_value = value
 
     return index if index else error.NOT_AVAILABLE
 

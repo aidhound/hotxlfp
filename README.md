@@ -89,6 +89,11 @@ This supports applications whose numeric answers arrive as strings. The parser
 does not know the source field type, so numeric-looking text is converted even
 when it came from a text field.
 
+Exact MATCH lookups also compare numbers and numeric strings numerically, in
+either direction, returning the first matching position. For example,
+`MATCH(1,{"1",2},0)` and `MATCH("1",{1,2},0)` both return 1. Wildcards still
+match text, and Boolean values remain distinct from numbers.
+
 Excel's [COUNT](https://support.microsoft.com/en-us/excel/functions/count-function)
 ignores numeric and date-looking text in arrays and references. hotxlfp
 intentionally counts numeric strings and date strings recognized by its date

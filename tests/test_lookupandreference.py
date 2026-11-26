@@ -306,6 +306,14 @@ class TestLookupAndReference(unittest.TestCase):
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
 
+    def test_match_text_patterns_ignore_case_and_preserve_path_separators(self):
+        p = Parser()
+        p.set_function('DATA', lambda: [r'files\a.txt', 'FILES/B.TXT'])
+        for pattern, expected in ((r'FILES\*.TXT', 1), ('files/*.txt', 2)):
+            expression = 'MATCH("' + pattern + '",DATA(),0)'
+            with self.subTest(pattern=pattern):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
     def test_match_preserves_direct_error_arguments(self):
         p = Parser()
         for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
@@ -361,6 +369,55 @@ class TestLookupAndReference(unittest.TestCase):
                         for formula in (expression, 'IFERROR(' + expression + ',99)',
                                         'IFNA(' + expression + ',77)'):
                             self.assertEqual(p.parse(formula), {'result': expected, 'error': None})
+
+    def test_match_exact_search_preserves_positions_in_mixed_vectors(self):
+        p = Parser()
+        for vector, target, expected in (
+            ([1, 'b'], 'b', 2),
+            ([1, '1'], '1', 1),
+            (['a', 2, None, 'b', 'B'], 'B', 4),
+            ([None, True, 1.5, datetime.date(2025, 1, 1), error.DIV_ZERO, 'Beta', 'BETA'],
+             'b*', 6),
+        ):
+            for values in (vector, [vector], [[value] for value in vector]):
+                p.set_function('DATA', lambda values=values: values)
+                expression = 'MATCH("' + target + '",DATA(),0)'
+                with self.subTest(values=values, target=target):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': expected, 'error': None})
+        self.assertEqual(p.parse('MATCH("b",{1,"b"},0)'),
+                         {'result': 2, 'error': None})
+
+    def test_match_exact_text_returns_na_when_only_nontext_candidates_remain(self):
+        p = Parser()
+        vector = [2, None, False, error.DIV_ZERO]
+        for values in (vector, [vector], [[value] for value in vector]):
+            p.set_function('DATA', lambda values=values: values)
+            for target in ('*', '1', '0', 'missing'):
+                expression = 'MATCH("' + target + '",DATA(),0)'
+                with self.subTest(values=values, target=target):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': '#N/A'})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',77)'),
+                                     {'result': 77, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_match_exact_search_compares_numeric_text_in_both_directions(self):
+        p = Parser()
+        for vector, target, expected in (
+            ([1, '1'], '1', 1), (['1', 1], '1', 1),
+            ([1, '1'], '"1"', 1), (['1', 1], '"1"', 1),
+            ([0, '1.0', 1], '1', 2), ([0, 1, '1.0'], '"1.0"', 2),
+            (['1e0', 1], '1', 1), (['text', 1], '"1"', 2),
+            ([True, '1', 1], '1', 2), ([1, True], 'TRUE()', 2),
+            (['NaN', 1], '"NaN"', 1), (['inf', 1], '"inf"', 1),
+        ):
+            for values in (vector, [vector], [[value] for value in vector]):
+                p.set_function('DATA', lambda values=values: values)
+                expression = 'MATCH(' + target + ',DATA(),0)'
+                with self.subTest(values=values, target=target):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
 
     def test_match_skips_error_cells_in_approximate_searches(self):
         p = Parser()
