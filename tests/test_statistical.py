@@ -1246,6 +1246,78 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], None)
         self.assertEqual(ret['error'], '#DIV/0!')
 
+    def test_slope_accepts_two_datasets_and_legacy_numeric_strings(self):
+        p = Parser()
+        shapes = (
+            lambda values: values, lambda values: [values],
+            lambda values: [[value] for value in values],
+            lambda values: [values[:2], values[2:]], lambda values: tuple(values),
+        )
+        for y_shape in shapes:
+            for x_shape in shapes:
+                ys = y_shape([2, '4', 6, '8'])
+                xs = x_shape(['1', 2, '3', 4])
+                p.set_function('YS', lambda: ys)
+                p.set_function('XS', lambda: xs)
+                with self.subTest(ys=ys, xs=xs):
+                    self.assertEqual(p.parse('SLOPE(YS(),XS())'),
+                                     {'result': 2, 'error': None})
+        for expression in (
+            'SLOPE({2,4},{1,2})', 'SLOPE({2,4},{1;2})',
+            'SLOPE({2,4;6,8},{1,2,3,4})',
+            'SLOPE(2,"4",1,2)', 'SLOPE(TRUE(),3,1,2)',
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': 2, 'error': None})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 2, 'error': None})
+
+    def test_slope_pairs_range_cells_and_excludes_whole_observations(self):
+        p = Parser()
+        for ys, xs in (
+            ([2, 'text', 6, 8], [1, 2, 'text', 4]),
+            ([2, None, 6, 8], [1, 2, '', 4]),
+            ([True, 4, 6], [1, 2, 3]),
+            ([100, 4, 6], [True, 2, 3]),
+            ([0, '2'], [0, '1']),
+        ):
+            p.set_function('YS', lambda: ys)
+            p.set_function('XS', lambda: xs)
+            with self.subTest(ys=ys, xs=xs):
+                self.assertEqual(p.parse('SLOPE(YS(),XS())'),
+                                 {'result': 2, 'error': None})
+        p.on('callRangeValue', lambda start, end, set_value:
+             set_value([[2], ['4'], [6]] if start.label == 'A1' else [[1], [2], ['3']]))
+        self.assertEqual(p.parse('SLOPE(A1:A3,B1:B3)'), {'result': 2, 'error': None})
+
+    def test_slope_returns_handleable_input_and_pair_count_errors(self):
+        p = Parser()
+        for ys, xs, code in (
+            ([2, 4, 6], [1, 2], '#N/A'), ([], [1], '#N/A'),
+            ([], [], '#DIV/0!'), ([None, None], [None, None], '#DIV/0!'),
+            (['text', ''], [1, 2], '#DIV/0!'), ([2], [1], '#DIV/0!'),
+            ([2, 4, 6], [1, 1, 1], '#DIV/0!'),
+            ([2, 'NaN'], [1, 2], '#NUM!'),
+            ([2, 4], [1, '1e309'], '#NUM!'),
+            ([2, error.DIV_ZERO], [1], '#N/A'),
+            ([2, error.NOT_AVAILABLE], [1, 2], '#N/A'),
+            ([2, None, 6], [1, error.DIV_ZERO, 3], '#DIV/0!'),
+        ):
+            p.set_function('YS', lambda: ys)
+            p.set_function('XS', lambda: xs)
+            expression = 'SLOPE(YS(),XS())'
+            with self.subTest(ys=ys, xs=xs):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 77, 'error': None} if code == '#N/A'
+                            else {'result': None, 'error': code})
+                self.assertEqual(p.parse('IFNA(' + expression + ',77)'), expected)
+        for expression in ('SLOPE()', 'SLOPE(1,2,3)', 'SLOPE(6,1)'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression),
+                                 {'result': None, 'error': '#DIV/0!'})
+
     def test_large_accepts_flat_row_column_and_matrix_arrays(self):
         p = Parser()
         for values in ([29, 14, 33, 19], [[29, 14, 33, 19]],

@@ -280,18 +280,38 @@ def MAXIFS(sum_args, *criteria):
 @dispatcher.register_for('SLOPE')
 @utils.propagate_errors()
 def SLOPE(*yx):
-    if len(yx) % 2 != 0:
+    """Accept two datasets or legacy y-values followed by x-values."""
+    array_input = False
+    if len(yx) == 2:
+        array_input = any(isinstance(value, (list, tuple)) for value in yx)
+        ys, xs = map(utils.flatten, yx)
+        # Excel checks dataset lengths before errors inside the arrays.
+        if len(ys) != len(xs):
+            return error.NOT_AVAILABLE
+    else:
+        if len(yx) % 2 != 0:
+            return error.DIV_ZERO
+        midpoint = len(yx) // 2
+        ys = list(yx[:midpoint])
+        xs = list(yx[midpoint:])
+
+    # Convert without filtering so x/y positions remain aligned.
+    for values in (ys, xs):
+        for index, value in enumerate(values):
+            value = to_number(value)
+            if isinstance(value, error.XLError):
+                return value
+            values[index] = value
+
+    pairs = []
+    for y, x in zip(ys, xs):
+        if array_input and (isinstance(y, bool) or isinstance(x, bool)):
+            continue
+        if isinstance(y, number_types) and isinstance(x, number_types):
+            pairs.append((y, x))
+    if len(pairs) < 2:
         return error.DIV_ZERO
-
-    midpoint = len(yx) // 2
-    ys = yx[:midpoint]
-    xs = yx[midpoint:]
-
-    if len(ys) != len(xs) or len(ys) == 0 or len(xs) == 0:
-        return error.DIV_ZERO
-
-    ys = list(ys)
-    xs = list(xs)
+    ys, xs = zip(*pairs)
 
     n = len(ys)
     sum_x = sum(xs)
