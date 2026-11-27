@@ -1318,6 +1318,37 @@ class TestStatistical(unittest.TestCase):
                 self.assertEqual(p.parse(expression),
                                  {'result': None, 'error': '#DIV/0!'})
 
+    def test_slope_matches_integer_float_and_numeric_text_coordinates(self):
+        p = Parser()
+        for convert in (lambda value: value, float, str, lambda value: str(float(value))):
+            ys = [convert(value) for value in (2, 4, 6)]
+            xs = [convert(value) for value in (1000000001, 1000000002, 1000000003)]
+            p.set_function('YS', lambda: ys)
+            p.set_function('XS', lambda: xs)
+            with self.subTest(ys=ys, xs=xs):
+                self.assertEqual(p.parse('SLOPE(YS(),XS())'),
+                                 {'result': 2, 'error': None})
+                self.assertEqual(p.parse('IFERROR(SLOPE(YS(),XS()),99)'),
+                                 {'result': 2, 'error': None})
+        expression = 'SLOPE(2,4,6,1000000001.0,1000000002.0,1000000003.0)'
+        self.assertEqual(p.parse(expression), {'result': 2, 'error': None})
+
+    def test_slope_preserves_slopes_with_large_coordinate_offsets(self):
+        p = Parser()
+        huge = 10 ** 400
+        for ys, xs, expected in (
+            ([2, 4, 6], [-999999999.0, -999999998.0, -999999997.0], 2),
+            ([6, 4, 2], [1000000001.0, 1000000002.0, 1000000003.0], -2),
+            ([5, 5, 5], [1000000001.0, 1000000002.0, 1000000003.0], 0),
+            ([1e16 + 2, 1e16 + 4, 1e16 + 6], [1, 2, 3], 2),
+            ([huge + 2, huge + 4, huge + 6], [huge + 1, huge + 2, huge + 3], 2),
+        ):
+            p.set_function('YS', lambda: ys)
+            p.set_function('XS', lambda: xs)
+            with self.subTest(ys=ys, xs=xs):
+                self.assertEqual(p.parse('SLOPE(YS(),XS())'),
+                                 {'result': expected, 'error': None})
+
     def test_large_accepts_flat_row_column_and_matrix_arrays(self):
         p = Parser()
         for values in ([29, 14, 33, 19], [[29, 14, 33, 19]],

@@ -313,6 +313,9 @@ def SLOPE(*yx):
         return error.DIV_ZERO
     ys, xs = zip(*pairs)
 
+    # Translating the coordinates preserves slope and reduces cancellation.
+    ys = [y - ys[0] for y in ys]
+    xs = [x - xs[0] for x in xs]
     n = len(ys)
     sum_x = sum(xs)
     sum_y = sum(ys)
