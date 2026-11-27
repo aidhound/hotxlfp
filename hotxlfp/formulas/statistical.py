@@ -317,7 +317,7 @@ def LARGE(arr, n):
         return n
     if n < 1:
         return error.NUM
-    values = utils.numbers(arr, try_parse=True, text_is_zero=True)
+    values = utils.numbers(arr, try_parse=True)
     if n > len(values):
         return error.NUM
     return sorted(values)[-math.ceil(n)]

@@ -1282,7 +1282,8 @@ class TestStatistical(unittest.TestCase):
             ([[1, 2, 3]], -1, None, '#NUM!'),
             ([5, 5, 2], 2, 5, None),
             ([-5, -2, -9], 2, -5, None),
-            ([10, '5', 'text', None], 3, 0, None),
+            ([10, '5', 'text', None], 2, 5, None),
+            ([10, '5', 'text', None], 3, None, '#NUM!'),
         ):
             p.set_function('DATA', lambda: values)
             expression = 'LARGE(DATA(),' + str(rank) + ')'
@@ -1291,6 +1292,37 @@ class TestStatistical(unittest.TestCase):
                 if code:
                     self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
                                      {'result': 99, 'error': None})
+
+    def test_large_ignores_text_without_creating_zero_values(self):
+        p = Parser()
+        for vector, rank, expected, code in (
+            ([-5, 'text', None, ''], 1, -5, None),
+            ([-5, 'text', None, ''], 2, None, '#NUM!'),
+            ([10, 5, 'text', ''], 3, None, '#NUM!'),
+            (['text', None, '', 'other'], 1, None, '#NUM!'),
+            ([0, 'text', None, ''], 1, 0, None),
+            (['10', '5', 'text', ''], 1.5, 5, None),
+            (['10', '5', 'text', ''], 2.1, None, '#NUM!'),
+            ([False, 'text', None, ''], 1, False, None),
+            ([10, 'NaN', 'text', None], 1, None, '#NUM!'),
+        ):
+            for values in (vector, [vector], [[value] for value in vector],
+                           [vector[:2], vector[2:]], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                expression = 'LARGE(DATA(),' + str(rank) + ')'
+                with self.subTest(values=values, rank=rank):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99 if code else expected, 'error': None})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                     {'result': expected, 'error': code})
+        for expression, expected, code in (
+            ('LARGE({-5,"text"},1)', -5, None),
+            ('LARGE({10,5,""},3)', None, '#NUM!'),
+            ('LARGE({"text"},1)', None, '#NUM!'),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': code})
 
     def test_large_accepts_decimal_and_numeric_text_ranks(self):
         p = Parser()
@@ -1320,7 +1352,8 @@ class TestStatistical(unittest.TestCase):
     def test_large_preserves_errors_while_collecting_nested_values(self):
         p = Parser()
         for source_error in (error.DIV_ZERO, error.NOT_AVAILABLE, error.NUM):
-            for values in ([5, source_error], [[5, source_error]], [[5], [source_error]]):
+            for values in ([5, source_error], [[5, source_error]], [[5], [source_error]],
+                           [None, 'text', source_error], [['text', source_error]]):
                 p.set_function('DATA', lambda: values)
                 expression = 'LARGE(DATA(),2)'
                 with self.subTest(values=values):
