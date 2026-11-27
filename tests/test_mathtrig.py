@@ -97,9 +97,36 @@ class TestMathTrig(unittest.TestCase):
         self.assert_formula_cases((
             ('PRODUCT()', '#ERROR!'), ('PRODUCT(EMPTY())', 0),
             ('PRODUCT({"text",NULL})', 0), ('PRODUCT("2",3)', 6),
-            ('PRODUCT({"2",3})', 3), ('PRODUCT(1,2,"aa")', '#VALUE!'),
+            ('PRODUCT({"2",3})', 6), ('PRODUCT({"2","3"})', 6),
+            ('PRODUCT(1,2,"aa")', '#VALUE!'),
             ('PRODUCT({1,#N/A})', '#N/A'), ('PRODUCT({1,#DIV/0!})', '#DIV/0!'),
             ('ODD(0)', 1), ('EVEN(0)', 0), ('INT("-2.5")', -3), ('SIGN("-2.5")', -1),
+        ), p)
+
+    def test_product_converts_numeric_strings_in_callback_arrays_and_ranges(self):
+        p = Parser()
+        p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+        for vector, expected in (
+            ([2, '3', None, 'text'], 6), (['2', '3', None, ''], 6),
+            (['-2', '1.5', None, 'text'], -3), (['0', '3', None, ''], 0),
+            (['2e1', 0.5, None, ''], 10), ([True, '3', None, ''], 3),
+        ):
+            for values in (vector, [vector], [[value] for value in vector],
+                           [vector[:2], vector[2:]], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                with self.subTest(values=values):
+                    self.assert_formula_cases((('PRODUCT(DATA())', expected),
+                                               ('PRODUCT(A1:B2)', expected)), p)
+
+    def test_product_preserves_conversion_and_input_errors_after_zero(self):
+        p = Parser()
+        for invalid in ('NaN', 'inf', '-inf', '1e309'):
+            p.set_function('DATA', lambda: ['0', invalid, '3'])
+            with self.subTest(value=invalid):
+                self.assert_formula_cases((('PRODUCT(DATA())', '#NUM!'),), p)
+        self.assert_formula_cases((
+            ('PRODUCT({0,#N/A})', '#N/A'), ('PRODUCT({#N/A,0})', '#N/A'),
+            ('PRODUCT({0,#DIV/0!})', '#DIV/0!'), ('PRODUCT({#DIV/0!,0})', '#DIV/0!'),
         ), p)
 
     def test_random_bounds_and_numeric_overflow_remain_handleable(self):

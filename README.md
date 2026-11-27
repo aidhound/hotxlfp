@@ -83,7 +83,7 @@ also counts cells whose formulas return empty text.
 
 ## Numeric strings
 
-Numeric conversion happens inside individual functions. Arithmetic, COUNT, SUM,
+Numeric conversion happens inside individual functions. Arithmetic, COUNT, SUM/PRODUCT,
 the mean and deviation functions, MAX/MIN/MAXIFS, and the variance functions
 accept numeric strings, including inside arrays, regardless of the source
 field type. For example, `SUM({5,"7"})` returns 12.

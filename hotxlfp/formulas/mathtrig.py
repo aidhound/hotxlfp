@@ -506,7 +506,7 @@ def PRODUCT(*args):
     values = []
     for value in args:
         if isinstance(value, (list, tuple)):
-            values.extend(utils.inumbers(value))
+            values.extend(utils.inumbers(value, try_parse=True))
         elif value is not None:
             value = utils.parse_number(value)
             if isinstance(value, error.XLError):

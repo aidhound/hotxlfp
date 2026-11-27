@@ -367,7 +367,7 @@ class TestStatistical(unittest.TestCase):
         p = Parser()
         for value in (float('nan'), float('inf'), float('-inf'), 'NaN', '1e309'):
             p.set_function('DATA', lambda value=value: [5, value, 7])
-            for name in ('SUM', 'AVERAGE', 'AVERAGEA', 'AVEDEV', 'MAX', 'MIN',
+            for name in ('SUM', 'PRODUCT', 'AVERAGE', 'AVERAGEA', 'AVEDEV', 'MAX', 'MIN',
                          'MAXA', 'MINA', 'MEDIAN', 'MODE', 'MODE.SNGL', 'HARMEAN', 'GEOMEAN',
                          'VAR', 'VAR.S', 'VARP', 'VAR.P',
                          'STDEV', 'STDEV.S', 'STDEVP', 'STDEV.P'):
@@ -380,16 +380,6 @@ class TestStatistical(unittest.TestCase):
                              {'result': 2, 'error': None})
             self.assertEqual(p.parse('COUNTA(DATA())'),
                              {'result': 3, 'error': None})
-
-    def test_product_validates_numbers_without_coercing_text(self):
-        p = Parser()
-        for value in (float('nan'), float('inf')):
-            p.set_function('DATA', lambda value=value: [5, value, 7])
-            with self.subTest(value=value):
-                self.assertEqual(p.parse('PRODUCT(DATA())'),
-                                 {'result': None, 'error': '#NUM!'})
-        p.set_function('DATA', lambda: [5, 'NaN', 7])
-        self.assertEqual(p.parse('PRODUCT(DATA())'), {'result': 35, 'error': None})
 
     def test_countif_propagates_invalid_numeric_criteria(self):
         p = Parser()
