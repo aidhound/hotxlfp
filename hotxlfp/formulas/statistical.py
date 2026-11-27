@@ -212,6 +212,10 @@ def HARMEAN(*args):
 def GEOMEAN(*args):
     # Read all input errors before checking the numeric domain.
     values = utils.numbers(args, try_parse=True)
+    # Python < 3.13 rejects zero; Python >= 3.13 returns 0 for zero inputs.
+    # Reject zero explicitly to preserve Excel's strictly positive domain.
+    if 0 in values:
+        return error.NUM
     try:
         return statistics.geometric_mean(values)
     except (statistics.StatisticsError, OverflowError):
