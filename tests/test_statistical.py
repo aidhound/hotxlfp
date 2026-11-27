@@ -42,9 +42,9 @@ class TestStatistical(unittest.TestCase):
                 self.assertEqual(p.parse('AVERAGE(DATA())'),
                                  {'result': expected, 'error': None})
 
-    def test_avedev_propagates_average_errors(self):
+    def test_avedev_preserves_errors_and_handles_empty_inputs(self):
         p = Parser()
-        for values in ([], [None], [None, ''], [5, error.NOT_AVAILABLE]):
+        for values in ([], [None], [None, ''], ['text'], [5, error.NOT_AVAILABLE]):
             p.set_function('DATA', lambda values=values: values)
             code = '#N/A' if values == [5, error.NOT_AVAILABLE] else '#DIV/0!'
             with self.subTest(values=values):
@@ -62,6 +62,25 @@ class TestStatistical(unittest.TestCase):
         ret = p.parse('AVEDEV({1;2;3;4})')
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
+
+    def test_avedev_uses_converted_numbers_for_mean_and_deviations(self):
+        p = Parser()
+        for vector, expected in (
+            ([5, '7', None, ''], 1), ([1, 3, None, 'text'], 1),
+            (['1.5', '2.5', 0, 4], 1.25), ([-5, '-1', None, 'text'], 2),
+            ([0, None, 'text', ''], 0), ([True, False, None, 'text'], 0.5),
+        ):
+            for values in (vector, [vector], [[value] for value in vector],
+                           [vector[:2], vector[2:]], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                for expression in ('AVEDEV(DATA())', 'IFERROR(AVEDEV(DATA()),99)'):
+                    with self.subTest(values=values, expression=expression):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': expected, 'error': None})
+        for expression in ('AVEDEV(5,"7")', 'AVEDEV({5,"7"})',
+                           'AVEDEV({1,3,NULL,"text"})'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': 1, 'error': None})
 
     def test_averagea(self):
         p = Parser(debug=True)
@@ -348,7 +367,10 @@ class TestStatistical(unittest.TestCase):
         p = Parser()
         for value in (float('nan'), float('inf'), float('-inf'), 'NaN', '1e309'):
             p.set_function('DATA', lambda value=value: [5, value, 7])
-            for name in ('SUM', 'AVERAGE', 'AVERAGEA'):
+            for name in ('SUM', 'AVERAGE', 'AVERAGEA', 'AVEDEV', 'MAX', 'MIN',
+                         'MAXA', 'MINA', 'MEDIAN', 'MODE', 'MODE.SNGL', 'HARMEAN', 'GEOMEAN',
+                         'VAR', 'VAR.S', 'VARP', 'VAR.P',
+                         'STDEV', 'STDEV.S', 'STDEVP', 'STDEV.P'):
                 with self.subTest(value=value, function=name):
                     self.assertEqual(p.parse(name + '(DATA())'),
                                      {'result': None, 'error': '#NUM!'})
@@ -359,17 +381,15 @@ class TestStatistical(unittest.TestCase):
             self.assertEqual(p.parse('COUNTA(DATA())'),
                              {'result': 3, 'error': None})
 
-    def test_nonparsing_aggregates_validate_numbers_without_coercing_text(self):
+    def test_product_validates_numbers_without_coercing_text(self):
         p = Parser()
         for value in (float('nan'), float('inf')):
             p.set_function('DATA', lambda value=value: [5, value, 7])
-            for name in ('MIN', 'MAX', 'VAR', 'PRODUCT'):
-                with self.subTest(value=value, function=name):
-                    self.assertEqual(p.parse(name + '(DATA())'),
-                                     {'result': None, 'error': '#NUM!'})
+            with self.subTest(value=value):
+                self.assertEqual(p.parse('PRODUCT(DATA())'),
+                                 {'result': None, 'error': '#NUM!'})
         p.set_function('DATA', lambda: [5, 'NaN', 7])
-        self.assertEqual(p.parse('MIN(DATA())'), {'result': 5, 'error': None})
-        self.assertEqual(p.parse('MAX(DATA())'), {'result': 7, 'error': None})
+        self.assertEqual(p.parse('PRODUCT(DATA())'), {'result': 35, 'error': None})
 
     def test_countif_propagates_invalid_numeric_criteria(self):
         p = Parser()
@@ -580,6 +600,90 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 1)
         self.assertEqual(ret['error'], None)
 
+    def test_max_min_convert_numeric_strings_in_arrays_and_callbacks(self):
+        p = Parser()
+        p.on('callRangeValue', lambda start, end, set_value: set_value(values))
+        for vector, maximum, minimum in (
+            (['20', 5, None, 'text'], 20, 5),
+            (['-5', '-2', None, ''], -2, -5),
+            (['2.5', '2e1', '0', '-1'], 20, -1),
+        ):
+            for shape in (lambda values: values, lambda values: [values],
+                          lambda values: [[value] for value in values],
+                          lambda values: [values[:2], values[2:]],
+                          lambda values: tuple((value,) for value in values)):
+                values = shape(vector)
+                p.set_function('DATA', lambda: values)
+                for function, expected in (('MAX', maximum), ('MIN', minimum)):
+                    for argument in ('DATA()', 'A1:B2'):
+                        expression = function + '(' + argument + ')'
+                        with self.subTest(values=values, expression=expression):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': expected, 'error': None})
+
+        p.set_function('F', lambda name: '7')
+        for function in ('MAX', 'MIN'):
+            for arguments, expected in (('"7"', 7), ('F("Mirror")', 7),
+                                        ('{"20",5}', 20 if function == 'MAX' else 5)):
+                expression = function + '(' + arguments + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': expected, 'error': None})
+            self.assertEqual(p.parse(function + '(F("Mirror"))>0'),
+                             {'result': True, 'error': None})
+
+    def test_max_min_variants_return_zero_for_empty_or_text_only_inputs(self):
+        p = Parser()
+        for values in ([], [None], ['', 'text', None], [[None, 'text']], ((),)):
+            p.set_function('DATA', lambda: values)
+            for function in ('MAX', 'MIN', 'MAXA', 'MINA'):
+                expression = function + '(DATA())'
+                with self.subTest(values=values, expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': 0, 'error': None})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 0, 'error': None})
+
+    def test_max_min_variants_preserve_errors_during_numeric_conversion(self):
+        p = Parser()
+        for value, code in ((error.NOT_AVAILABLE, '#N/A'), (error.DIV_ZERO, '#DIV/0!'),
+                            ('nan', '#NUM!'), ('-inf', '#NUM!'), ('1e309', '#NUM!')):
+            for values in ([value, '7'], ['7', value]):
+                p.set_function('DATA', lambda: values)
+                for function in ('MAX', 'MIN', 'MAXA', 'MINA'):
+                    expression = function + '(DATA())'
+                    with self.subTest(values=values, expression=expression):
+                        self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        expected = ({'result': 99, 'error': None} if code == '#N/A'
+                                    else {'result': None, 'error': code})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',99)'), expected)
+
+    def test_max_min_keep_existing_boolean_values(self):
+        p = Parser()
+        for function, expected in (('MAX', True), ('MIN', False)):
+            for arguments in ('TRUE(),FALSE()', '{TRUE(),FALSE()}'):
+                expression = function + '(' + arguments + ')'
+                with self.subTest(expression=expression):
+                    self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+                    self.assertIs(p.parse(expression)['result'], expected)
+
+    def test_maxa_mina_keep_text_as_zero_and_existing_conversions(self):
+        p = Parser()
+        for values, maximum, minimum in (
+            ([None, -5, -2], -2, -5), ([None, 5, 2], 5, 2),
+            (['text', -5], 0, -5), (['text', 5], 5, 0),
+            (['', -5], 0, -5), (['', 5], 5, 0),
+            (['7', 2], 7, 2), ([True, False], True, False),
+        ):
+            p.set_function('DATA', lambda: values)
+            for function, expected in (('MAXA', maximum), ('MINA', minimum)):
+                with self.subTest(values=values, function=function):
+                    result = p.parse(function + '(DATA())')
+                    self.assertEqual(result, {'result': expected, 'error': None})
+                    self.assertIs(type(result['result']), type(expected))
+
     def test_var(self):
         p = Parser(debug=True)
         ret = p.parse('VAR.S({1345;1301;1368;1322;1310;1370;1318;1350;1303;1299})')
@@ -598,6 +702,100 @@ class TestStatistical(unittest.TestCase):
         self.assertTrue(str(ret['result']).startswith('26.05'))
         self.assertEqual(ret['error'], None)
 
+    def test_variance_and_stdev_convert_numeric_strings(self):
+        p = Parser()
+        functions = (
+            ('VAR', 0), ('VAR.S', 0), ('VARP', 1), ('VAR.P', 1),
+            ('STDEV', 2), ('STDEV.S', 2), ('STDEVP', 3), ('STDEV.P', 3),
+        )
+        for vector, expected in (
+            ([1, '3', None, 'text'], (2, 1, 2 ** 0.5, 1)),
+            (['1.5', '2.5', None, ''], (0.5, 0.25, 0.5 ** 0.5, 0.5)),
+            ([-3, '-1', None, 'text'], (2, 1, 2 ** 0.5, 1)),
+            ([True, False, None, 'text'], (0.5, 0.25, 0.5 ** 0.5, 0.5)),
+            (['0', '0', None, ''], (0, 0, 0, 0)),
+        ):
+            for values in (vector, [vector], [[value] for value in vector],
+                           [vector[:2], vector[2:]], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                for name, index in functions:
+                    with self.subTest(values=values, function=name):
+                        result = p.parse(name + '(DATA())')
+                        self.assertIsNone(result['error'])
+                        self.assertAlmostEqual(result['result'], expected[index])
+        for name, index in functions:
+            for arguments in ('"1","3"', '{1,"3",NULL,"text"}'):
+                with self.subTest(function=name, arguments=arguments):
+                    result = p.parse(name + '(' + arguments + ')')
+                    self.assertIsNone(result['error'])
+                    self.assertAlmostEqual(result['result'], (2, 1, 2 ** 0.5, 1)[index])
+
+    def test_variance_and_stdev_preserve_original_errors(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('DATA', lambda: [[1, '3'], [None, source_error]])
+            for name in ('VAR', 'VAR.S', 'VARP', 'VAR.P', 'VARA',
+                         'STDEV', 'STDEV.S', 'STDEVP', 'STDEV.P', 'STDEVA', 'STDEVPA'):
+                expression = name + '(DATA())'
+                with self.subTest(error=source_error, function=name):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 99, 'error': None} if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'), expected)
+
+    def test_variance_and_stdev_empty_inputs_return_handleable_division_errors(self):
+        p = Parser()
+        for values in ([], (), [None], [[None], [None]]):
+            p.set_function('DATA', lambda: values)
+            for name in ('VAR', 'VAR.S', 'VARP', 'VAR.P', 'VARA',
+                         'STDEV', 'STDEV.S', 'STDEVP', 'STDEV.P', 'STDEVA', 'STDEVPA'):
+                for argument in ('DATA()', 'NULL', ''):
+                    expression = name + '(' + argument + ')'
+                    with self.subTest(values=values, expression=expression):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': '#DIV/0!'})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                         {'result': None, 'error': '#DIV/0!'})
+
+    def test_sample_statistics_require_two_eligible_values(self):
+        p = Parser()
+        for values in ([7], ['7'], [None, '7', None], [[7]], ['', None], ['text']):
+            p.set_function('DATA', lambda: values)
+            for name in ('VAR', 'VAR.S', 'VARA', 'STDEV', 'STDEV.S', 'STDEVA'):
+                expression = name + '(DATA())'
+                with self.subTest(values=values, function=name):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': '#DIV/0!'})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+
+    def test_statistics_keep_valid_sample_size_boundaries(self):
+        p = Parser()
+        for name in ('VARP', 'VAR.P', 'STDEVP', 'STDEV.P', 'STDEVPA'):
+            for argument in ('7', '"7"', '{NULL,"7",NULL}'):
+                with self.subTest(function=name, argument=argument):
+                    self.assertEqual(p.parse(name + '(' + argument + ')'),
+                                     {'result': 0, 'error': None})
+        for name, arguments, expected in (
+            ('VAR.S', '{1,"3",NULL,"text"}', 2),
+            ('STDEV.S', '{1,"3",NULL,"text"}', 2 ** 0.5),
+            ('VARA', '{5,"text",NULL}', 12.5),
+            ('STDEVA', '{5,"text",NULL}', 12.5 ** 0.5),
+            ('STDEVPA', '{5,"text",NULL}', 2.5),
+            ('VARA', '{"","text"}', 0),
+            ('STDEVA', '{"","text"}', 0),
+            ('STDEVPA', '"text"', 0),
+        ):
+            with self.subTest(function=name, arguments=arguments):
+                result = p.parse(name + '(' + arguments + ')')
+                self.assertIsNone(result['error'])
+                self.assertAlmostEqual(result['result'], expected)
+
     def test_median(self):
         p = Parser(debug=True)
         ret = p.parse('MEDIAN({1;2;3;4;5;6})')
@@ -610,11 +808,189 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(ret['result'], 3)
         self.assertEqual(ret['error'], None)
 
+    def test_median_empty_numeric_selection_returns_handleable_num_error(self):
+        p = Parser()
+        for values in ([], (), [None], ['', 'text'], [[None, 'text']], ((),)):
+            p.set_function('DATA', lambda: values)
+            with self.subTest(values=values):
+                self.assertEqual(p.parse('MEDIAN(DATA())'),
+                                 {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(MEDIAN(DATA()),99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('IFNA(MEDIAN(DATA()),99)'),
+                                 {'result': None, 'error': '#NUM!'})
+        for expression in ('MEDIAN(NULL)', 'MEDIAN({NULL,"text"})'):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': None, 'error': '#NUM!'})
+
+    def test_median_preserves_numeric_conversion_and_original_errors(self):
+        p = Parser()
+        for values, expected in (([0], 0), ([None, '3', 'text'], 3),
+                                 ([[1, '3'], [None, '']], 2)):
+            p.set_function('DATA', lambda: values)
+            with self.subTest(values=values):
+                self.assertEqual(p.parse('MEDIAN(DATA())'),
+                                 {'result': expected, 'error': None})
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('DATA', lambda: [None, 'text', source_error])
+            with self.subTest(error=source_error):
+                self.assertEqual(p.parse('MEDIAN(DATA())'),
+                                 {'result': None, 'error': str(source_error)})
+                self.assertEqual(p.parse('IFERROR(MEDIAN(DATA()),99)'),
+                                 {'result': 99, 'error': None})
+                expected = ({'result': 99, 'error': None} if source_error is error.NOT_AVAILABLE
+                            else {'result': None, 'error': str(source_error)})
+                self.assertEqual(p.parse('IFNA(MEDIAN(DATA()),99)'), expected)
+
     def test_mode(self):
         p = Parser(debug=True)
         ret = p.parse('MODE({5.6;4;4;3;2;4})')
         self.assertEqual(ret['result'], 4)
         self.assertEqual(ret['error'], None)
+
+    def test_mode_requires_a_repeated_numeric_value(self):
+        p = Parser()
+        for vector in ([], [7], [1, 2, 3], [None, 'text', ''], [None, '7', 'text']):
+            for values in (vector, [vector], [[value] for value in vector], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                for name in ('MODE', 'MODE.SNGL'):
+                    expression = name + '(DATA())'
+                    with self.subTest(values=values, function=name):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': '#N/A'})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+        for name in ('MODE', 'MODE.SNGL'):
+            for arguments in ('7', '{1,2,3}', 'NULL'):
+                with self.subTest(function=name, arguments=arguments):
+                    self.assertEqual(p.parse(name + '(' + arguments + ')'),
+                                     {'result': None, 'error': '#N/A'})
+
+    def test_mode_preserves_ties_zero_and_numeric_conversion(self):
+        p = Parser()
+        for vector, expected in (
+            ([2, 1, 2, 1], 2), ([1, 2, 2, 1], 1), ([3, 1, 1, 3, 3], 3),
+            ([0, 0, 1], 0), (['7', 7, None, 'text'], 7),
+            ([-5, '-5', -1], -5), ([1.5, '1.5', 2.0], 1.5),
+            ([True, True, False], True),
+        ):
+            for values in (vector, [vector], [[value] for value in vector], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                for name in ('MODE', 'MODE.SNGL'):
+                    with self.subTest(values=values, function=name):
+                        result = p.parse(name + '(DATA())')
+                        self.assertEqual(result, {'result': expected, 'error': None})
+                        self.assertIs(type(result['result']), type(expected))
+
+    def test_mode_preserves_errors_even_after_repeated_values(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('DATA', lambda: [[7, '7'], [None, source_error]])
+            for name in ('MODE', 'MODE.SNGL'):
+                expression = name + '(DATA())'
+                with self.subTest(error=source_error, function=name):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 99, 'error': None} if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'), expected)
+
+    def test_harmean_geomean_convert_numeric_strings(self):
+        p = Parser()
+        for vector, harmonic, geometric in (
+            ([1, '4', None, 'text'], 1.6, 2),
+            (['0.25', '1', None, ''], 0.4, 0.5),
+            (['2.5e1', 4, None, 'text'], 200 / 29, 10),
+            ([True, '4', None, ''], 1.6, 2),
+            (['4', None, 'text', ''], 4, 4),
+        ):
+            for values in (vector, [vector], [[value] for value in vector],
+                           [vector[:2], vector[2:]], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                for name, expected in (('HARMEAN', harmonic), ('GEOMEAN', geometric)):
+                    with self.subTest(values=values, function=name):
+                        result = p.parse(name + '(DATA())')
+                        self.assertIsNone(result['error'])
+                        self.assertAlmostEqual(result['result'], expected)
+        for name, expected in (('HARMEAN', 1.6), ('GEOMEAN', 2)):
+            for arguments in ('"1","4"', '{1,"4",NULL,"text"}'):
+                with self.subTest(function=name, arguments=arguments):
+                    result = p.parse(name + '(' + arguments + ')')
+                    self.assertIsNone(result['error'])
+                    self.assertAlmostEqual(result['result'], expected)
+
+    def test_harmean_geomean_preserve_original_errors(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            p.set_function('DATA', lambda: [[1, '4'], [None, source_error]])
+            for name in ('HARMEAN', 'GEOMEAN'):
+                expression = name + '(DATA())'
+                with self.subTest(error=source_error, function=name):
+                    self.assertEqual(p.parse(expression),
+                                     {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 99, 'error': None} if source_error is error.NOT_AVAILABLE
+                                else {'result': None, 'error': str(source_error)})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'), expected)
+
+    def test_harmean_geomean_empty_inputs_return_distinct_excel_errors(self):
+        p = Parser()
+        for values in ([], (), [None], [None, '', 'text'], [[None, 'text']]):
+            p.set_function('DATA', lambda: values)
+            for name, code in (('HARMEAN', '#N/A'), ('GEOMEAN', '#NUM!')):
+                expression = name + '(DATA())'
+                with self.subTest(values=values, function=name):
+                    self.assertEqual(p.parse(expression), {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                     {'result': 99, 'error': None})
+                    expected = ({'result': 99, 'error': None} if code == '#N/A'
+                                else {'result': None, 'error': code})
+                    self.assertEqual(p.parse('IFNA(' + expression + ',99)'), expected)
+
+    def test_harmean_geomean_reject_nonpositive_values(self):
+        p = Parser()
+        for vector in ([0], [-1], [0, 1], [1, 0], [0, -1],
+                       ['0', '1'], ['-1', '1'], [False, 1], [-0.0, 1]):
+            for values in (vector, [vector], [[value] for value in vector], tuple(vector)):
+                p.set_function('DATA', lambda: values)
+                for name in ('HARMEAN', 'GEOMEAN'):
+                    expression = name + '(DATA())'
+                    with self.subTest(values=values, function=name):
+                        self.assertEqual(p.parse(expression),
+                                         {'result': None, 'error': '#NUM!'})
+                        self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                         {'result': 99, 'error': None})
+                        self.assertEqual(p.parse('IFNA(' + expression + ',99)'),
+                                         {'result': None, 'error': '#NUM!'})
+
+    def test_harmean_geomean_preserve_errors_before_domain_validation(self):
+        p = Parser()
+        for source_error in (error.NOT_AVAILABLE, error.DIV_ZERO):
+            for invalid_value in (0, -1):
+                for values in ([[invalid_value, 1], [None, source_error]],
+                               [[source_error, None], [1, invalid_value]]):
+                    p.set_function('DATA', lambda: values)
+                    for name in ('HARMEAN', 'GEOMEAN'):
+                        expression = name + '(DATA())'
+                        with self.subTest(values=values, function=name):
+                            self.assertEqual(p.parse(expression),
+                                             {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
+                                             {'result': 99, 'error': None})
+                            expected = ({'result': 99, 'error': None} if source_error is error.NOT_AVAILABLE
+                                        else {'result': None, 'error': str(source_error)})
+                            self.assertEqual(p.parse('IFNA(' + expression + ',99)'), expected)
+
+    def test_geomean_returns_handleable_num_on_numeric_overflow(self):
+        p = Parser()
+        p.set_function('BIG', lambda: 10 ** 400)
+        self.assertEqual(p.parse('GEOMEAN(BIG())'), {'result': None, 'error': '#NUM!'})
+        self.assertEqual(p.parse('IFERROR(GEOMEAN(BIG()),99)'), {'result': 99, 'error': None})
 
     def test_averagifs(self):
         p = Parser(debug=True)
@@ -788,12 +1164,12 @@ class TestStatistical(unittest.TestCase):
         self.assertEqual(p.parse('MAXIFS({-5,0,-9},{-5,0,-9},"<=0")'),
                          {'result': 0, 'error': None})
 
-    def test_maxifs_ignores_selected_blanks_and_text(self):
+    def test_maxifs_ignores_selected_blanks_and_nonnumeric_text(self):
         p = Parser()
         for vector, expected in (
             ([None, 5], 5), ([5, None], 5),
             (['text', 5], 5), ([5, 'text'], 5),
-            ([None], 0), (['text'], 0), (['20', 5], 5),
+            ([None], 0), (['text'], 0),
             (['', None, -5, -2], -2), ([0, None, -5], 0), ([], 0),
         ):
             for shape in (lambda values: values, lambda values: [values],
@@ -808,6 +1184,45 @@ class TestStatistical(unittest.TestCase):
                     self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
                     self.assertEqual(p.parse('IFERROR(' + expression + ',99)'),
                                      {'result': expected, 'error': None})
+
+    def test_maxifs_converts_selected_numeric_strings(self):
+        p = Parser()
+        for vector, expected in (
+            (['20', 5], 20), ([5, '20'], 20),
+            (['-5', '-2'], -2), (['0', -5], 0),
+            (['2.5', '2e1', None, 'text'], 20.0),
+            ([True, '0'], True), ([False, '-1'], False),
+        ):
+            for shape in (lambda values: values, lambda values: [values],
+                          lambda values: [[value] for value in values],
+                          lambda values: tuple((value,) for value in values)):
+                p.set_function('DATA', lambda: shape(vector))
+                p.set_function('CRITERIA', lambda: shape([1] * len(vector)))
+                with self.subTest(vector=vector, values=shape(vector)):
+                    result = p.parse('MAXIFS(DATA(),CRITERIA(),1)')
+                    self.assertEqual(result, {'result': expected, 'error': None})
+                    self.assertIs(type(result['result']), type(expected))
+
+        p.set_function('F', lambda name: '7')
+        for expression, expected in (
+            ('MAXIFS({"20",5},{1,1},1)', 20),
+            ('MAXIFS({F("Mirror")},{1},"=1")', 7),
+            ('MAXIFS({"100","7"},{0,1},1)', 7),
+        ):
+            with self.subTest(expression=expression):
+                self.assertEqual(p.parse(expression), {'result': expected, 'error': None})
+
+    def test_maxifs_converts_nonfinite_strings_only_when_selected(self):
+        p = Parser()
+        for value in ('nan', 'inf', '-inf', '1e309'):
+            p.set_function('DATA', lambda: [[value, '7']])
+            with self.subTest(value=value):
+                self.assertEqual(p.parse('MAXIFS(DATA(),{1,1},1)'),
+                                 {'result': None, 'error': '#NUM!'})
+                self.assertEqual(p.parse('IFERROR(MAXIFS(DATA(),{1,1},1),99)'),
+                                 {'result': 99, 'error': None})
+                self.assertEqual(p.parse('MAXIFS(DATA(),{0,1},1)'),
+                                 {'result': 7, 'error': None})
 
     def test_maxifs_preserves_selected_errors_among_blanks_and_text(self):
         p = Parser()

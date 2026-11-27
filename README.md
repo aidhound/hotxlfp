@@ -83,28 +83,23 @@ also counts cells whose formulas return empty text.
 
 ## Numeric strings
 
-COUNT, SUM, AVERAGE and AVERAGEA convert numeric strings to numbers, including
-inside arrays. For `[5, "7"]`, their results are 2, 12, 6 and 6 respectively.
-This supports applications whose numeric answers arrive as strings. The parser
-does not know the source field type, so numeric-looking text is converted even
-when it came from a text field.
+Numeric conversion happens inside individual functions. Arithmetic, COUNT, SUM,
+the mean and deviation functions, MAX/MIN/MAXIFS, and the variance functions
+accept numeric strings, including inside arrays, regardless of the source
+field type. For example, `SUM({5,"7"})` returns 12.
+Exact MATCH also compares numbers and numeric strings numerically in either
+direction, returning the first matching position; booleans remain distinct.
 
-Exact MATCH lookups also compare numbers and numeric strings numerically, in
-either direction, returning the first matching position. For example,
-`MATCH(1,{"1",2},0)` and `MATCH("1",{1,2},0)` both return 1. Wildcards still
-match text, and Boolean values remain distinct from numbers.
+This is not a global conversion: `ISNUMBER("7")` returns false. hotxlfp has no
+Excel-style cell-entry prefix: an apostrophe in a supplied string is part of
+its contents, so `"'7"` has length 2.
 
-Excel's [COUNT](https://support.microsoft.com/en-us/excel/functions/count-function)
-ignores numeric and date-looking text in arrays and references. hotxlfp
-intentionally counts numeric strings and date strings recognized by its date
-parser, such as `"2026-11-11"`, both directly and inside arrays and references.
-Native date/datetime values also count. Array booleans, blanks, unrecognized text
-and typed errors remain excluded; direct boolean arguments continue to count.
-
-AVERAGEA also retains its text-as-zero behavior for nonnumeric text in both
-direct arguments and arrays, including empty strings. `None` is excluded from
-the average. These are function-specific rules; input values are not globally
-replaced with zero.
+Unlike Excel's [COUNT](https://support.microsoft.com/en-us/excel/functions/count-function),
+hotxlfp COUNT accepts numeric and recognized date strings inside arrays and
+references as well as directly. Native dates also count; array booleans, blanks,
+unrecognized text and errors do not. Direct boolean arguments count.
+AVERAGEA treats nonnumeric text, including empty strings, as zero and excludes
+`None`. MAXIFS ignores selected blanks/nonnumeric text and preserves selected errors.
 
 ## UNIQUE text comparison
 

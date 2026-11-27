@@ -3,6 +3,7 @@
 inspired by:
 https://github.com/sutoiku/formula.js/blob/master/lib/statistical.js
 """
+from collections import Counter
 import datetime
 import math
 import statistics
@@ -23,11 +24,11 @@ def AVERAGE(*args):
 
 @dispatcher.register_for('AVEDEV')
 def AVEDEV(*args):
-    args = utils.flatten(args)
+    args = utils.numbers(args, try_parse=True)
     average = AVERAGE(*args)
     if isinstance(average, error.XLError):
         return average
-    return sum(abs(arg - average) for arg in utils.iflatten(args)) / len(args)
+    return sum(abs(arg - average) for arg in args) / len(args)
 
 
 @dispatcher.register_for('AVERAGEA')
@@ -102,77 +103,119 @@ def COUNTIF(args, criteria):
 
 @dispatcher.register_for('MAX')
 def MAX(*args):
-    return max(utils.inumbers(args))
+    return max(utils.inumbers(args, try_parse=True), default=0)
 
 
 @dispatcher.register_for('MAXA')
 def MAXA(*args):
-    return max(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    return max(utils.inumbers(args, try_parse=True, text_is_zero=True), default=0)
 
 
 @dispatcher.register_for('MEDIAN')
 def MEDIAN(*args):
-    return statistics.median(utils.inumbers(args, try_parse=True))
+    try:
+        return statistics.median(utils.inumbers(args, try_parse=True))
+    except statistics.StatisticsError:
+        return error.NUM
 
 
 @dispatcher.register_for('MIN')
 def MIN(*args):
-    return min(utils.inumbers(args))
+    return min(utils.inumbers(args, try_parse=True), default=0)
 
 
 @dispatcher.register_for('MINA')
 def MINA(*args):
-    return min(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    return min(utils.inumbers(args, try_parse=True, text_is_zero=True), default=0)
 
 
 @dispatcher.register_for('MODE', 'MODE.SNGL')
 def MODE(*args):
-    return statistics.mode(utils.inumbers(args, try_parse=True))
+    counts = Counter(utils.inumbers(args, try_parse=True))
+    if not counts:
+        return error.NOT_AVAILABLE
+    value, frequency = counts.most_common(1)[0]
+    return value if frequency > 1 else error.NOT_AVAILABLE
 
 
 @dispatcher.register_for('VAR', 'VAR.S')
 def VAR(*args):
-    return statistics.variance(utils.inumbers(args))
+    try:
+        return statistics.variance(utils.inumbers(args, try_parse=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('VAR.P', 'VARP')
 def VAR_P(*args):
-    return statistics.pvariance(utils.inumbers(args))
+    try:
+        return statistics.pvariance(utils.inumbers(args, try_parse=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('VARA')
 def VARA(*args):
-    return statistics.variance(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    try:
+        return statistics.variance(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('STDEV', 'STDEV.S')
 def STDEV(*args):
-    return statistics.stdev(utils.inumbers(args))
+    try:
+        return statistics.stdev(utils.inumbers(args, try_parse=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('STDEV.P', 'STDEVP')
 def STDEV_P(*args):
-    return statistics.pstdev(utils.inumbers(args))
+    try:
+        return statistics.pstdev(utils.inumbers(args, try_parse=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('STDEVA')
 def STDEVA(*args):
-    return statistics.stdev(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    try:
+        return statistics.stdev(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('STDEVPA')
 def STDEVPA(*args):
-    return statistics.pstdev(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    try:
+        return statistics.pstdev(utils.inumbers(args, try_parse=True, text_is_zero=True))
+    except statistics.StatisticsError:
+        return error.DIV_ZERO
 
 
 @dispatcher.register_for('HARMEAN')
 def HARMEAN(*args):
-    return statistics.harmonic_mean(utils.inumbers(args))
+    values = utils.numbers(args, try_parse=True)
+    if not values:
+        return error.NOT_AVAILABLE
+    # Python allows zero in harmonic_mean; Excel requires positive values.
+    if 0 in values:
+        return error.NUM
+    try:
+        return statistics.harmonic_mean(values)
+    except (statistics.StatisticsError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('GEOMEAN')
 def GEOMEAN(*args):
-    return statistics.geometric_mean(utils.inumbers(args))
+    # Read all input errors before checking the numeric domain.
+    values = utils.numbers(args, try_parse=True)
+    try:
+        return statistics.geometric_mean(values)
+    except (statistics.StatisticsError, OverflowError):
+        return error.NUM
 
 
 @dispatcher.register_for('AVERAGEIFS')
@@ -224,6 +267,7 @@ def MAXIFS(sum_args, *criteria):
     )
     max_value = utils.DEFAULT
     for value in values:
+        value = to_number(value)
         if isinstance(value, error.XLError):
             return value
         if not isinstance(value, number_types):
